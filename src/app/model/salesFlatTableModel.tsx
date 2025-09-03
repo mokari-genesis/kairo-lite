@@ -1,0 +1,157 @@
+import { ColumnConfig } from '../components/DataTable'
+import { Badge } from 'antd'
+
+export interface FilterConfig {
+  type: 'text' | 'select'
+  key: string
+  placeholder: string
+  width: string
+  options?: { value: string; label: string }[]
+}
+
+export const SalesFlatcolumns: ColumnConfig[] = [
+  {
+    title: 'ID',
+    dataIndex: 'id',
+    key: 'id',
+  },
+  {
+    title: 'Fecha de Venta',
+    dataIndex: 'fecha_venta',
+    key: 'fecha_venta',
+  },
+  {
+    title: 'Cliente',
+    dataIndex: 'cliente_nombre',
+    key: 'cliente_nombre',
+  },
+  {
+    title: 'NIT',
+    dataIndex: 'cliente_nit',
+    key: 'cliente_nit',
+  },
+  {
+    key: 'estado_venta',
+    title: 'Estado venta',
+    dataIndex: 'estado_venta',
+    type: 'select',
+    render: (estado_venta: string) => {
+      const colors: Record<string, string> = {
+        generado: '#2db7f5',
+        vendido: '#87d068',
+        cancelado: '#f50',
+      }
+      return (
+        <Badge
+          color={colors[estado_venta]}
+          text={estado_venta.charAt(0).toUpperCase() + estado_venta.slice(1)}
+        />
+      )
+    },
+    options: [
+      { value: 'generado', label: 'Generado' },
+      { value: 'vendido', label: 'Vendido' },
+      { value: 'cancelado', label: 'Cancelado' },
+    ],
+  },
+  {
+    title: 'Total',
+    dataIndex: 'total_venta',
+    key: 'total_venta',
+    render: (total: string) => `Q.${parseFloat(total).toFixed(2)}`,
+  },
+]
+
+export const SalesFlatfilterConfigs: FilterConfig[] = [
+  {
+    type: 'text' as const,
+    key: 'cliente_nombre',
+    placeholder: 'Nombre del Cliente',
+    width: '25%',
+  },
+  {
+    type: 'text' as const,
+    key: 'cliente_nit',
+    placeholder: 'NIT del Cliente',
+    width: '25%',
+  },
+  {
+    type: 'text' as const,
+    key: 'cliente_email',
+    placeholder: 'Email del Cliente',
+    width: '25%',
+  },
+  {
+    type: 'select' as const,
+    key: 'estado_venta',
+    placeholder: 'Estado de Venta',
+    width: '25%',
+    options: [
+      { value: 'generado', label: 'Generado' },
+      { value: 'vendido', label: 'Vendido' },
+      { value: 'cancelado', label: 'Cancelado' },
+    ],
+  },
+]
+
+const colors: Record<string, string> = {
+  juguete: '#FF6B6B',
+  ropa: '#4ECDC4',
+  accesorio: '#FFD166',
+  artículo_pinata: '#FF9F1C',
+  utensilio_cocina: '#2EC4B6',
+  material_educativo: '#6A4C93',
+  material_didactico: '#45B7D1',
+  otros: '#95A5A6',
+}
+export const expandedRowRender = (record: any) => {
+  return (
+    <div
+      style={{ padding: '16px', background: '#fafafa', borderRadius: '4px' }}
+    >
+      <h4>Detalles de Productos</h4>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ padding: '8px', textAlign: 'left' }}>Código</th>
+            <th style={{ padding: '8px', textAlign: 'left' }}>Descripción</th>
+            <th style={{ padding: '8px', textAlign: 'left' }}>Categoría</th>
+            <th style={{ padding: '8px', textAlign: 'right' }}>
+              Precio Unitario
+            </th>
+            <th style={{ padding: '8px', textAlign: 'right' }}>Cantidad</th>
+            <th style={{ padding: '8px', textAlign: 'right' }}>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {record.productos.map((producto: any) => (
+            <tr key={producto.detalle_id}>
+              <td style={{ padding: '8px' }}>{producto.codigo}</td>
+              <td style={{ padding: '8px' }}>{producto.descripcion}</td>
+              <td style={{ padding: '8px' }}>
+                {
+                  <Badge
+                    color={colors[producto.categoria]}
+                    text={(
+                      producto.categoria.charAt(0).toUpperCase() +
+                      producto.categoria.slice(1)
+                    ).replace(/_/g, ' ')}
+                  />
+                }
+              </td>
+              <td style={{ padding: '8px', textAlign: 'right' }}>
+                Q.{producto.precio_unitario.toFixed(2)}
+              </td>
+              <td style={{ padding: '8px', textAlign: 'right' }}>
+                {producto.cantidad}
+              </td>
+              <td style={{ padding: '8px', textAlign: 'right' }}>
+                Q.{producto.subtotal.toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
