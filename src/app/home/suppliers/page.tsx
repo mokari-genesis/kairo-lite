@@ -70,11 +70,33 @@ function Home() {
       message.error('No se puede eliminar el proveedor')
       return
     }
-    setIsLoading(true)
-    await deleteSupplier(record.id)
-    await queryClient.invalidateQueries({ queryKey: [QueryKey.suppliersInfo] })
-    message.success('Proveedor eliminado exitosamente')
-    setIsLoading(false)
+    try {
+      setIsLoading(true)
+      await deleteSupplier(record.id)
+      await queryClient.invalidateQueries({
+        queryKey: [QueryKey.suppliersInfo],
+      })
+      message.success('Proveedor eliminado exitosamente')
+    } catch (error: any) {
+      console.error('Error deleting supplier:', error)
+
+      // Check if it's a foreign key constraint error
+      if (
+        error.message &&
+        (error.message.includes('foreign key') ||
+          error.message.includes('llave foránea') ||
+          error.message.includes('constraint') ||
+          error.message.includes('referenced'))
+      ) {
+        message.error(
+          'No se puede eliminar el proveedor porque tiene productos asociados. Primero elimine o cambie el proveedor de los productos relacionados.'
+        )
+      } else {
+        message.error(error.message || 'Error al eliminar el proveedor')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const onFilterChange = (newFilters: Record<string, any>) => {

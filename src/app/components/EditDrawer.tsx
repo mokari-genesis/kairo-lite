@@ -18,6 +18,7 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
+import { SupplierSelect } from './SupplierSelect'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.extend(customParseFormat)
@@ -31,7 +32,7 @@ interface EditDrawerProps {
   fields: {
     key: string
     label: string
-    type: 'text' | 'select' | 'date'
+    type: 'text' | 'select' | 'date' | 'supplier'
     options?: { value: string; label: string }[]
     hidden?: boolean
     disabled?: boolean
@@ -48,6 +49,9 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
 }) => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [selectedSupplierId, setSelectedSupplierId] = useState<
+    number | undefined
+  >(undefined)
 
   useEffect(() => {
     if (visible && data) {
@@ -70,6 +74,10 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
             initialValues[field.key] = null
           }
         }
+        if (field.type === 'supplier' && initialValues[field.key]) {
+          // Set the selected supplier ID for supplier fields
+          setSelectedSupplierId(initialValues[field.key])
+        }
       })
       form.setFieldsValue(initialValues)
     }
@@ -77,6 +85,7 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
 
   const handleClose = () => {
     form.resetFields()
+    setSelectedSupplierId(undefined)
     onClose()
   }
 
@@ -84,6 +93,10 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
     try {
       setLoading(true)
       const values = await form.validateFields()
+      // Add supplier_id to values if a supplier is selected
+      if (selectedSupplierId) {
+        values.proveedor_id = selectedSupplierId
+      }
       await onSave(values)
       handleClose()
     } catch (error) {
@@ -112,6 +125,16 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
             {...commonProps}
             showTime
             format='DD/MM/YYYY hh:mm:ss A'
+          />
+        )
+      case 'supplier':
+        return (
+          <SupplierSelect
+            value={selectedSupplierId}
+            onChange={(value, supplier) => {
+              setSelectedSupplierId(value)
+              form.setFieldValue(field.key, value)
+            }}
           />
         )
       default:

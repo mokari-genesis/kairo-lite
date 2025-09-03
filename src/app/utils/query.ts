@@ -29,7 +29,7 @@ export const QueryKey = {
   salesInfo: 'salesInfo',
   salesFlatInfo: 'salesFlatInfo',
   clientsInfo: 'clientsInfo',
-  suppliersInfo: 'suppliersInfo',
+  suppliersInfo: 'suppliersInfo-02',
 }
 
 // 4. Helper

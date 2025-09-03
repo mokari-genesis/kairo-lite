@@ -40,11 +40,18 @@ export type UpdateSupplierRequest = {
 }
 
 export const getSuppliers = async (
-  filters?: Record<string, any>
+  filters?: Record<string, any>,
+  limit?: number
 ): Promise<SupplierTypeResponse[]> => {
   try {
     const queryParams = new URLSearchParams()
     queryParams.append('empresa_id', '1')
+
+    // Add limit parameter if provided
+    if (limit) {
+      queryParams.append('limit', String(limit))
+    }
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -100,11 +107,19 @@ export const updateSupplier = async (supplier: UpdateSupplierRequest) => {
 }
 
 export const deleteSupplier = async (id: string) => {
-  const response = await fetchApi<LambdaResponse<SupplierTypeResponse>>({
-    api: API_URL,
-    service: `/provider`,
-    method: 'DELETE',
-    body: { id: id },
-  })
-  return response
+  try {
+    const response = await fetchApi<LambdaResponse<SupplierTypeResponse>>({
+      api: API_URL,
+      service: `/provider`,
+      method: 'DELETE',
+      body: { id: id },
+    })
+    return response
+  } catch (error: any) {
+    // Re-throw the error with better message handling
+    if (error.message) {
+      throw new Error(getFriendlyErrorMessage(error.message))
+    }
+    throw error
+  }
 }

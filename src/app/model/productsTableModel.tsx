@@ -89,6 +89,14 @@ export const columns: ColumnConfig[] = [
     render: (precio: number) => `Q.${precio}`,
   },
   {
+    key: 'proveedor_id',
+    title: 'Proveedor',
+    dataIndex: 'proveedor_id',
+    type: 'supplier',
+    render: (value: any, record: any) =>
+      record.nombre_proveedor || 'Sin proveedor',
+  },
+  {
     key: 'date',
     title: 'Fecha de creación',
     dataIndex: 'fecha_creacion',
@@ -118,25 +126,31 @@ export const filterConfigs: FilterConfig[] = [
     type: 'text' as const,
     key: 'descripcion',
     placeholder: 'Descripción',
-    width: '25%',
+    width: '20%',
   },
   {
     type: 'text' as const,
     key: 'codigo',
     placeholder: 'Código',
-    width: '25%',
+    width: '20%',
   },
   {
     type: 'text' as const,
     key: 'serie',
     placeholder: 'Serie',
-    width: '25%',
+    width: '20%',
+  },
+  {
+    type: 'text' as const,
+    key: 'nombre_proveedor',
+    placeholder: 'Proveedor',
+    width: '20%',
   },
   {
     type: 'select' as const,
     key: 'categoria',
     placeholder: 'Categoría',
-    width: '25%',
+    width: '20%',
     options: [
       { value: 'juguete', label: 'Juguete' },
       { value: 'ropa', label: 'Ropa' },
@@ -152,7 +166,7 @@ export const filterConfigs: FilterConfig[] = [
     type: 'select' as const,
     key: 'estado',
     placeholder: 'Estado',
-    width: '25%',
+    width: '20%',
     options: [
       { value: 'activo', label: 'Activado' },
       { value: 'inactivo', label: 'Desactivado' },

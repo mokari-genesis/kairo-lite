@@ -18,7 +18,7 @@ export interface ColumnConfig {
   key: string
   title: string
   dataIndex: string
-  type?: 'text' | 'number' | 'date' | 'select'
+  type?: 'text' | 'number' | 'date' | 'select' | 'supplier'
   options?: { value: string; label: string }[]
   render?: (value: any, record: any) => ReactNode
   hidden?: boolean

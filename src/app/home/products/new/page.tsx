@@ -4,6 +4,7 @@ import { Form, Input, Select, Button, message, Card } from 'antd'
 import { useRouter } from 'next/navigation'
 import { createProduct } from '@/app/api/products'
 import { PageHeader } from '@/app/components/PageHeader'
+import { SupplierSelect } from '@/app/components/SupplierSelect'
 import { useState } from 'react'
 import { queryClient, QueryKey } from '@/app/utils/query'
 import { motion } from 'framer-motion'
@@ -30,6 +31,7 @@ export default function NewProduct() {
   const [form] = Form.useForm()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
 
   const handleSubmit = async (values: any) => {
     try {
@@ -37,6 +39,7 @@ export default function NewProduct() {
       const productData = {
         ...values,
         empresa_id: 1,
+        proveedor_id: selectedSupplier?.id,
       }
       await createProduct(productData)
 
@@ -102,6 +105,22 @@ export default function NewProduct() {
             ]}
           >
             <Select options={categories} />
+          </Form.Item>
+
+          <Form.Item
+            name='proveedor_id'
+            label='Proveedor'
+            rules={[
+              { required: true, message: 'Por favor seleccione un proveedor' },
+            ]}
+          >
+            <SupplierSelect
+              value={selectedSupplier?.id}
+              onChange={(value, supplier) => {
+                setSelectedSupplier(supplier)
+                form.setFieldValue('proveedor_id', value)
+              }}
+            />
           </Form.Item>
 
           <Form.Item

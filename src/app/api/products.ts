@@ -16,6 +16,8 @@ export interface ProductType {
   estado: string
   stock: number
   precio: number
+  proveedor_id?: number
+  nombre_proveedor?: string
   fecha_creacion: string
 }
 
@@ -28,6 +30,7 @@ export interface UpdateProductRequest {
   categoria: string
   estado: string
   stock: number
+  proveedor_id?: number
 }
 
 export const getProducts = async (

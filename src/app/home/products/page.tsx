@@ -49,6 +49,7 @@ function Home() {
         categoria: record.categoria,
         estado: record.estado,
         stock: record.stock,
+        proveedor_id: record.proveedor_id,
       }
       await updateProduct(updateData)
       await queryClient.invalidateQueries({
@@ -97,6 +98,7 @@ function Home() {
       Serie: product.serie,
       Descripción: product.descripcion,
       Categoría: product.categoria,
+      Proveedor: product.nombre_proveedor || 'Sin proveedor',
       Estado: product.estado,
       Stock: product.stock,
     }))
