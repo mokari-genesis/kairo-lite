@@ -5,7 +5,7 @@ import utc from 'dayjs/plugin/utc'
 dayjs.extend(utc)
 const DATE_FORMAT = 'DD/MM/YYYY hh:mm:ss A'
 
-const API_URL = 'https://k56i7jubs3.execute-api.us-east-1.amazonaws.com/prod'
+const API_URL = 'https://m0y53w1zri.execute-api.us-east-1.amazonaws.com/prod'
 
 export type ClientsTypeResponse = {
   id: number
