@@ -12,6 +12,7 @@ import {
   FileTextOutlined,
   TeamOutlined,
   StockOutlined,
+  ShopOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
@@ -25,14 +26,17 @@ const pathToMenuKey: Record<string, string> = {
   '/home/clients': '2',
   '/home/clients/new': '2',
 
-  '/home/saleOrders': '3',
-  '/home/saleOrders/new': '3',
-  '/home/saleOrders/edit': '3',
+  '/home/suppliers': '3',
+  '/home/suppliers/new': '3',
 
-  '/home/stock': '4',
-  '/home/stock/new': '4',
+  '/home/saleOrders': '4',
+  '/home/saleOrders/new': '4',
+  '/home/saleOrders/edit': '4',
 
-  '/home/sales': '5-1',
+  '/home/stock': '5',
+  '/home/stock/new': '5',
+
+  '/home/sales': '6-1',
 }
 
 export default function AppLayout({ children }: any) {
@@ -74,33 +78,42 @@ export default function AppLayout({ children }: any) {
     },
     {
       key: '3',
-      label: 'Ventas',
-      icon: React.createElement(StockOutlined),
+      label: 'Proveedores',
+      icon: React.createElement(ShopOutlined),
       onClick: () => {
         setSelectedKey('3')
-        router.push('/home/saleOrders')
+        router.push('/home/suppliers')
       },
     },
     {
       key: '4',
-      label: 'Movimientos',
+      label: 'Ventas',
       icon: React.createElement(StockOutlined),
       onClick: () => {
         setSelectedKey('4')
-        router.push('/home/stock')
+        router.push('/home/saleOrders')
       },
     },
     {
       key: '5',
+      label: 'Movimientos',
+      icon: React.createElement(StockOutlined),
+      onClick: () => {
+        setSelectedKey('5')
+        router.push('/home/stock')
+      },
+    },
+    {
+      key: '6',
       label: 'Reportes',
       icon: React.createElement(BarChartOutlined),
       children: [
         {
-          key: '5-1',
+          key: '6-1',
           label: 'Ventas',
           icon: React.createElement(FileTextOutlined),
           onClick: () => {
-            setSelectedKey('5-1')
+            setSelectedKey('6-1')
             router.push('/home/sales')
           },
         },

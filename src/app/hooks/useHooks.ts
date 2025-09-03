@@ -2,6 +2,7 @@ import { getClients } from '../api/clients'
 import { getProducts, ProductType } from '../api/products'
 import { getSales, getSalesFlat, SalesFlatType } from '../api/sales'
 import { getStock, StockType } from '../api/stock'
+import { getSuppliers, SupplierTypeResponse } from '../api/supplier'
 import { QueryKey } from '../utils/query'
 import { useQuery } from '@tanstack/react-query'
 
@@ -54,6 +55,17 @@ export const useClients = (filters?: Record<string, any>) => {
   return useQuery({
     queryKey: [QueryKey.clientsInfo, filters],
     queryFn: () => getClients(filters),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  })
+}
+
+export const useSuppliers = (filters?: Record<string, any>) => {
+  return useQuery<SupplierTypeResponse[]>({
+    queryKey: [QueryKey.suppliersInfo, filters],
+    queryFn: () => getSuppliers(filters),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
