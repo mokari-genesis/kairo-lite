@@ -251,10 +251,10 @@ export default function SaleOrders() {
             showView={true}
             onCancel={handleCancel}
             onPrintTicket={handlePrintTicket}
-            showPrintTicket={true}
+            showPrintTicket={false}
             deleteTooltip='Eliminar Venta'
             cancelTooltip='Cancelar Venta'
-            viewTooltip='Editar Venta'
+            viewTooltip='Ver / Editar Venta'
             printTicketTooltip='Imprimir Etiqueta'
           />
         </Space>
