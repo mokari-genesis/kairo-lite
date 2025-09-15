@@ -23,6 +23,23 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.extend(customParseFormat)
 
+// Helper function to normalize values for comparison
+const normalizeValue = (value: any): boolean | string | number => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') {
+    // Convert 1/0 to boolean for comparison with boolean options
+    if (value === 1) return true
+    if (value === 0) return false
+    return value
+  }
+  if (typeof value === 'string') {
+    if (value === 'true' || value === '1') return true
+    if (value === 'false' || value === '0') return false
+    return value
+  }
+  return value
+}
+
 interface EditDrawerProps {
   showView?: boolean
   visible: boolean
@@ -32,7 +49,7 @@ interface EditDrawerProps {
   fields: {
     key: string
     label: string
-    type: 'text' | 'select' | 'date' | 'supplier'
+    type: 'text' | 'select' | 'date' | 'supplier' | 'action'
     options?: { value: string; label: string }[]
     hidden?: boolean
     disabled?: boolean
@@ -77,6 +94,24 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
         if (field.type === 'supplier' && initialValues[field.key]) {
           // Set the selected supplier ID for supplier fields
           setSelectedSupplierId(initialValues[field.key])
+        }
+        if (
+          field.type === 'select' &&
+          field.options &&
+          initialValues[field.key] !== undefined
+        ) {
+          // Convert the value to match the options format
+          const currentValue = initialValues[field.key]
+          const matchingOption = field.options.find(option => {
+            // Normalize values for comparison
+            const normalizedCurrent = normalizeValue(currentValue)
+            const normalizedOption = normalizeValue(option.value)
+            return normalizedCurrent === normalizedOption
+          })
+
+          if (matchingOption) {
+            initialValues[field.key] = matchingOption.value
+          }
         }
       })
       form.setFieldsValue(initialValues)

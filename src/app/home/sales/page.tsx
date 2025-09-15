@@ -51,7 +51,9 @@ function HomeSales() {
       'Descripción Producto': sale.producto_descripcion,
       'Estado de la venta': sale.estado_venta,
       'Cantidad vendida': sale.cantidad,
-      'Precio unitario': sale.precio_unitario,
+      'Metodo de pago': sale.metodo_pago,
+      'Tipo de precio aplicado': sale.tipo_precio_aplicado,
+      Precio: sale.precio_unitario,
       'Total venta': sale.total_venta,
     }))
 

@@ -17,10 +17,20 @@ import {
   UpdateProductRequest,
 } from '@/app/api/products'
 import { queryClient, QueryKey } from '@/app/utils/query'
-import { Card, message, notification, Space, Button, Row, Col } from 'antd'
+import {
+  Card,
+  message,
+  notification,
+  Space,
+  Button,
+  Row,
+  Col,
+  Modal,
+} from 'antd'
 import { motion } from 'framer-motion'
 import { columns } from '@/app/model/productsTableModel'
 import { filterConfigs } from '@/app/model/productsTableModel'
+import { ProductoPreciosManager } from '@/app/components/ProductoPreciosManager'
 import * as XLSX from 'xlsx'
 
 function Home() {
@@ -30,6 +40,8 @@ function Home() {
   const [pageSize, setPageSize] = useState(10)
   const [filters, setFilters] = useState<Record<string, any>>({})
   const hasCheckedStock = useRef(false)
+  const [preciosModalVisible, setPreciosModalVisible] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
 
   const router = useRouter()
 
@@ -49,6 +61,7 @@ function Home() {
         categoria: record.categoria,
         estado: record.estado,
         stock: record.stock,
+        precio: record.precio,
         proveedor_id: record.proveedor_id,
       }
       await updateProduct(updateData)
@@ -78,6 +91,20 @@ function Home() {
     await queryClient.invalidateQueries({ queryKey: [QueryKey.productsInfo] })
     message.success('Producto eliminado exitosamente')
     setIsLoading(false)
+  }
+
+  const handleManagePrecios = (record: any) => {
+    setSelectedProduct(record)
+    setPreciosModalVisible(true)
+  }
+
+  const handleProductUpdate = async (updatedProduct: any) => {
+    // Invalidar las queries para refrescar la tabla de productos
+    await queryClient.invalidateQueries({
+      queryKey: [QueryKey.productsInfo, filters],
+    })
+    // Actualizar el producto seleccionado con los nuevos datos
+    setSelectedProduct(updatedProduct)
   }
 
   const onFilterChange = (newFilters: Record<string, any>) => {
@@ -189,6 +216,7 @@ function Home() {
             columns={columns}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onManagePrecios={handleManagePrecios}
             loading={productLoading || isLoading}
             pagination={{
               total: dataProducts?.length || 0,
@@ -200,6 +228,25 @@ function Home() {
             showDelete={true}
           />
         </Space>
+
+        <Modal
+          title='Gestión de Precios'
+          open={preciosModalVisible}
+          onCancel={() => setPreciosModalVisible(false)}
+          footer={null}
+          width='80%'
+          style={{ top: 20 }}
+        >
+          {selectedProduct && (
+            <ProductoPreciosManager
+              productoId={selectedProduct.id}
+              productoDescripcion={selectedProduct.descripcion}
+              productoData={selectedProduct}
+              onClose={() => setPreciosModalVisible(false)}
+              onProductUpdate={handleProductUpdate}
+            />
+          )}
+        </Modal>
       </Card>
       {contextHolder}
     </motion.div>

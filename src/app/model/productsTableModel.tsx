@@ -1,5 +1,6 @@
 import { ColumnConfig } from '../components/DataTable'
-import { Badge } from 'antd'
+import { Badge, Button, Space } from 'antd'
+import { DollarOutlined } from '@ant-design/icons'
 
 export interface FilterConfig {
   type: 'text' | 'select'
@@ -86,6 +87,7 @@ export const columns: ColumnConfig[] = [
     title: 'Precio Sugerido',
     dataIndex: 'precio',
     type: 'text',
+    disabled: true,
     render: (precio: number) => `Q.${precio}`,
   },
   {
@@ -118,6 +120,22 @@ export const columns: ColumnConfig[] = [
       { value: 'activo', label: 'Activo' },
       { value: 'inactivo', label: 'Inactivo' },
     ],
+  },
+  {
+    key: 'acciones_precios',
+    title: 'Precios',
+    dataIndex: 'acciones_precios',
+    type: 'action',
+    render: (_: any, record: any, actions: any) => (
+      <Space>
+        <Button
+          type='text'
+          icon={<DollarOutlined />}
+          onClick={() => actions?.onManagePrecios?.(record)}
+          title='Gestionar Precios'
+        />
+      </Space>
+    ),
   },
 ]
 

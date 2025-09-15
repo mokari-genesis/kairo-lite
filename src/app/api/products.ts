@@ -30,6 +30,7 @@ export interface UpdateProductRequest {
   categoria: string
   estado: string
   stock: number
+  precio: number
   proveedor_id?: number
 }
 

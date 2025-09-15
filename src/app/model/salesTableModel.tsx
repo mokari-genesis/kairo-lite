@@ -76,8 +76,22 @@ export const Salescolumns: ColumnConfig[] = [
     },
   },
   {
+    key: 'metodo_pago',
+    title: 'Metodo de pago',
+    dataIndex: 'metodo_pago',
+    type: 'text',
+    render: (metodo_pago: string) => metodo_pago,
+  },
+  {
+    key: 'tipo_precio_aplicado',
+    title: 'Tipo de precio aplicado',
+    dataIndex: 'tipo_precio_aplicado',
+    type: 'text',
+    render: (tipo_precio_aplicado: string) => tipo_precio_aplicado,
+  },
+  {
     key: 'precio_unitario',
-    title: 'Precio Unitario',
+    title: 'Precio',
     dataIndex: 'precio_unitario',
     type: 'text',
     render: (precio: number) => `Q.${precio}`,

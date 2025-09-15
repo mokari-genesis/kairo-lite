@@ -18,9 +18,9 @@ export interface ColumnConfig {
   key: string
   title: string
   dataIndex: string
-  type?: 'text' | 'number' | 'date' | 'select' | 'supplier'
-  options?: { value: string; label: string }[]
-  render?: (value: any, record: any) => ReactNode
+  type?: 'text' | 'number' | 'date' | 'select' | 'supplier' | 'action'
+  options?: { value: any; label: string }[]
+  render?: (value: any, record: any, actions?: any) => ReactNode
   hidden?: boolean
   disabled?: boolean
   textAlign?: 'left' | 'center' | 'right'
@@ -35,6 +35,7 @@ interface DataTableProps<T> {
   onDelete?: (record: T) => void
   onCancel?: (record: T) => void
   onPrintTicket?: (record: T) => void
+  onManagePrecios?: (record: T) => void
   loading?: boolean
   pagination?: {
     total: number
@@ -74,6 +75,7 @@ export const DataTable = <T extends { id?: string | number }>({
   onDelete,
   onCancel,
   onPrintTicket,
+  onManagePrecios,
   loading = false,
   pagination,
   showActions = true,
@@ -109,7 +111,10 @@ export const DataTable = <T extends { id?: string | number }>({
 
   const renderCell = (record: T, column: ColumnConfig): ReactNode => {
     if (column.render) {
-      return column.render(record[column.dataIndex as keyof T], record)
+      const actions = {
+        onManagePrecios,
+      }
+      return column.render(record[column.dataIndex as keyof T], record, actions)
     }
     const value = record[column.dataIndex as keyof T]
     return value !== undefined && value !== null ? String(value) : ''
@@ -198,7 +203,14 @@ export const DataTable = <T extends { id?: string | number }>({
       key: column.key,
       title: column.title,
       dataIndex: column.dataIndex,
-      render: column.render,
+      render: column.render
+        ? (value: any, record: T) => {
+            const actions = {
+              onManagePrecios,
+            }
+            return column.render!(value, record, actions)
+          }
+        : undefined,
     })),
     ...(showActions
       ? [
@@ -270,14 +282,16 @@ export const DataTable = <T extends { id?: string | number }>({
       : []),
   ]
 
-  const editFields = columns.map(column => ({
-    key: column.dataIndex,
-    label: column.title,
-    type: (column.type === 'number' ? 'text' : column.type) || 'text',
-    options: column.options,
-    hidden: column.hidden,
-    disabled: column.disabled,
-  }))
+  const editFields = columns
+    .filter(column => column.type !== 'action')
+    .map(column => ({
+      key: column.dataIndex,
+      label: column.title,
+      type: (column.type === 'number' ? 'text' : column.type) || 'text',
+      options: column.options,
+      hidden: column.hidden,
+      disabled: column.disabled,
+    }))
 
   return (
     <>

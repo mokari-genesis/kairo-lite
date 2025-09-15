@@ -38,6 +38,8 @@ export interface SalesType {
   producto_categoria: string
   producto_estado: string
   producto_precio: string
+  tipo_precio_aplicado: string
+  metodo_pago: string
 }
 
 export type SalesCreateRequest = {
@@ -46,12 +48,22 @@ export type SalesCreateRequest = {
   usuario_id: number
   total: number
   estado: string
+  metodo_pago_id?: number
+  moneda_id?: number
+  moneda?: string
+  referencia_pago?: string
   detalle: [
     {
       producto_id: number
       cantidad: number
       precio_unitario: number
       subtotal: number
+      tipo_precio_aplicado?:
+        | 'sugerido'
+        | 'mayorista'
+        | 'minorista'
+        | 'distribuidores'
+        | 'especial'
     }
   ]
 }
@@ -226,12 +238,22 @@ export type SalesEditRequest = {
   usuario_id: number
   total: number
   estado: string
+  metodo_pago_id?: number
+  moneda_id?: number
+  moneda?: string
+  referencia_pago?: string
   detalle: [
     {
       producto_id: number
       cantidad: number
       precio_unitario: number
       subtotal: number
+      tipo_precio_aplicado?:
+        | 'sugerido'
+        | 'mayorista'
+        | 'minorista'
+        | 'distribuidores'
+        | 'especial'
     }
   ]
 }

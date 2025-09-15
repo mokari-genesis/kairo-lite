@@ -18,11 +18,15 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { editSale } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
+import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
+import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
 import { getSalesFlat } from '@/app/api/sales'
+import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
+import { getReporteStockActual } from '@/app/api/reportes'
 import { use } from 'react'
 
 interface PurchaseDetail {
@@ -32,7 +36,17 @@ interface PurchaseDetail {
   subtotal: number
   producto_descripcion: string
   codigo: string
-  stock?: number
+  stock?: number // Stock disponible (stock actual + cantidad original)
+  stock_actual?: number // Stock actual del WS
+  cantidad_original?: number // Cantidad original en la venta
+  precio_no_encontrado?: boolean // Flag para indicar si no se encontró precio para el tipo
+  precio_realmente_no_encontrado?: boolean // Flag para mostrar mensaje de "no encontrado"
+  tipo_precio_aplicado?:
+    | 'sugerido'
+    | 'mayorista'
+    | 'minorista'
+    | 'distribuidores'
+    | 'especial'
   key: number
 }
 
@@ -49,6 +63,7 @@ export default function EditPurchase({
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [saleData, setSaleData] = useState<any>(null)
+  const [metodoPago, setMetodoPago] = useState<any>()
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -69,19 +84,45 @@ export default function EditPurchase({
                 label: `${currentClient.nombre} - ${currentClient.nit}`,
                 details: currentClient,
               },
+              metodo_pago_id: (sale as any).metodo_pago_id,
+              referencia_pago: (sale as any).referencia_pago,
             })
           }
 
+          // Load stock information for all products
+          const stockData = await getReporteStockActual()
+
           setDetails(
-            sale.productos.map((producto: any, index: number) => ({
-              key: index,
-              producto_id: producto.producto_id,
-              producto_descripcion: producto.descripcion,
-              codigo: producto.codigo,
-              cantidad: producto.cantidad,
-              precio_unitario: producto.precio_unitario,
-              subtotal: producto.subtotal,
-            }))
+            sale.productos.map((producto: any, index: number) => {
+              // Find stock for this product
+
+              const productStock = stockData.find(
+                stock => stock.producto_id === producto.producto_id
+              )
+
+              // Calculate available stock: current stock + original quantity in sale
+              const currentStock = productStock?.stock_actual || 0
+              const originalQuantity = producto.cantidad || 0
+              const availableStock = currentStock + originalQuantity
+
+              return {
+                key: index,
+                producto_id: producto.producto_id,
+                producto_descripcion: producto.descripcion,
+                codigo: producto.codigo,
+                cantidad: producto.cantidad,
+                precio_unitario: producto.precio_unitario,
+                subtotal: producto.subtotal,
+                stock: producto.stock, // Stock disponible = stock actual + cantidad original
+                stock_actual: currentStock, // Stock actual del WS
+                cantidad_original: originalQuantity, // Cantidad original en la venta
+                precio_no_encontrado:
+                  (producto as any).tipo_precio_aplicado !== 'sugerido', // Solo habilitar si es sugerido
+                precio_realmente_no_encontrado: false, // Inicializar como false
+                tipo_precio_aplicado:
+                  (producto as any).tipo_precio_aplicado || 'sugerido',
+              }
+            })
           )
         }
       } catch (error) {
@@ -93,7 +134,11 @@ export default function EditPurchase({
     fetchSaleData()
   }, [resolvedParams.id, form, router])
 
-  const handleProductChange = (value: number, product: any, index: number) => {
+  const handleProductChange = async (
+    value: number,
+    product: any,
+    index: number
+  ) => {
     const isProductAlreadyAdded = details.some(
       (detail, i) => detail.producto_id === value && i !== index
     )
@@ -105,6 +150,26 @@ export default function EditPurchase({
 
     const newDetails = [...details]
     if (product) {
+      // Load current stock for the selected product
+      let currentStock = product.stock || 0
+      try {
+        const stockData = await getReporteStockActual()
+        const productStock = stockData.find(
+          stock => stock.producto_id === value
+        )
+        currentStock = productStock?.stock_actual || 0
+      } catch (error) {
+        console.error('Error loading stock:', error)
+      }
+
+      // For new products, available stock is just the current stock
+      // For existing products, it's current stock + original quantity
+      const isExistingProduct = newDetails[index].producto_id > 0
+      const originalQuantity = isExistingProduct
+        ? newDetails[index].cantidad_original || 0
+        : 0
+      const availableStock = currentStock + originalQuantity
+
       newDetails[index] = {
         ...newDetails[index],
         producto_id: value,
@@ -113,7 +178,10 @@ export default function EditPurchase({
         cantidad: newDetails[index].cantidad || 1,
         subtotal: (product.precio || 0) * (newDetails[index].cantidad || 1),
         codigo: product.codigo,
-        stock: product.stock,
+        stock: availableStock, // Stock disponible
+        stock_actual: currentStock, // Stock actual del WS
+        cantidad_original: originalQuantity, // Cantidad original (0 para productos nuevos)
+        tipo_precio_aplicado: 'sugerido', // Auto-seleccionar tipo "sugerido" cuando se auto-popula el precio
       }
       setDetails(newDetails)
     }
@@ -122,6 +190,15 @@ export default function EditPurchase({
   const handleQuantityChange = (value: number | null, index: number) => {
     if (value === null) return
     const newDetails = [...details]
+    const currentDetail = newDetails[index]
+
+    // Check if quantity exceeds available stock
+    if (value > (currentDetail.stock || 0)) {
+      message.error(
+        `Stock insuficiente. Disponible: ${currentDetail.stock || 0}`
+      )
+    }
+
     newDetails[index] = {
       ...newDetails[index],
       cantidad: value,
@@ -138,6 +215,67 @@ export default function EditPurchase({
       precio_unitario: value,
       subtotal: value * newDetails[index].cantidad,
     }
+    setDetails(newDetails)
+  }
+
+  const handlePriceTypeChange = async (value: string, index: number) => {
+    const newDetails = [...details]
+    const currentDetail = newDetails[index]
+
+    // Actualizar el tipo de precio
+    newDetails[index] = {
+      ...currentDetail,
+      tipo_precio_aplicado: value as
+        | 'sugerido'
+        | 'mayorista'
+        | 'minorista'
+        | 'distribuidores'
+        | 'especial',
+      key: currentDetail.key,
+    }
+
+    // Si hay un producto seleccionado, buscar el precio correspondiente
+    if (currentDetail.producto_id > 0 && value) {
+      try {
+        const precios = await getProductosPreciosByProduct(
+          currentDetail.producto_id
+        )
+        const precioEncontrado = precios.find(p => p.tipo === value)
+
+        if (precioEncontrado) {
+          // Convertir el precio a número para asegurar compatibilidad
+          const precioNumerico = parseFloat(precioEncontrado.precio.toString())
+
+          // Actualizar el precio unitario con el precio encontrado
+          newDetails[index] = {
+            ...newDetails[index],
+            precio_unitario: precioNumerico,
+            subtotal: precioNumerico * currentDetail.cantidad,
+            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+            precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
+          }
+          message.success(`Precio actualizado a Q.${precioNumerico.toFixed(2)}`)
+        } else {
+          // Establecer precio en 0 cuando no se encuentra el precio
+          newDetails[index] = {
+            ...newDetails[index],
+            precio_unitario: 0,
+            subtotal: 0,
+            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+            precio_realmente_no_encontrado: true, // Mostrar mensaje de "no encontrado"
+          }
+
+          // Solo mostrar mensaje de "no encontrado" cuando realmente no se encuentra
+          message.warning(
+            `No se encontró precio para el tipo "${value}" de este producto. Precio establecido en 0.`
+          )
+        }
+      } catch (error) {
+        message.error('Error al obtener los precios del producto')
+        console.error('Error fetching product prices:', error)
+      }
+    }
+
     setDetails(newDetails)
   }
 
@@ -168,6 +306,11 @@ export default function EditPurchase({
         cantidad: 1,
         precio_unitario: 0,
         subtotal: 0,
+        stock: 0,
+        stock_actual: 0,
+        cantidad_original: 0,
+        precio_no_encontrado: false,
+        precio_realmente_no_encontrado: false,
       },
     ])
   }
@@ -188,11 +331,25 @@ export default function EditPurchase({
       if (
         details.some(
           detail =>
-            !detail.producto_id || !detail.cantidad || !detail.precio_unitario
+            !detail.producto_id ||
+            !detail.cantidad ||
+            !detail.precio_unitario ||
+            !detail.tipo_precio_aplicado
         )
       ) {
         message.error(
           'Debe seleccionar un producto y completar los campos del detalle'
+        )
+        return
+      }
+
+      // Check for insufficient stock
+      const insufficientStock = details.some(
+        detail => detail.cantidad > (detail.stock || 0)
+      )
+      if (insufficientStock) {
+        message.error(
+          'No se puede actualizar la venta: hay productos con stock insuficiente. El stock disponible incluye el stock actual + la cantidad original de la venta.'
         )
         return
       }
@@ -205,6 +362,10 @@ export default function EditPurchase({
         total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
         estado: 'generado', //saleData?.estado_venta || 'generado',
         detalle: details,
+        metodo_pago_id: values.metodo_pago_id,
+        moneda_id: 1,
+        moneda: 'Q',
+        referencia_pago: values.referencia_pago || '',
       }
 
       const confirm = await modal.confirm({
@@ -246,27 +407,82 @@ export default function EditPurchase({
       ),
     },
     {
+      title: 'Stock Disponible',
+      dataIndex: 'stock',
+      width: 200,
+      render: (_: any, record: PurchaseDetail) => (
+        <div>
+          <Input
+            value={`${record.stock?.toString() || '0'} (Disponible)`}
+            disabled
+            style={{ marginBottom: '4px' }}
+          />
+        </div>
+      ),
+    },
+    {
       title: 'Cantidad',
       dataIndex: 'cantidad',
       width: 150,
       render: (_: any, record: PurchaseDetail, index: number) => (
-        <InputNumber
-          min={1}
-          value={record.cantidad}
-          onChange={value => handleQuantityChange(value, index)}
+        <div>
+          <InputNumber
+            min={1}
+            value={record.cantidad}
+            onChange={value => handleQuantityChange(value, index)}
+            status={record.cantidad > (record.stock || 0) ? 'error' : undefined}
+          />
+          {record.cantidad > (record.stock || 0) && (
+            <div
+              style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
+            >
+              Stock insuficiente. Disponible: {record.stock || 0}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Tipo Precio',
+      dataIndex: 'tipo_precio_aplicado',
+      width: 150,
+      render: (_: any, record: PurchaseDetail, index: number) => (
+        <TipoPrecioSelector
+          value={record.tipo_precio_aplicado}
+          onChange={value => handlePriceTypeChange(value, index)}
         />
       ),
     },
     {
       title: 'Precio Unitario',
       dataIndex: 'precio_unitario',
-      width: 250,
+      width: 200,
       render: (_: any, record: PurchaseDetail, index: number) => (
-        <InputNumber
-          min={0}
-          value={record.precio_unitario}
-          onChange={value => handlePriceChange(value, index)}
-        />
+        <div>
+          <InputNumber
+            min={0}
+            value={record.precio_unitario}
+            onChange={value => handlePriceChange(value, index)}
+            disabled={record.precio_no_encontrado}
+            status={record.precio_realmente_no_encontrado ? 'error' : undefined}
+          />
+          {record.precio_realmente_no_encontrado && (
+            <div
+              style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
+            >
+              Precio no encontrado para este tipo
+            </div>
+          )}
+          {record.tipo_precio_aplicado === 'sugerido' &&
+            !record.precio_no_encontrado &&
+            record.precio_unitario === 0 && (
+              <div
+                style={{ color: '#1890ff', fontSize: '12px', marginTop: '4px' }}
+              >
+                Puede editar el precio manualmente
+              </div>
+            )}
+        </div>
       ),
     },
     {
@@ -330,94 +546,131 @@ export default function EditPurchase({
               cliente_id: saleData?.cliente_id,
             }}
           >
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item
-                  name='cliente_id'
-                  label='Cliente'
-                  rules={[
-                    {
-                      required: true,
-                      message: 'Por favor seleccione un cliente',
-                    },
-                  ]}
-                >
-                  <SearchSelect
-                    form={form}
-                    name='cliente_id'
-                    fetchOptions={fetchClients}
-                    placeholder='Busque un Cliente por nombre o NIT'
-                    labelFormatter={item => `${item.nombre} - ${item.nit}`}
-                    onSelect={(_, option) => {
-                      if (option && option.details) {
-                        setClient(option.details)
-                      }
-                    }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+            <Space direction='vertical' size='large' style={{ width: '100%' }}>
+              <Row>
+                <Col span={12}>
+                  <Space direction='vertical' style={{ width: '90%' }}>
+                    <label>Cliente</label>
+                    <Form.Item
+                      style={{ marginBottom: 0 }}
+                      name='cliente_id'
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor seleccione un cliente',
+                        },
+                      ]}
+                    >
+                      <SearchSelect
+                        form={form}
+                        name='cliente_id'
+                        fetchOptions={fetchClients}
+                        placeholder='Busque un Cliente por nombre o NIT'
+                        labelFormatter={item => `${item.nombre} (${item.nit})`}
+                        onSelect={(_, option) => {
+                          if (option && option.details) {
+                            setClient(option.details)
+                          }
+                        }}
+                      />
+                    </Form.Item>
+                    <label>Nit</label>
+                    <Input value={client?.nit} disabled />
+                    <label>Tipo Cliente</label>
+                    <Input value={client?.tipo} disabled />
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space direction='vertical' style={{ width: '90%' }}>
+                    <label>Telefono</label>
+                    <Input value={client?.telefono} disabled />
+                    <label>Email</label>
+                    <Input value={client?.email} disabled />
+                    <label>Direccion</label>
+                    <Input value={client?.direccion} disabled />
+                  </Space>
+                </Col>
+              </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label='Nombre del Cliente'>
-                  <Input value={client?.nombre} disabled />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label='NIT del Cliente'>
-                  <Input value={client?.nit} disabled />
-                </Form.Item>
-              </Col>
-            </Row>
+              <Row>
+                <Col span={12}>
+                  <Space direction='vertical' style={{ width: '90%' }}>
+                    <label>Método de Pago</label>
+                    <Form.Item
+                      style={{ marginBottom: 0 }}
+                      name='metodo_pago_id'
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor seleccione un método de pago',
+                        },
+                      ]}
+                    >
+                      <MetodoPagoSelect
+                        onChange={(value, metodo) => setMetodoPago(metodo)}
+                      />
+                    </Form.Item>
+                  </Space>
+                </Col>
+              </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label='Email del Cliente'>
-                  <Input value={client?.email} disabled />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label='Teléfono del Cliente'>
-                  <Input value={client?.telefono} disabled />
-                </Form.Item>
-              </Col>
-            </Row>
+              <Row>
+                <Col span={24}>
+                  <Space direction='vertical' style={{ width: '100%' }}>
+                    <label>Referencia de Pago (Opcional)</label>
+                    <Form.Item
+                      style={{ marginBottom: 0 }}
+                      name='referencia_pago'
+                    >
+                      <Input placeholder='Número de transacción, cheque, etc.' />
+                    </Form.Item>
+                  </Space>
+                </Col>
+              </Row>
 
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item label='Dirección del Cliente'>
-                  <Input value={client?.direccion} disabled />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Table
-              columns={columns}
-              dataSource={details}
-              pagination={false}
-              footer={() => (
+              <div>
                 <Button
                   type='dashed'
                   onClick={handleAddDetail}
-                  block
                   icon={<PlusOutlined />}
+                  style={{ marginBottom: '16px' }}
+                  loading={isLoading}
                 >
                   Agregar Producto
                 </Button>
-              )}
-            />
 
-            <div style={{ marginTop: '24px', textAlign: 'right' }}>
-              <Space>
-                <Button onClick={() => router.push('/home/saleOrders')}>
-                  Cancelar
-                </Button>
-                <Button type='primary' htmlType='submit' loading={isLoading}>
-                  Actualizar Venta
-                </Button>
-              </Space>
-            </div>
+                <Table
+                  loading={isLoading}
+                  columns={columns}
+                  dataSource={details}
+                  rowKey='key'
+                  pagination={false}
+                />
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <h3>
+                  Total: Q{' '}
+                  {details
+                    .reduce((acc, curr) => acc + curr.subtotal, 0)
+                    .toFixed(2)}
+                </h3>
+              </div>
+
+              <Form.Item>
+                <Space>
+                  <Button
+                    loading={isLoading}
+                    onClick={() => router.push('/home/saleOrders')}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button loading={isLoading} type='primary' htmlType='submit'>
+                    Actualizar Venta
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Space>
           </Form>
         </Space>
       </Card>
