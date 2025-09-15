@@ -145,7 +145,7 @@ export default function NewPurchase() {
             precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
             precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
           }
-          message.success(`Precio actualizado a Q.${precioNumerico.toFixed(2)}`)
+          message.success(`Precio actualizado a $.${precioNumerico.toFixed(2)}`)
         } else {
           // Establecer precio en 0 cuando no se encuentra el precio
           newDetails[index] = {
@@ -239,13 +239,15 @@ export default function NewPurchase() {
         estado: 'generado',
         metodo_pago_id: values.metodo_pago_id,
         moneda_id: 1,
-        moneda: 'Q',
+        moneda: '$',
         referencia_pago: values.referencia_pago || '',
         detalle: details,
       }
 
       const confirm = await modal.confirm({
         title: 'Generar venta',
+        content:
+          'Quieres generar esta venta ahora? Recuerda marcarla como “vendida” cuando completes el cobro.',
       })
 
       if (!confirm) return
@@ -347,7 +349,7 @@ export default function NewPurchase() {
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `Q ${value.toFixed(2)}`,
+      render: (value: number) => `$ ${value.toFixed(2)}`,
     },
     {
       title: 'Acciones',
@@ -491,7 +493,7 @@ export default function NewPurchase() {
 
             <div style={{ textAlign: 'right' }}>
               <h3>
-                Total: Q{' '}
+                Total: ${' '}
                 {details
                   .reduce((acc, curr) => acc + curr.subtotal, 0)
                   .toFixed(2)}

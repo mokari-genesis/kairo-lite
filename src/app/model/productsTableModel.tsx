@@ -88,7 +88,7 @@ export const columns: ColumnConfig[] = [
     dataIndex: 'precio',
     type: 'text',
     disabled: true,
-    render: (precio: number) => `Q.${precio}`,
+    render: (precio: number) => `$.${precio}`,
   },
   {
     key: 'proveedor_id',

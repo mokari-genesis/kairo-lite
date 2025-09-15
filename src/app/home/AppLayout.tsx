@@ -42,8 +42,8 @@ const pathToMenuKey: Record<string, string> = {
   '/home/metodosPago': '7',
   '/home/metodosPago/new': '7',
 
-  '/home/monedas': '8',
-  '/home/monedas/new': '8',
+  // '/home/monedas': '8',
+  // '/home/monedas/new': '8',
 
   '/home/reportes': '6-2',
 
@@ -130,7 +130,7 @@ export default function AppLayout({ children }: any) {
         },
         {
           key: '6-2',
-          label: 'Nuevos Reportes',
+          label: 'Inventario',
           icon: React.createElement(BarChartOutlined),
           onClick: () => {
             setSelectedKey('6-2')
@@ -148,15 +148,15 @@ export default function AppLayout({ children }: any) {
         router.push('/home/metodosPago')
       },
     },
-    {
-      key: '8',
-      label: 'Monedas',
-      icon: React.createElement(GlobalOutlined),
-      onClick: () => {
-        setSelectedKey('8')
-        router.push('/home/monedas')
-      },
-    },
+    // {
+    //   key: '8',
+    //   label: 'Monedas',
+    //   icon: React.createElement(GlobalOutlined),
+    //   onClick: () => {
+    //     setSelectedKey('8')
+    //     router.push('/home/monedas')
+    //   },
+    // },
   ]
 
   const [loading, setLoading] = useState(false)

@@ -254,7 +254,7 @@ export default function EditPurchase({
             precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
             precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
           }
-          message.success(`Precio actualizado a Q.${precioNumerico.toFixed(2)}`)
+          message.success(`Precio actualizado a $.${precioNumerico.toFixed(2)}`)
         } else {
           // Establecer precio en 0 cuando no se encuentra el precio
           newDetails[index] = {
@@ -364,7 +364,7 @@ export default function EditPurchase({
         detalle: details,
         metodo_pago_id: values.metodo_pago_id,
         moneda_id: 1,
-        moneda: 'Q',
+        moneda: '$',
         referencia_pago: values.referencia_pago || '',
       }
 
@@ -488,7 +488,7 @@ export default function EditPurchase({
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `Q ${value.toFixed(2)}`,
+      render: (value: number) => `$ ${value.toFixed(2)}`,
     },
     {
       title: 'Acciones',
@@ -650,7 +650,7 @@ export default function EditPurchase({
 
               <div style={{ textAlign: 'right' }}>
                 <h3>
-                  Total: Q{' '}
+                  Total: ${' '}
                   {details
                     .reduce((acc, curr) => acc + curr.subtotal, 0)
                     .toFixed(2)}

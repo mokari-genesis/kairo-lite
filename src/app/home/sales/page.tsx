@@ -264,7 +264,7 @@ function HomeSales() {
                       (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
                       0
                     ) || 0,
-                prefix: 'Q ',
+                prefix: '$ ',
                 color: '#1890ff',
               },
               {
@@ -276,7 +276,7 @@ function HomeSales() {
                       (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
                       0
                     ) || 0,
-                prefix: 'Q ',
+                prefix: '$ ',
                 color: '#52c41a',
               },
               {
@@ -288,7 +288,7 @@ function HomeSales() {
                       (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
                       0
                     ) || 0,
-                prefix: 'Q ',
+                prefix: '$ ',
                 color: '#f5222d',
               },
             ]}
@@ -348,7 +348,7 @@ function HomeSales() {
               {
                 title: 'Total Ventas',
                 value: paymentStats.mostUsed?.total || 0,
-                prefix: 'Q ',
+                prefix: '$ ',
                 color: '#52c41a',
               },
               {
@@ -366,7 +366,7 @@ function HomeSales() {
               {
                 title: 'Total Ventas',
                 value: paymentStats.leastUsed?.total || 0,
-                prefix: 'Q ',
+                prefix: '$ ',
                 color: '#ff4d4f',
               },
             ]}

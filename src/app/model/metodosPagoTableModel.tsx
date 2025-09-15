@@ -54,8 +54,8 @@ export const filterConfigs: FilterConfig[] = [
     placeholder: 'Estado',
     width: '30%',
     options: [
-      { value: true, label: 'Activo' },
-      { value: false, label: 'Inactivo' },
+      { value: 1, label: 'Activo' },
+      { value: 0, label: 'Inactivo' },
     ],
   },
 ]

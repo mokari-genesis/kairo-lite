@@ -94,13 +94,14 @@ export const Salescolumns: ColumnConfig[] = [
     title: 'Precio',
     dataIndex: 'precio_unitario',
     type: 'text',
-    render: (precio: number) => `Q.${precio}`,
+    render: (precio: number) => `$${precio}`,
   },
   {
     key: 'total_venta',
     title: 'Total',
     dataIndex: 'total_venta',
     type: 'text',
+    render: (total: number) => `$${total}`,
   },
 ]
 

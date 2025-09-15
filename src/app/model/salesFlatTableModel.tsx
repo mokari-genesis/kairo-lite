@@ -58,7 +58,7 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     title: 'Total',
     dataIndex: 'total_venta',
     key: 'total_venta',
-    render: (total: string) => `Q.${parseFloat(total).toFixed(2)}`,
+    render: (total: string) => `$.${parseFloat(total).toFixed(2)}`,
   },
 ]
 
@@ -140,13 +140,13 @@ export const expandedRowRender = (record: any) => {
                 }
               </td>
               <td style={{ padding: '8px', textAlign: 'right' }}>
-                Q.{producto.precio_unitario.toFixed(2)}
+                $.{producto.precio_unitario.toFixed(2)}
               </td>
               <td style={{ padding: '8px', textAlign: 'right' }}>
                 {producto.cantidad}
               </td>
               <td style={{ padding: '8px', textAlign: 'right' }}>
-                Q.{producto.subtotal.toFixed(2)}
+                $.{producto.subtotal.toFixed(2)}
               </td>
             </tr>
           ))}
