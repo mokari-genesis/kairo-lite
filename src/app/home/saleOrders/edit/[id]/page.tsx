@@ -638,7 +638,21 @@ export default function EditPurchase({
                 >
                   Agregar Producto
                 </Button>
-
+                <div
+                  style={{
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '6px',
+                    border: '1px solid #e9ecef',
+                    fontSize: '13px',
+                    color: '#6c757d',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  💡 <strong>Nota:</strong> El precio unitario se actualiza
+                  automáticamente cuando se selecciona un producto. Se puede
+                  editar manualmente solo cuando el tipo de precio es
+                  "Sugerido".
+                </div>
                 <Table
                   loading={isLoading}
                   columns={columns}
