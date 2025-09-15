@@ -47,6 +47,7 @@ interface DataTableProps<T> {
   showDelete?: boolean
   showView?: boolean
   showPrintTicket?: boolean
+  rowClassName?: (record: T, index: number) => string
   expandable?: {
     expandedRowRender: (record: any) => ReactNode
     rowExpandable?: (record: any) => boolean
@@ -82,6 +83,7 @@ export const DataTable = <T extends { id?: string | number }>({
   showDelete = true,
   showView = false,
   showPrintTicket = false,
+  rowClassName,
   expandable,
   deleteTooltip = 'Eliminar',
   cancelTooltip = 'Cancelar',
@@ -301,6 +303,7 @@ export const DataTable = <T extends { id?: string | number }>({
         loading={loading}
         pagination={pagination}
         rowKey={record => `row-${record.id || Math.random()}`}
+        rowClassName={rowClassName}
         style={{
           marginTop: '16px',
         }}
