@@ -69,6 +69,61 @@ function HomeSales() {
 
   const { data: dataSales, isLoading: salesLoading } = useSales(filters)
 
+  // Función para calcular estadísticas de métodos de pago
+  const getPaymentMethodStats = () => {
+    if (!dataSales || dataSales.length === 0) {
+      return { mostUsed: null, leastUsed: null }
+    }
+
+    const soldSales = dataSales.filter(sale => sale.estado_venta === 'vendido')
+
+    if (soldSales.length === 0) {
+      return { mostUsed: null, leastUsed: null }
+    }
+
+    // Agrupar por método de pago
+    const paymentMethodCounts = soldSales.reduce(
+      (acc: Record<string, { count: number; total: number }>, curr) => {
+        const method = curr.metodo_pago || 'Sin método'
+        if (!acc[method]) {
+          acc[method] = { count: 0, total: 0 }
+        }
+        acc[method].count += 1
+        acc[method].total += parseFloat(curr.total_venta) || 0
+        return acc
+      },
+      {}
+    )
+
+    // Convertir a array y ordenar por cantidad de ventas
+    const sortedMethods = Object.entries(paymentMethodCounts)
+      .map(([method, stats]) => ({
+        method,
+        count: Math.round(stats.count), // Asegurar que sea entero
+        total: Math.round(stats.total * 100) / 100, // Redondear a 2 decimales
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    // Debug: mostrar los métodos encontrados
+    console.log('Métodos de pago encontrados:', sortedMethods)
+
+    // Si solo hay un método de pago, mostrar solo el más usado
+    if (sortedMethods.length === 1) {
+      return {
+        mostUsed: sortedMethods[0],
+        leastUsed: null, // No hay método menos usado si solo hay uno
+      }
+    }
+
+    // Si hay múltiples métodos, mostrar el más y menos usado
+    return {
+      mostUsed: sortedMethods[0] || null,
+      leastUsed: sortedMethods[sortedMethods.length - 1] || null,
+    }
+  }
+
+  const paymentStats = getPaymentMethodStats()
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -250,6 +305,52 @@ function HomeSales() {
                 color: '#112345',
               },
             ]}
+          />
+
+          {/* Métodos de Pago Section */}
+          <SummaryCards
+            items={[
+              {
+                title: 'Método Más Usado',
+                value: paymentStats.mostUsed?.method || 'No hay datos',
+                color: '#52c41a',
+              },
+              {
+                title: 'Cantidad de Ventas',
+                value: paymentStats.mostUsed?.count || 0,
+                prefix: '',
+                color: '#52c41a',
+                isInteger: true,
+              },
+              {
+                title: 'Total Ventas',
+                value: paymentStats.mostUsed?.total || 0,
+                prefix: 'Q ',
+                color: '#52c41a',
+              },
+              {
+                title: 'Método Menos Usado',
+                value: paymentStats.leastUsed?.method || 'Solo hay un método',
+                color: '#ff4d4f',
+              },
+              {
+                title: 'Cantidad de Ventas',
+                value: paymentStats.leastUsed?.count || 0,
+                prefix: '',
+                color: '#ff4d4f',
+                isInteger: true,
+              },
+              {
+                title: 'Total Ventas',
+                value: paymentStats.leastUsed?.total || 0,
+                prefix: 'Q ',
+                color: '#ff4d4f',
+              },
+            ]}
+            style={{
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '16px',
+            }}
           />
         </Space>
       </Card>
