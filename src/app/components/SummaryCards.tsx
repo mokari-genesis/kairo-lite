@@ -5,6 +5,7 @@ interface SummaryItem {
   value: number | string
   prefix?: string
   color?: string
+  isInteger?: boolean // Nuevo campo para indicar si debe mostrarse como entero
 }
 
 interface SummaryCardsProps {
@@ -39,7 +40,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ items, style }) => {
           >
             {item.prefix || ''}
             {typeof item.value === 'number'
-              ? item.value.toFixed(2)
+              ? item.isInteger
+                ? Math.round(item.value).toString()
+                : item.value.toFixed(2)
               : item.value}
           </p>
         </div>

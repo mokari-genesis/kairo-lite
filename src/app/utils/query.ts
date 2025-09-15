@@ -30,6 +30,9 @@ export const QueryKey = {
   salesFlatInfo: 'salesFlatInfo',
   clientsInfo: 'clientsInfo',
   suppliersInfo: 'suppliersInfo-02',
+  metodosPagoInfo: 'metodosPagoInfo',
+  monedasInfo: 'monedasInfo',
+  productosPreciosInfo: 'productosPreciosInfo',
 }
 
 // 4. Helper

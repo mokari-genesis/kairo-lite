@@ -13,6 +13,9 @@ import {
   TeamOutlined,
   StockOutlined,
   ShopOutlined,
+  DollarOutlined,
+  GlobalOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
@@ -35,6 +38,14 @@ const pathToMenuKey: Record<string, string> = {
 
   '/home/stock': '5',
   '/home/stock/new': '5',
+
+  '/home/metodosPago': '7',
+  '/home/metodosPago/new': '7',
+
+  // '/home/monedas': '8',
+  // '/home/monedas/new': '8',
+
+  '/home/reportes': '6-2',
 
   '/home/sales': '6-1',
 }
@@ -117,8 +128,35 @@ export default function AppLayout({ children }: any) {
             router.push('/home/sales')
           },
         },
+        {
+          key: '6-2',
+          label: 'Inventario',
+          icon: React.createElement(BarChartOutlined),
+          onClick: () => {
+            setSelectedKey('6-2')
+            router.push('/home/reportes')
+          },
+        },
       ],
     },
+    {
+      key: '7',
+      label: 'Métodos de Pago',
+      icon: React.createElement(DollarOutlined),
+      onClick: () => {
+        setSelectedKey('7')
+        router.push('/home/metodosPago')
+      },
+    },
+    // {
+    //   key: '8',
+    //   label: 'Monedas',
+    //   icon: React.createElement(GlobalOutlined),
+    //   onClick: () => {
+    //     setSelectedKey('8')
+    //     router.push('/home/monedas')
+    //   },
+    // },
   ]
 
   const [loading, setLoading] = useState(false)

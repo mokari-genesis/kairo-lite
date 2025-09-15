@@ -18,10 +18,13 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { createPurchase } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
+import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
+import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
+import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
 
 interface PurchaseDetail {
   producto_id: number
@@ -31,6 +34,14 @@ interface PurchaseDetail {
   producto_descripcion: string
   codigo: string
   stock?: number
+  precio_no_encontrado?: boolean // Flag para indicar si no se encontró precio para el tipo
+  precio_realmente_no_encontrado?: boolean // Flag para mostrar mensaje de "no encontrado"
+  tipo_precio_aplicado?:
+    | 'sugerido'
+    | 'mayorista'
+    | 'minorista'
+    | 'distribuidores'
+    | 'especial'
   key: number
 }
 
@@ -41,6 +52,7 @@ export default function NewPurchase() {
   const router = useRouter()
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
+  const [metodoPago, setMetodoPago] = useState<any>()
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -64,6 +76,9 @@ export default function NewPurchase() {
         subtotal: (product.precio || 0) * (newDetails[index].cantidad || 1),
         codigo: product.codigo,
         stock: product.stock,
+        precio_no_encontrado: false, // Inicializar como false (tipo sugerido por defecto)
+        precio_realmente_no_encontrado: false, // Inicializar como false
+        tipo_precio_aplicado: 'sugerido', // Auto-seleccionar tipo "sugerido" cuando se auto-popula el precio
         key: newDetails[index].key,
       }
       setDetails(newDetails)
@@ -94,6 +109,67 @@ export default function NewPurchase() {
     setDetails(newDetails)
   }
 
+  const handlePriceTypeChange = async (value: string, index: number) => {
+    const newDetails = [...details]
+    const currentDetail = newDetails[index]
+
+    // Actualizar el tipo de precio
+    newDetails[index] = {
+      ...currentDetail,
+      tipo_precio_aplicado: value as
+        | 'sugerido'
+        | 'mayorista'
+        | 'minorista'
+        | 'distribuidores'
+        | 'especial',
+      key: currentDetail.key,
+    }
+
+    // Si hay un producto seleccionado, buscar el precio correspondiente
+    if (currentDetail.producto_id > 0 && value) {
+      try {
+        const precios = await getProductosPreciosByProduct(
+          currentDetail.producto_id
+        )
+        const precioEncontrado = precios.find(p => p.tipo === value)
+
+        if (precioEncontrado) {
+          // Convertir el precio a número para asegurar compatibilidad
+          const precioNumerico = parseFloat(precioEncontrado.precio.toString())
+
+          // Actualizar el precio unitario con el precio encontrado
+          newDetails[index] = {
+            ...newDetails[index],
+            precio_unitario: precioNumerico,
+            subtotal: precioNumerico * currentDetail.cantidad,
+            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+            precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
+          }
+          message.success(`Precio actualizado a $.${precioNumerico.toFixed(2)}`)
+        } else {
+          // Establecer precio en 0 cuando no se encuentra el precio
+          newDetails[index] = {
+            ...newDetails[index],
+            precio_unitario: 0,
+            subtotal: 0,
+            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+            precio_realmente_no_encontrado: true, // Mostrar mensaje de "no encontrado"
+          }
+
+          // Solo mostrar mensaje de "no encontrado" cuando realmente no se encuentra
+          message.warning(
+            `No se encontró precio para el tipo "${value}" de este producto. Precio establecido en 0.`
+          )
+        }
+      } catch (error) {
+        message.error('Error al obtener los precios del producto')
+        console.error('Error fetching product prices:', error)
+      }
+    }
+
+    setDetails(newDetails)
+  }
+
   const canAddNewProduct = () => {
     if (details.length === 0) return true
     const lastDetail = details[details.length - 1]
@@ -121,6 +197,8 @@ export default function NewPurchase() {
         cantidad: 1,
         precio_unitario: 0,
         subtotal: 0,
+        precio_no_encontrado: false,
+        precio_realmente_no_encontrado: false,
       },
     ])
   }
@@ -141,7 +219,10 @@ export default function NewPurchase() {
       if (
         details.some(
           detail =>
-            !detail.producto_id || !detail.cantidad || !detail.precio_unitario
+            !detail.producto_id ||
+            !detail.cantidad ||
+            !detail.precio_unitario ||
+            !detail.tipo_precio_aplicado
         )
       ) {
         message.error(
@@ -156,11 +237,17 @@ export default function NewPurchase() {
         usuario_id: 1,
         total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
         estado: 'generado',
+        metodo_pago_id: values.metodo_pago_id,
+        moneda_id: 1,
+        moneda: '$',
+        referencia_pago: values.referencia_pago || '',
         detalle: details,
       }
 
       const confirm = await modal.confirm({
         title: 'Generar venta',
+        content:
+          'Quieres generar esta venta ahora? Recuerda marcarla como “vendida” cuando completes el cobro.',
       })
 
       if (!confirm) return
@@ -217,21 +304,52 @@ export default function NewPurchase() {
       ),
     },
     {
+      title: 'Tipo Precio',
+      dataIndex: 'tipo_precio_aplicado',
+      width: 150,
+      render: (_: any, record: PurchaseDetail, index: number) => (
+        <TipoPrecioSelector
+          value={record.tipo_precio_aplicado}
+          onChange={value => handlePriceTypeChange(value, index)}
+        />
+      ),
+    },
+    {
       title: 'Precio Unitario',
       dataIndex: 'precio_unitario',
-      width: 250,
+      width: 200,
       render: (_: any, record: PurchaseDetail, index: number) => (
-        <InputNumber
-          min={0}
-          value={record.precio_unitario}
-          onChange={value => handlePriceChange(value, index)}
-        />
+        <div>
+          <InputNumber
+            min={0}
+            value={record.precio_unitario}
+            onChange={value => handlePriceChange(value, index)}
+            disabled={record.precio_no_encontrado}
+            status={record.precio_realmente_no_encontrado ? 'error' : undefined}
+          />
+          {record.precio_realmente_no_encontrado && (
+            <div
+              style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
+            >
+              Precio no encontrado para este tipo
+            </div>
+          )}
+          {record.tipo_precio_aplicado === 'sugerido' &&
+            !record.precio_no_encontrado &&
+            record.precio_unitario === 0 && (
+              <div
+                style={{ color: '#1890ff', fontSize: '12px', marginTop: '4px' }}
+              >
+                Puede editar el precio manualmente
+              </div>
+            )}
+        </div>
       ),
     },
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `Q ${value.toFixed(2)}`,
+      render: (value: number) => `$ ${value.toFixed(2)}`,
     },
     {
       title: 'Acciones',
@@ -320,6 +438,39 @@ export default function NewPurchase() {
               </Col>
             </Row>
 
+            <Row>
+              <Col span={12}>
+                <Space direction='vertical' style={{ width: '90%' }}>
+                  <label>Método de Pago</label>
+                  <Form.Item
+                    style={{ marginBottom: 0 }}
+                    name='metodo_pago_id'
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Por favor seleccione un método de pago',
+                      },
+                    ]}
+                  >
+                    <MetodoPagoSelect
+                      onChange={(value, metodo) => setMetodoPago(metodo)}
+                    />
+                  </Form.Item>
+                </Space>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col span={24}>
+                <Space direction='vertical' style={{ width: '100%' }}>
+                  <label>Referencia de Pago (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='referencia_pago'>
+                    <Input placeholder='Número de transacción, cheque, etc.' />
+                  </Form.Item>
+                </Space>
+              </Col>
+            </Row>
+
             <div>
               <Button
                 type='dashed'
@@ -330,7 +481,20 @@ export default function NewPurchase() {
               >
                 Agregar Producto
               </Button>
-
+              <div
+                style={{
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  border: '1px solid #e9ecef',
+                  fontSize: '13px',
+                  color: '#6c757d',
+                  fontStyle: 'italic',
+                }}
+              >
+                💡 <strong>Nota:</strong> El precio unitario se actualiza
+                automáticamente cuando se selecciona un producto. Se puede
+                editar manualmente solo cuando el tipo de precio es "Sugerido".
+              </div>
               <Table
                 loading={isLoading}
                 columns={columns}
@@ -342,7 +506,7 @@ export default function NewPurchase() {
 
             <div style={{ textAlign: 'right' }}>
               <h3>
-                Total: Q{' '}
+                Total: ${' '}
                 {details
                   .reduce((acc, curr) => acc + curr.subtotal, 0)
                   .toFixed(2)}

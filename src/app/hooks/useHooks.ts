@@ -3,6 +3,7 @@ import { getProducts, ProductType } from '../api/products'
 import { getSales, getSalesFlat, SalesFlatType } from '../api/sales'
 import { getStock, StockType } from '../api/stock'
 import { getSuppliers, SupplierTypeResponse } from '../api/supplier'
+import { getMetodosPago, MetodoPago } from '../api/metodos-pago'
 import { QueryKey } from '../utils/query'
 import { useQuery } from '@tanstack/react-query'
 
@@ -66,6 +67,17 @@ export const useSuppliers = (filters?: Record<string, any>) => {
   return useQuery<SupplierTypeResponse[]>({
     queryKey: [QueryKey.suppliersInfo, filters],
     queryFn: () => getSuppliers(filters),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  })
+}
+
+export const useMetodosPago = (filters?: Record<string, any>) => {
+  return useQuery<MetodoPago[]>({
+    queryKey: [QueryKey.metodosPagoInfo, filters],
+    queryFn: () => getMetodosPago(filters),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
