@@ -40,6 +40,7 @@ export interface SalesType {
   producto_precio: string
   tipo_precio_aplicado: string
   metodo_pago: string
+  referencia_pago: string
 }
 
 export type SalesCreateRequest = {

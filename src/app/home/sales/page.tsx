@@ -8,8 +8,8 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useState } from 'react'
-import { useSales } from '@/app/hooks/useHooks'
+import { useState, useEffect } from 'react'
+import { useSales, useMetodosPago } from '@/app/hooks/useHooks'
 import { Card, Col, Row, Space, Button, message } from 'antd'
 import { motion } from 'framer-motion'
 import { Salescolumns, SalesfilterConfigs } from '@/app/model/salesTableModel'
@@ -20,6 +20,7 @@ function HomeSales() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const [filterConfigs, setFilterConfigs] = useState(SalesfilterConfigs)
 
   const handlePageChange = (page: number, pageSize: number) => {
     setCurrentPage(page)
@@ -55,6 +56,7 @@ function HomeSales() {
       'Tipo de precio aplicado': sale.tipo_precio_aplicado,
       Precio: sale.precio_unitario,
       'Total venta': sale.total_venta,
+      'Referencia de pago': sale.referencia_pago,
     }))
 
     // Crear libro de Excel
@@ -68,6 +70,7 @@ function HomeSales() {
   }
 
   const { data: dataSales, isLoading: salesLoading } = useSales(filters)
+  const { data: metodosPago, isLoading: metodosPagoLoading } = useMetodosPago()
 
   // Función para calcular estadísticas de métodos de pago
   const getPaymentMethodStats = () => {
@@ -124,6 +127,26 @@ function HomeSales() {
 
   const paymentStats = getPaymentMethodStats()
 
+  // Cargar opciones de métodos de pago dinámicamente
+  useEffect(() => {
+    if (metodosPago && metodosPago.length > 0) {
+      const paymentMethodOptions = metodosPago
+        .filter(metodo => metodo.activo)
+        .map(metodo => ({
+          value: metodo.nombre,
+          label: metodo.nombre,
+        }))
+
+      setFilterConfigs(prevConfigs =>
+        prevConfigs.map(config =>
+          config.key === 'metodo_pago'
+            ? { ...config, options: paymentMethodOptions }
+            : config
+        )
+      )
+    }
+  }, [metodosPago])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -157,7 +180,7 @@ function HomeSales() {
           </div>
 
           <FilterSection
-            filters={SalesfilterConfigs}
+            filters={filterConfigs}
             onFilterChange={onFilterChange}
           />
 

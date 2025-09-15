@@ -109,25 +109,25 @@ export const SalesfilterConfigs: FilterConfig[] = [
     type: 'text' as const,
     key: 'producto_descripcion',
     placeholder: 'Descripción Producto',
-    width: '25%',
+    width: '20%',
   },
   {
     type: 'text' as const,
     key: 'producto_codigo',
     placeholder: 'Código Producto',
-    width: '25%',
+    width: '20%',
   },
   {
     type: 'text' as const,
     key: 'cliente_nombre',
     placeholder: 'Nombre Cliente',
-    width: '25%',
+    width: '20%',
   },
   {
     type: 'select' as const,
     key: 'producto_categoria',
     placeholder: 'Categoría',
-    width: '25%',
+    width: '20%',
     options: [
       { value: 'juguete', label: 'Juguete' },
       { value: 'ropa', label: 'Ropa' },
@@ -143,7 +143,7 @@ export const SalesfilterConfigs: FilterConfig[] = [
     type: 'select' as const,
     key: 'estado_venta',
     placeholder: 'Estado venta',
-    width: '25%',
+    width: '20%',
     options: [
       { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
@@ -151,9 +151,29 @@ export const SalesfilterConfigs: FilterConfig[] = [
     ],
   },
   {
+    type: 'select' as const,
+    key: 'metodo_pago',
+    placeholder: 'Método de Pago',
+    width: '20%',
+    options: [], // Se llenará dinámicamente
+  },
+  {
+    type: 'select' as const,
+    key: 'tipo_precio_aplicado',
+    placeholder: 'Tipo de Precio',
+    width: '20%',
+    options: [
+      { value: 'sugerido', label: 'Sugerido' },
+      { value: 'mayorista', label: 'Mayorista' },
+      { value: 'minorista', label: 'Minorista' },
+      { value: 'distribuidores', label: 'Distribuidores' },
+      { value: 'especial', label: 'Especial' },
+    ],
+  },
+  {
     type: 'dateRange' as const,
     key: 'fecha_venta',
-    placeholder: 'Nombre Cliente',
-    width: '25%',
+    placeholder: 'Fecha de Venta',
+    width: '20%',
   },
 ]
