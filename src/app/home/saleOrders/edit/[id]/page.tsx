@@ -545,139 +545,132 @@ export default function EditPurchase({
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}
       >
-        <Space direction='vertical' size='large' style={{ width: '100%' }}>
-          <PageHeader title='Editar Venta' showNewButton={false} />
-
-          <Form
-            form={form}
-            layout='vertical'
-            onFinish={onFinish}
-            initialValues={{
-              cliente_id: saleData?.cliente_id,
-            }}
-          >
-            <Space direction='vertical' size='large' style={{ width: '100%' }}>
-              <Row>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Cliente</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='cliente_id'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor seleccione un cliente',
-                        },
-                      ]}
-                    >
-                      <SearchSelect
-                        form={form}
-                        name='cliente_id'
-                        fetchOptions={fetchClients}
-                        placeholder='Busque un Cliente por nombre o NIT'
-                        labelFormatter={item => `${item.nombre} (${item.nit})`}
-                        onSelect={(_, option) => {
-                          if (option && option.details) {
-                            setClient(option.details)
-                          }
-                        }}
-                      />
-                    </Form.Item>
-                    <label>Nit</label>
-                    <Input value={client?.nit} disabled />
-                    <label>Tipo Cliente</label>
-                    <Input value={client?.tipo} disabled />
-                  </Space>
-                </Col>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Telefono</label>
-                    <Input value={client?.telefono} disabled />
-                    <label>Email</label>
-                    <Input value={client?.email} disabled />
-                    <label>Direccion</label>
-                    <Input value={client?.direccion} disabled />
-                  </Space>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col span={24}>
-                  <Space direction='vertical' style={{ width: '100%' }}>
-                    <label>Referencia de Pago (Opcional)</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='referencia_pago'
-                    >
-                      <Input placeholder='Número de transacción, cheque, etc.' />
-                    </Form.Item>
-                  </Space>
-                </Col>
-              </Row>
-
-              <div>
-                <Button
-                  type='dashed'
-                  onClick={handleAddDetail}
-                  icon={<PlusOutlined />}
-                  style={{ marginBottom: '16px' }}
-                  loading={isLoading}
-                >
-                  Agregar Producto
-                </Button>
-                <div
-                  style={{
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '6px',
-                    border: '1px solid #e9ecef',
-                    fontSize: '13px',
-                    color: '#6c757d',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  💡 <strong>Nota:</strong> El precio unitario se actualiza
-                  automáticamente cuando se selecciona un producto. Se puede
-                  editar manualmente solo cuando el tipo de precio es
-                  "Sugerido".
-                </div>
-                <Table
-                  loading={isLoading}
-                  columns={columns}
-                  dataSource={details}
-                  rowKey='key'
-                  pagination={false}
-                />
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <h3>
-                  Total: ${' '}
-                  {details
-                    .reduce((acc, curr) => acc + curr.subtotal, 0)
-                    .toFixed(2)}
-                </h3>
-              </div>
-
-              <Form.Item>
-                <Space>
-                  <Button
-                    loading={isLoading}
-                    onClick={() => router.push('/home/saleOrders')}
+        <PageHeader title='Editar Venta' showNewButton={false} />
+        <Form
+          form={form}
+          layout='vertical'
+          onFinish={onFinish}
+          initialValues={{
+            cliente_id: saleData?.cliente_id,
+          }}
+        >
+          <Space direction='vertical' size='large' style={{ width: '100%' }}>
+            <Row>
+              <Col span={12}>
+                <Space direction='vertical' style={{ width: '90%' }}>
+                  <label>Cliente</label>
+                  <Form.Item
+                    style={{ marginBottom: 0 }}
+                    name='cliente_id'
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Por favor seleccione un cliente',
+                      },
+                    ]}
                   >
-                    Cancelar
-                  </Button>
-                  <Button loading={isLoading} type='primary' htmlType='submit'>
-                    Actualizar Venta
-                  </Button>
+                    <SearchSelect
+                      form={form}
+                      name='cliente_id'
+                      fetchOptions={fetchClients}
+                      placeholder='Busque un Cliente por nombre o NIT'
+                      labelFormatter={item => `${item.nombre} (${item.nit})`}
+                      onSelect={(_, option) => {
+                        if (option && option.details) {
+                          setClient(option.details)
+                        }
+                      }}
+                    />
+                  </Form.Item>
+                  <label>Nit</label>
+                  <Input value={client?.nit} disabled />
+                  <label>Tipo Cliente</label>
+                  <Input value={client?.tipo} disabled />
                 </Space>
-              </Form.Item>
-            </Space>
-          </Form>
+              </Col>
+              <Col span={12}>
+                <Space direction='vertical' style={{ width: '90%' }}>
+                  <label>Telefono</label>
+                  <Input value={client?.telefono} disabled />
+                  <label>Email</label>
+                  <Input value={client?.email} disabled />
+                  <label>Direccion</label>
+                  <Input value={client?.direccion} disabled />
+                </Space>
+              </Col>
+            </Row>
 
-          {/* Sección de Pagos */}
-          {ventaData && <PaymentsSection venta={ventaData} />}
-        </Space>
+            <Row>
+              <Col span={24}>
+                <Space direction='vertical' style={{ width: '100%' }}>
+                  <label>Referencia de Pago (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='referencia_pago'>
+                    <Input placeholder='Número de transacción, cheque, etc.' />
+                  </Form.Item>
+                </Space>
+              </Col>
+            </Row>
+
+            <div>
+              <Button
+                type='dashed'
+                onClick={handleAddDetail}
+                icon={<PlusOutlined />}
+                style={{ marginBottom: '16px' }}
+                loading={isLoading}
+              >
+                Agregar Producto
+              </Button>
+              <div
+                style={{
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  border: '1px solid #e9ecef',
+                  fontSize: '13px',
+                  color: '#6c757d',
+                  fontStyle: 'italic',
+                }}
+              >
+                💡 <strong>Nota:</strong> El precio unitario se actualiza
+                automáticamente cuando se selecciona un producto. Se puede
+                editar manualmente solo cuando el tipo de precio es "Sugerido".
+              </div>
+              <Table
+                loading={isLoading}
+                columns={columns}
+                dataSource={details}
+                rowKey='key'
+                pagination={false}
+              />
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <h3>
+                Total: ${' '}
+                {details
+                  .reduce((acc, curr) => acc + curr.subtotal, 0)
+                  .toFixed(2)}
+              </h3>
+            </div>
+
+            {/* Sección de Pagos */}
+            {ventaData && <PaymentsSection venta={ventaData} />}
+
+            <Form.Item>
+              <Space>
+                <Button
+                  loading={isLoading}
+                  onClick={() => router.push('/home/saleOrders')}
+                >
+                  Regresar
+                </Button>
+                <Button loading={isLoading} type='primary' htmlType='submit'>
+                  Actualizar
+                </Button>
+              </Space>
+            </Form.Item>
+          </Space>
+        </Form>
       </Card>
       {contextHolder}
     </motion.div>
