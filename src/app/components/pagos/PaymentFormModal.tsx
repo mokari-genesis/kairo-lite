@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { Modal, Form, InputNumber, Button, Space, message } from 'antd'
+import { Modal, Form, InputNumber, Input, Button, Space, message } from 'antd'
 import { MetodoPagoSelect } from '../MetodoPagoSelect'
 import { MonedaSelect } from '../MonedaSelect'
 import { VentaPago, PaymentCreateRequest, PaymentUpdateRequest } from '@/app/api/pagos'
@@ -27,8 +27,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 }) => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [metodoPagoId, setMetodoPagoId] = useState<number | undefined>()
-  const [monedaId, setMonedaId] = useState<number | undefined>()
   const [monto, setMonto] = useState<number | undefined>()
 
   const isEdit = !!initialValues
@@ -46,13 +44,9 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           monto: initialValues.monto,
           referencia_pago: initialValues.referencia_pago || ''
         })
-        setMetodoPagoId(initialValues.metodoPagoId || initialValues.metodo_pago_id)
-        setMonedaId(initialValues.monedaId || initialValues.moneda_id)
         setMonto(initialValues.monto)
       } else {
         form.resetFields()
-        setMetodoPagoId(undefined)
-        setMonedaId(undefined)
         setMonto(undefined)
       }
     }
@@ -112,8 +106,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           rules={[{ required: true, message: 'Seleccione un método de pago' }]}
         >
           <MetodoPagoSelect
-            value={metodoPagoId}
-            onChange={setMetodoPagoId}
             disabled={isVendido}
           />
         </Form.Item>
@@ -124,8 +116,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           rules={[{ required: true, message: 'Seleccione una moneda' }]}
         >
           <MonedaSelect
-            value={monedaId}
-            onChange={setMonedaId}
             disabled={isVendido}
           />
         </Form.Item>
@@ -161,7 +151,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             onChange={handleMontoChange}
             placeholder="0.00"
             formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-            parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+            parser={(value) => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
           />
         </Form.Item>
 
@@ -169,7 +159,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           label="Referencia de Pago"
           name="referencia_pago"
         >
-          <InputNumber
+          <Input
             style={{ width: '100%' }}
             placeholder="Opcional"
             maxLength={50}

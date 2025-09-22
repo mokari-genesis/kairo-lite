@@ -8,6 +8,7 @@ interface MetodoPagoSelectProps {
   labelValue?: string
   placeholder?: string
   allowClear?: boolean
+  disabled?: boolean
 }
 
 export const MetodoPagoSelect: React.FC<MetodoPagoSelectProps> = ({
@@ -16,6 +17,7 @@ export const MetodoPagoSelect: React.FC<MetodoPagoSelectProps> = ({
   labelValue,
   placeholder = 'Seleccionar método de pago',
   allowClear = true,
+  disabled = false,
 }) => {
   const [options, setOptions] = React.useState<
     { label: string; value: number; metodoPago: any }[]
@@ -77,6 +79,7 @@ export const MetodoPagoSelect: React.FC<MetodoPagoSelectProps> = ({
       notFoundContent={null}
       loading={false}
       allowClear={allowClear}
+      disabled={disabled}
       getPopupContainer={trigger => trigger.parentElement}
     />
   )

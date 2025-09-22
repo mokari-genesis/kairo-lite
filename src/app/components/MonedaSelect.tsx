@@ -8,6 +8,7 @@ interface MonedaSelectProps {
   labelValue?: string
   placeholder?: string
   allowClear?: boolean
+  disabled?: boolean
 }
 
 export const MonedaSelect: React.FC<MonedaSelectProps> = ({
@@ -16,6 +17,7 @@ export const MonedaSelect: React.FC<MonedaSelectProps> = ({
   labelValue,
   placeholder = 'Seleccionar moneda',
   allowClear = true,
+  disabled = false,
 }) => {
   const [options, setOptions] = React.useState<
     { label: string; value: number; moneda: any }[]
@@ -79,6 +81,7 @@ export const MonedaSelect: React.FC<MonedaSelectProps> = ({
       notFoundContent={null}
       loading={false}
       allowClear={allowClear}
+      disabled={disabled}
       getPopupContainer={trigger => trigger.parentElement}
     />
   )
