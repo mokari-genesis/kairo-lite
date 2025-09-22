@@ -158,6 +158,62 @@ export default function EditPurchase({
     fetchSaleData()
   }, [resolvedParams.id, form, router])
 
+  // Actualizar el total de la venta cuando cambien los productos
+  useEffect(() => {
+    if (ventaData && details.length > 0) {
+      const newTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      setVentaData(prev => (prev ? { ...prev, total: newTotal } : null))
+    }
+  }, [details])
+
+  // Monitorear cambios en el estado de pagos
+  useEffect(() => {
+    console.log('=== PAGOS STATE CHANGED ===')
+    console.log('New pagos state:', pagos)
+    console.log('Pagos length:', pagos.length)
+  }, [pagos])
+
+  // Función para sincronizar pagos desde PaymentsSection
+  const syncPayments = async () => {
+    try {
+      const updatedPagos = await listPayments(parseInt(resolvedParams.id))
+      setPagos(updatedPagos)
+    } catch (error) {
+      console.error('Error syncing payments:', error)
+    }
+  }
+
+  // Funciones para manejar pagos localmente
+  const handleAddPayment = (payment: Omit<VentaPago, 'id'>) => {
+    const newPayment: VentaPago = {
+      ...payment,
+      id: Date.now(), // ID temporal para pagos nuevos
+    }
+    console.log('=== ADDING PAYMENT ===')
+    console.log('New payment:', newPayment)
+    console.log('Current pagos before:', pagos)
+
+    setPagos(prev => {
+      const updated = [...prev, newPayment]
+      console.log('Updated pagos state:', updated)
+      console.log('=== PAYMENT ADDED ===')
+      return updated
+    })
+  }
+
+  const handleEditPayment = (
+    paymentId: number,
+    payment: Partial<VentaPago>
+  ) => {
+    setPagos(prev =>
+      prev.map(p => (p.id === paymentId ? { ...p, ...payment } : p))
+    )
+  }
+
+  const handleDeletePayment = (paymentId: number) => {
+    setPagos(prev => prev.filter(p => p.id !== paymentId))
+  }
+
   const handleProductChange = async (
     value: number,
     product: any,
@@ -366,6 +422,9 @@ export default function EditPurchase({
         return
       }
 
+      // Calcular el total actualizado
+      const updatedTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
       // Check for insufficient stock
       const insufficientStock = details.some(
         detail => detail.cantidad > (detail.stock || 0)
@@ -378,7 +437,7 @@ export default function EditPurchase({
       }
 
       // Validar que si hay pagos, la suma no exceda el total
-      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const totalVenta = updatedTotal
 
       // Filtrar pagos válidos (que tengan metodo_pago_id, moneda_id y monto > 0)
       console.log('Pagos originales:', JSON.stringify(pagos))
@@ -441,12 +500,15 @@ export default function EditPurchase({
         message.warning(mensaje)
       }
 
+      console.log('Final pagos state before sending:', pagos)
+      console.log('Pagos válidos to send:', pagosValidos)
+
       const data = {
         venta_id: parseInt(resolvedParams.id),
         empresa_id: 1,
         cliente_id: values.cliente_id.value || values.cliente_id,
         usuario_id: 1,
-        total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
+        total: updatedTotal,
         estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,
         moneda_id: 1,
@@ -731,7 +793,19 @@ export default function EditPurchase({
             </div>
 
             {/* Sección de Pagos */}
-            {ventaData && <PaymentsSection venta={ventaData} />}
+            {ventaData && (
+              <PaymentsSection
+                venta={{
+                  ...ventaData,
+                  total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
+                }}
+                pagos={pagos}
+                onAddPayment={handleAddPayment}
+                onEditPayment={handleEditPayment}
+                onDeletePayment={handleDeletePayment}
+                onPaymentsChange={syncPayments}
+              />
+            )}
 
             <Form.Item>
               <Space>
