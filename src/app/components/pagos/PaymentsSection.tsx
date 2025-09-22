@@ -147,21 +147,9 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
             type='primary'
             icon={<PlusOutlined />}
             onClick={handleAddPayment}
-            disabled={isVendido}
           >
             Agregar Pago
           </Button>
-          {isVendido && (
-            <div
-              style={{
-                marginTop: '8px',
-                color: '#8c8c8c',
-                fontSize: '12px',
-              }}
-            >
-              No se pueden agregar pagos a ventas vendidas
-            </div>
-          )}
         </div>
 
         {/* Lista de pagos */}

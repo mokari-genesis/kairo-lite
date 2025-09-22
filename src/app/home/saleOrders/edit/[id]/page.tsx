@@ -28,7 +28,7 @@ import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
 import { getReporteStockActual } from '@/app/api/reportes'
 import { use } from 'react'
 import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
-import { Venta } from '@/app/api/pagos'
+import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
 
 interface PurchaseDetail {
   producto_id: number
@@ -65,6 +65,7 @@ export default function EditPurchase({
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [saleData, setSaleData] = useState<any>(null)
   const [ventaData, setVentaData] = useState<Venta | null>(null)
+  const [pagos, setPagos] = useState<VentaPago[]>([])
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -136,6 +137,17 @@ export default function EditPurchase({
               }
             })
           )
+
+          // Cargar pagos existentes
+          try {
+            const existingPagos = await listPayments(
+              parseInt(resolvedParams.id)
+            )
+            setPagos(existingPagos)
+          } catch (error) {
+            console.error('Error loading payments:', error)
+            setPagos([])
+          }
         }
       } catch (error) {
         message.error('Error al cargar los datos de la venta')
@@ -365,6 +377,70 @@ export default function EditPurchase({
         return
       }
 
+      // Validar que si hay pagos, la suma no exceda el total
+      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
+      // Filtrar pagos válidos (que tengan metodo_pago_id, moneda_id y monto > 0)
+      console.log('Pagos originales:', JSON.stringify(pagos))
+
+      const pagosValidos = pagos.filter(pago => {
+        const isValid =
+          pago.metodo_pago_id !== undefined &&
+          pago.metodo_pago_id !== null &&
+          pago.metodo_pago_id > 0 &&
+          pago.moneda_id !== undefined &&
+          pago.moneda_id !== null &&
+          pago.moneda_id > 0 &&
+          pago.monto !== undefined &&
+          pago.monto !== null &&
+          pago.monto > 0
+
+        console.log(`Pago ${JSON.stringify(pago)} es válido:`, isValid)
+        return isValid
+      })
+
+      console.log('Pagos válidos:', pagosValidos)
+
+      const totalPagos = pagosValidos.reduce(
+        (acc, pago) => acc + (pago.monto || 0),
+        0
+      )
+
+      if (pagosValidos.length > 0 && totalPagos > totalVenta) {
+        message.error(
+          'La suma de los pagos no puede exceder el total de la venta'
+        )
+        return
+      }
+
+      // Si hay pagos inválidos, mostrar advertencia
+      if (pagos.length > 0 && pagosValidos.length !== pagos.length) {
+        const pagosInvalidos = pagos.filter(
+          pago =>
+            pago.metodo_pago_id === undefined ||
+            pago.metodo_pago_id === null ||
+            pago.metodo_pago_id <= 0 ||
+            pago.moneda_id === undefined ||
+            pago.moneda_id === null ||
+            pago.moneda_id <= 0 ||
+            pago.monto === undefined ||
+            pago.monto === null ||
+            pago.monto <= 0
+        )
+
+        let mensaje = 'Algunos pagos no están completos y serán omitidos:\n'
+        pagosInvalidos.forEach((pago, index) => {
+          const faltantes = []
+          if (!pago.metodo_pago_id) faltantes.push('método de pago')
+          if (!pago.moneda_id) faltantes.push('moneda')
+          if (!pago.monto || pago.monto <= 0) faltantes.push('monto')
+
+          mensaje += `Pago ${index + 1}: Falta ${faltantes.join(', ')}\n`
+        })
+
+        message.warning(mensaje)
+      }
+
       const data = {
         venta_id: parseInt(resolvedParams.id),
         empresa_id: 1,
@@ -376,6 +452,7 @@ export default function EditPurchase({
         moneda_id: 1,
         moneda: '$',
         referencia_pago: values.referencia_pago || '',
+        pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
 
       const confirm = await modal.confirm({
