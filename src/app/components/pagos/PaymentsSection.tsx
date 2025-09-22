@@ -1,6 +1,15 @@
 'use client'
 import React, { useState } from 'react'
-import { Card, Button, Space, Statistic, Progress, Tag, message, Modal } from 'antd'
+import {
+  Card,
+  Button,
+  Space,
+  Statistic,
+  Progress,
+  Tag,
+  message,
+  Modal,
+} from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { Venta, VentaPago } from '@/app/api/pagos'
 import { usePayments } from '@/app/hooks/usePayments'
@@ -15,19 +24,16 @@ interface PaymentsSectionProps {
 export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingPago, setEditingPago] = useState<VentaPago | undefined>()
-  
-  const {
-    pagos,
-    loading,
-    addPayment,
-    editPayment,
-    removePayment
-  } = usePayments(venta.id)
+
+  const { pagos, loading, addPayment, editPayment, removePayment } =
+    usePayments(venta.id)
 
   const isVendido = venta.estado === 'vendido'
-  const totalPagado = venta.totalPagado ?? venta.monto_pagado ?? sumPagos(pagos)
-  const saldoPendiente = venta.saldoPendiente ?? venta.saldo ?? calculateSaldo(venta.total, totalPagado)
-  const progressPercentage = venta.total > 0 ? (totalPagado / venta.total) * 100 : 0
+  // Calcular total pagado basado en los pagos actuales
+  const totalPagado = sumPagos(pagos)
+  const saldoPendiente = calculateSaldo(venta.total, totalPagado)
+  const progressPercentage =
+    venta.total > 0 ? (totalPagado / venta.total) * 100 : 0
 
   const handleAddPayment = () => {
     setEditingPago(undefined)
@@ -68,8 +74,6 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
         return 'success'
       case 'cancelado':
         return 'error'
-      case 'generado':
-        return 'processing'
       default:
         return 'default'
     }
@@ -81,39 +85,33 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
         return 'Vendido'
       case 'cancelado':
         return 'Cancelado'
-      case 'generado':
-        return 'Generado'
       default:
         return estado
     }
   }
 
   return (
-    <Card 
-      title="Gestión de Pagos" 
-      size="small"
-      style={{ marginTop: '16px' }}
-    >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Card title='Gestión de Pagos' size='small' style={{ marginTop: '16px' }}>
+      <Space direction='vertical' size='large' style={{ width: '100%' }}>
         {/* Resumen de pagos */}
         <div>
-          <Space size="large" wrap>
+          <Space size='large' wrap>
             <Statistic
-              title="Total de la Venta"
+              title='Total de la Venta'
               value={venta.total}
-              formatter={(value) => formatCurrency(undefined, value as number)}
+              formatter={value => formatCurrency(undefined, value as number)}
             />
             <Statistic
-              title="Total Pagado"
+              title='Total Pagado'
               value={totalPagado}
-              formatter={(value) => formatCurrency(undefined, value as number)}
+              formatter={value => formatCurrency(undefined, value as number)}
             />
             <Statistic
-              title="Saldo Pendiente"
+              title='Saldo Pendiente'
               value={saldoPendiente}
-              formatter={(value) => formatCurrency(undefined, value as number)}
-              valueStyle={{ 
-                color: saldoPendiente > 0 ? '#cf1322' : '#52c41a' 
+              formatter={value => formatCurrency(undefined, value as number)}
+              valueStyle={{
+                color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
               }}
             />
             <div>
@@ -139,14 +137,14 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
               '0%': '#108ee9',
               '100%': '#87d068',
             }}
-            format={(percent) => `${percent}%`}
+            format={percent => `${percent}%`}
           />
         </div>
 
         {/* Botón para agregar pago */}
         <div>
           <Button
-            type="primary"
+            type='primary'
             icon={<PlusOutlined />}
             onClick={handleAddPayment}
             disabled={isVendido}
@@ -154,11 +152,13 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
             Agregar Pago
           </Button>
           {isVendido && (
-            <div style={{ 
-              marginTop: '8px', 
-              color: '#8c8c8c', 
-              fontSize: '12px' 
-            }}>
+            <div
+              style={{
+                marginTop: '8px',
+                color: '#8c8c8c',
+                fontSize: '12px',
+              }}
+            >
               No se pueden agregar pagos a ventas vendidas
             </div>
           )}
@@ -174,11 +174,13 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({ venta }) => {
             isVendido={isVendido}
           />
         ) : (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px', 
-            color: '#8c8c8c' 
-          }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '20px',
+              color: '#8c8c8c',
+            }}
+          >
             No hay pagos registrados
           </div>
         )}

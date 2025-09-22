@@ -219,15 +219,16 @@ function ReportesPage() {
       type: 'text',
       render: (estado: string) => {
         const colors: Record<string, string> = {
-          generado: '#2db7f5',
           vendido: '#87d068',
           cancelado: '#f50',
         }
         return (
-          <span style={{ 
-            color: colors[estado] || '#666',
-            fontWeight: 'bold'
-          }}>
+          <span
+            style={{
+              color: colors[estado] || '#666',
+              fontWeight: 'bold',
+            }}
+          >
             {estado?.charAt(0).toUpperCase() + estado?.slice(1)}
           </span>
         )
@@ -246,7 +247,12 @@ function ReportesPage() {
       dataIndex: 'total_pagado',
       type: 'text',
       render: (total: string | number, record: any) => {
-        const totalPagado = record.total_pagado || record.monto_pagado || 0
+        // Calcular total pagado sumando todos los pagos de la venta
+        const totalPagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
         return formatCurrency(undefined, Number(totalPagado))
       },
     },
@@ -257,13 +263,20 @@ function ReportesPage() {
       type: 'text',
       render: (saldo: string | number, record: any) => {
         const total = parseFloat(record.total_venta)
-        const totalPagado = record.total_pagado || record.monto_pagado || 0
+        // Calcular total pagado sumando todos los pagos de la venta
+        const totalPagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
         const saldoPendiente = total - Number(totalPagado)
         return (
-          <span style={{ 
-            color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
-            fontWeight: saldoPendiente > 0 ? 'bold' : 'normal'
-          }}>
+          <span
+            style={{
+              color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
+              fontWeight: saldoPendiente > 0 ? 'bold' : 'normal',
+            }}
+          >
             {formatCurrency(undefined, saldoPendiente)}
           </span>
         )

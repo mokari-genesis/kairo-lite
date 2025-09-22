@@ -18,7 +18,6 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { editSale } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
-import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
 import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
@@ -65,7 +64,6 @@ export default function EditPurchase({
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [saleData, setSaleData] = useState<any>(null)
-  const [metodoPago, setMetodoPago] = useState<any>()
   const [ventaData, setVentaData] = useState<Venta | null>(null)
 
   useEffect(() => {
@@ -75,16 +73,16 @@ export default function EditPurchase({
         if (sales && sales.length > 0) {
           const sale = sales[0]
           setSaleData(sale)
-          
+
           // Crear objeto Venta para la sección de pagos
           const venta: Venta = {
             id: sale.id,
             total: parseFloat(sale.total_venta),
-            estado: sale.estado_venta as 'generado' | 'vendido' | 'cancelado',
+            estado: sale.estado_venta as 'vendido' | 'cancelado',
             moneda_id: 1, // Por defecto GTQ
             pagos: [], // Se cargará dinámicamente
             totalPagado: 0,
-            saldoPendiente: parseFloat(sale.total_venta)
+            saldoPendiente: parseFloat(sale.total_venta),
           }
           setVentaData(venta)
 
@@ -99,7 +97,6 @@ export default function EditPurchase({
                 label: `${currentClient.nombre} - ${currentClient.nit}`,
                 details: currentClient,
               },
-              metodo_pago_id: (sale as any).metodo_pago_id,
               referencia_pago: (sale as any).referencia_pago,
             })
           }
@@ -166,23 +163,22 @@ export default function EditPurchase({
     const newDetails = [...details]
     if (product) {
       // Load current stock for the selected product
-      let currentStock = product.stock || 0
+      let currentStock = 0
       try {
         const stockData = await getReporteStockActual()
         const productStock = stockData.find(
           stock => stock.producto_id === value
         )
-        currentStock = productStock?.stock_actual || 0
+        currentStock =
+          (productStock as any)?.stock || productStock?.stock_actual || 0
       } catch (error) {
         console.error('Error loading stock:', error)
+        message.error('Error al cargar el stock del producto')
       }
 
       // For new products, available stock is just the current stock
       // For existing products, it's current stock + original quantity
-      const isExistingProduct = newDetails[index].producto_id > 0
-      const originalQuantity = isExistingProduct
-        ? newDetails[index].cantidad_original || 0
-        : 0
+      const originalQuantity = newDetails[index].cantidad_original || 0
       const availableStock = currentStock + originalQuantity
 
       newDetails[index] = {
@@ -375,9 +371,8 @@ export default function EditPurchase({
         cliente_id: values.cliente_id.value || values.cliente_id,
         usuario_id: 1,
         total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
-        estado: 'generado', //saleData?.estado_venta || 'generado',
+        estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,
-        metodo_pago_id: values.metodo_pago_id,
         moneda_id: 1,
         moneda: '$',
         referencia_pago: values.referencia_pago || '',
@@ -608,28 +603,6 @@ export default function EditPurchase({
               </Row>
 
               <Row>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Método de Pago</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='metodo_pago_id'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor seleccione un método de pago',
-                        },
-                      ]}
-                    >
-                      <MetodoPagoSelect
-                        onChange={(value, metodo) => setMetodoPago(metodo)}
-                      />
-                    </Form.Item>
-                  </Space>
-                </Col>
-              </Row>
-
-              <Row>
                 <Col span={24}>
                   <Space direction='vertical' style={{ width: '100%' }}>
                     <label>Referencia de Pago (Opcional)</label>
@@ -703,9 +676,7 @@ export default function EditPurchase({
           </Form>
 
           {/* Sección de Pagos */}
-          {ventaData && (
-            <PaymentsSection venta={ventaData} />
-          )}
+          {ventaData && <PaymentsSection venta={ventaData} />}
         </Space>
       </Card>
       {contextHolder}

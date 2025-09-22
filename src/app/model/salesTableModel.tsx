@@ -49,7 +49,6 @@ export const Salescolumns: ColumnConfig[] = [
     type: 'select',
     render: (estado_venta: string) => {
       const colors: Record<string, string> = {
-        generado: '#2db7f5',
         vendido: '#87d068',
         cancelado: '#f50',
       }
@@ -61,7 +60,6 @@ export const Salescolumns: ColumnConfig[] = [
       )
     },
     options: [
-      { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
       { value: 'cancelado', label: 'Cancelado' },
     ],
@@ -146,7 +144,6 @@ export const SalesfilterConfigs: FilterConfig[] = [
     placeholder: 'Estado venta',
     width: '20%',
     options: [
-      { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
       { value: 'cancelado', label: 'Cancelado' },
     ],

@@ -18,7 +18,6 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { createPurchase } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
-import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
 import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
@@ -54,7 +53,6 @@ export default function NewPurchase() {
   const router = useRouter()
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
-  const [metodoPago, setMetodoPago] = useState<any>()
   const [pagos, setPagos] = useState<VentaPago[]>([])
 
   const handleProductChange = (value: number, product: any, index: number) => {
@@ -236,11 +234,67 @@ export default function NewPurchase() {
 
       // Validar que si hay pagos, la suma no exceda el total
       const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
-      const totalPagos = pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
-      
-      if (pagos.length > 0 && totalPagos > totalVenta) {
-        message.error('La suma de los pagos no puede exceder el total de la venta')
+
+      // Filtrar pagos válidos (que tengan metodo_pago_id, moneda_id y monto > 0)
+      console.log('Pagos originales:', JSON.stringify(pagos))
+
+      const pagosValidos = pagos.filter(pago => {
+        const isValid =
+          pago.metodo_pago_id !== undefined &&
+          pago.metodo_pago_id !== null &&
+          pago.metodo_pago_id > 0 &&
+          pago.moneda_id !== undefined &&
+          pago.moneda_id !== null &&
+          pago.moneda_id > 0 &&
+          pago.monto > 0
+        console.log(`Pago ${pago.id}:`, {
+          metodo_pago_id: pago.metodo_pago_id,
+          moneda_id: pago.moneda_id,
+          monto: pago.monto,
+          isValid,
+          tipo_metodo_pago_id: typeof pago.metodo_pago_id,
+          tipo_moneda_id: typeof pago.moneda_id,
+        })
+        return isValid
+      })
+
+      console.log('Pagos válidos:', pagosValidos)
+
+      const totalPagos = pagosValidos.reduce(
+        (acc, pago) => acc + (pago.monto || 0),
+        0
+      )
+
+      if (pagosValidos.length > 0 && totalPagos > totalVenta) {
+        message.error(
+          'La suma de los pagos no puede exceder el total de la venta'
+        )
         return
+      }
+
+      // Si hay pagos inválidos, mostrar advertencia
+      if (pagos.length > 0 && pagosValidos.length !== pagos.length) {
+        const pagosInvalidos = pagos.filter(
+          pago =>
+            pago.metodo_pago_id === undefined ||
+            pago.metodo_pago_id === null ||
+            pago.metodo_pago_id <= 0 ||
+            pago.moneda_id === undefined ||
+            pago.moneda_id === null ||
+            pago.moneda_id <= 0 ||
+            pago.monto <= 0
+        )
+
+        let mensaje = 'Algunos pagos no están completos y serán omitidos:\n'
+        pagosInvalidos.forEach((pago, index) => {
+          const faltantes = []
+          if (!pago.metodo_pago_id) faltantes.push('método de pago')
+          if (!pago.moneda_id) faltantes.push('moneda')
+          if (pago.monto <= 0) faltantes.push('monto')
+          mensaje += `- Pago ${index + 1}: falta ${faltantes.join(', ')}\n`
+        })
+
+        message.warning(mensaje)
       }
 
       const data = {
@@ -248,14 +302,15 @@ export default function NewPurchase() {
         empresa_id: 1,
         usuario_id: 1,
         total: totalVenta,
-        estado: 'generado',
-        metodo_pago_id: values.metodo_pago_id,
+        estado: 'vendido',
         moneda_id: 1,
         moneda: '$',
         referencia_pago: values.referencia_pago || '',
         detalle: details,
-        pagos: pagos.length > 0 ? pagos : undefined, // Solo incluir si hay pagos
+        pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
+
+      console.log('Datos a enviar a la API:', JSON.stringify(data))
 
       const confirm = await modal.confirm({
         title: 'Generar venta',
@@ -452,28 +507,6 @@ export default function NewPurchase() {
             </Row>
 
             <Row>
-              <Col span={12}>
-                <Space direction='vertical' style={{ width: '90%' }}>
-                  <label>Método de Pago</label>
-                  <Form.Item
-                    style={{ marginBottom: 0 }}
-                    name='metodo_pago_id'
-                    rules={[
-                      {
-                        required: true,
-                        message: 'Por favor seleccione un método de pago',
-                      },
-                    ]}
-                  >
-                    <MetodoPagoSelect
-                      onChange={(value, metodo) => setMetodoPago(metodo)}
-                    />
-                  </Form.Item>
-                </Space>
-              </Col>
-            </Row>
-
-            <Row>
               <Col span={24}>
                 <Space direction='vertical' style={{ width: '100%' }}>
                   <label>Referencia de Pago (Opcional)</label>
@@ -529,7 +562,13 @@ export default function NewPurchase() {
             {/* Sub-formulario de Pagos */}
             <PaymentSubForm
               total={details.reduce((acc, curr) => acc + curr.subtotal, 0)}
-              onPaymentsChange={setPagos}
+              onPaymentsChange={newPagos => {
+                console.log(
+                  'PaymentSubForm onPaymentsChange recibido:',
+                  JSON.stringify(newPagos, null, 2)
+                )
+                setPagos(newPagos)
+              }}
             />
 
             <Form.Item>

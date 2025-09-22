@@ -21,7 +21,7 @@ export interface VentaPago {
 export interface Venta {
   id: number
   total: number
-  estado: 'generado' | 'vendido' | 'cancelado'
+  estado: 'vendido' | 'cancelado'
   moneda_id?: number | null
   pagos?: VentaPago[]
   totalPagado?: number

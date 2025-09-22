@@ -1,6 +1,16 @@
 'use client'
 import React, { useState } from 'react'
-import { Card, Button, Space, Table, InputNumber, Form, message, Popconfirm } from 'antd'
+import {
+  Card,
+  Button,
+  Space,
+  Table,
+  InputNumber,
+  Input,
+  Form,
+  message,
+  Popconfirm,
+} from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { MetodoPagoSelect } from '../MetodoPagoSelect'
 import { MonedaSelect } from '../MonedaSelect'
@@ -16,7 +26,7 @@ interface PaymentSubFormProps {
 export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
   total,
   onPaymentsChange,
-  disabled = false
+  disabled = false,
 }) => {
   const [pagos, setPagos] = useState<VentaPago[]>([])
   const [form] = Form.useForm()
@@ -27,14 +37,14 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
   const handleAddPayment = () => {
     const newPago: VentaPago = {
       id: Date.now(), // ID temporal para la UI
-      metodo_pago_id: 0,
-      moneda_id: 0,
+      metodo_pago_id: undefined,
+      moneda_id: undefined,
       monto: 0,
       referencia_pago: '',
       metodoPagoNombre: '',
-      monedaCodigo: ''
+      monedaCodigo: '',
     }
-    
+
     const newPagos = [...pagos, newPago]
     setPagos(newPagos)
     onPaymentsChange(newPagos)
@@ -46,14 +56,27 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
     onPaymentsChange(newPagos)
   }
 
-  const handlePaymentChange = (index: number, field: keyof VentaPago, value: any) => {
-    const newPagos = [...pagos]
-    newPagos[index] = {
-      ...newPagos[index],
-      [field]: value
-    }
-    setPagos(newPagos)
-    onPaymentsChange(newPagos)
+  const handlePaymentChange = (
+    index: number,
+    field: keyof VentaPago,
+    value: any
+  ) => {
+    console.log(`Actualizando pago ${index}, campo: ${field}, valor:`, value)
+    console.log('Estado actual de pagos antes del cambio:', pagos)
+
+    setPagos(prevPagos => {
+      const newPagos = [...prevPagos]
+      newPagos[index] = {
+        ...newPagos[index],
+        [field]: value,
+      }
+      console.log(
+        'Nuevo estado de pagos después del cambio:',
+        JSON.stringify(newPagos, null, 2)
+      )
+      onPaymentsChange(newPagos)
+      return newPagos
+    })
   }
 
   const canAddPayment = () => {
@@ -68,12 +91,18 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
       width: 200,
       render: (_: any, record: VentaPago, index: number) => (
         <MetodoPagoSelect
-          value={record.metodo_pago_id}
+          value={record.metodo_pago_id || undefined}
           onChange={(value, metodo) => {
+            console.log('MetodoPagoSelect onChange:', { value, metodo, index })
             handlePaymentChange(index, 'metodo_pago_id', value)
             handlePaymentChange(index, 'metodoPagoNombre', metodo?.nombre)
           }}
           disabled={disabled}
+          dropdownStyle={{
+            zIndex: 10000,
+            maxHeight: '250px',
+            overflow: 'auto',
+          }}
         />
       ),
     },
@@ -84,12 +113,18 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
       width: 150,
       render: (_: any, record: VentaPago, index: number) => (
         <MonedaSelect
-          value={record.moneda_id}
+          value={record.moneda_id || undefined}
           onChange={(value, moneda) => {
+            console.log('MonedaSelect onChange:', { value, moneda, index })
             handlePaymentChange(index, 'moneda_id', value)
             handlePaymentChange(index, 'monedaCodigo', moneda?.codigo)
           }}
           disabled={disabled}
+          dropdownStyle={{
+            zIndex: 10000,
+            maxHeight: '250px',
+            overflow: 'auto',
+          }}
         />
       ),
     },
@@ -105,11 +140,11 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
           step={0.01}
           precision={2}
           value={record.monto}
-          onChange={(value) => handlePaymentChange(index, 'monto', value || 0)}
+          onChange={value => handlePaymentChange(index, 'monto', value || 0)}
           disabled={disabled}
           style={{ width: '100%' }}
-          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={value => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
         />
       ),
     },
@@ -119,11 +154,13 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
       key: 'referencia_pago',
       width: 200,
       render: (_: any, record: VentaPago, index: number) => (
-        <InputNumber
+        <Input
           value={record.referencia_pago}
-          onChange={(e) => handlePaymentChange(index, 'referencia_pago', e.target.value)}
+          onChange={e =>
+            handlePaymentChange(index, 'referencia_pago', e.target.value)
+          }
           disabled={disabled}
-          placeholder="Opcional"
+          placeholder='Opcional'
           maxLength={50}
         />
       ),
@@ -134,34 +171,39 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
       width: 100,
       render: (_: any, record: VentaPago, index: number) => (
         <Button
-          type="text"
+          type='text'
           danger
           icon={<DeleteOutlined />}
           onClick={() => handleRemovePayment(index)}
           disabled={disabled}
-          size="small"
+          size='small'
         />
       ),
     },
   ]
 
   return (
-    <Card 
-      title="Pagos (Opcional)" 
-      size="small"
-      style={{ marginTop: '16px' }}
-    >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Card title='Pagos (Opcional)' size='small' style={{ marginTop: '16px' }}>
+      <Space direction='vertical' size='large' style={{ width: '100%' }}>
         {/* Resumen */}
         <div>
-          <Space size="large" wrap>
-            <div><strong>Total de la Venta:</strong> {formatCurrency(undefined, total)}</div>
-            <div><strong>Total Pagado:</strong> {formatCurrency(undefined, totalPagado)}</div>
-            <div style={{ 
-              color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
-              fontWeight: saldoPendiente > 0 ? 'bold' : 'normal'
-            }}>
-              <strong>Saldo Pendiente:</strong> {formatCurrency(undefined, saldoPendiente)}
+          <Space size='large' wrap>
+            <div>
+              <strong>Total de la Venta:</strong>{' '}
+              {formatCurrency(undefined, total)}
+            </div>
+            <div>
+              <strong>Total Pagado:</strong>{' '}
+              {formatCurrency(undefined, totalPagado)}
+            </div>
+            <div
+              style={{
+                color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
+                fontWeight: saldoPendiente > 0 ? 'bold' : 'normal',
+              }}
+            >
+              <strong>Saldo Pendiente:</strong>{' '}
+              {formatCurrency(undefined, saldoPendiente)}
             </div>
           </Space>
         </div>
@@ -169,7 +211,7 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
         {/* Botón para agregar pago */}
         <div>
           <Button
-            type="dashed"
+            type='dashed'
             icon={<PlusOutlined />}
             onClick={handleAddPayment}
             disabled={!canAddPayment()}
@@ -177,20 +219,24 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
             Agregar Pago
           </Button>
           {disabled && (
-            <div style={{ 
-              marginTop: '8px', 
-              color: '#8c8c8c', 
-              fontSize: '12px' 
-            }}>
+            <div
+              style={{
+                marginTop: '8px',
+                color: '#8c8c8c',
+                fontSize: '12px',
+              }}
+            >
               No se pueden agregar pagos a ventas vendidas
             </div>
           )}
           {!disabled && saldoPendiente <= 0 && (
-            <div style={{ 
-              marginTop: '8px', 
-              color: '#52c41a', 
-              fontSize: '12px' 
-            }}>
+            <div
+              style={{
+                marginTop: '8px',
+                color: '#52c41a',
+                fontSize: '12px',
+              }}
+            >
               ✅ La venta está completamente pagada
             </div>
           )}
@@ -203,15 +249,20 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
             dataSource={pagos}
             rowKey={(record, index) => index || 0}
             pagination={false}
-            size="small"
+            size='small'
             scroll={{ x: 600 }}
+            style={{
+              overflow: 'visible',
+            }}
           />
         ) : (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px', 
-            color: '#8c8c8c' 
-          }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '20px',
+              color: '#8c8c8c',
+            }}
+          >
             No hay pagos agregados
           </div>
         )}

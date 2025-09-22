@@ -124,7 +124,7 @@ export default function SaleOrders() {
 
       if (record.estado_venta === 'cancelado') {
         await updateSale(updateData)
-      } else if (record.estado_venta === 'generado') {
+      } else if (record.estado_venta === 'vendido') {
         await updateSaleStatus(updateData)
       } else {
         message.warning('Ya se encuentra vendido')

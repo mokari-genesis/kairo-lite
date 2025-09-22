@@ -354,7 +354,7 @@ function HomeSales() {
                 title: 'Total ventas generadas',
                 value:
                   dataSales
-                    ?.filter(sale => sale.estado_venta === 'generado')
+                    ?.filter(sale => sale.estado_venta === 'vendido')
                     .reduce(
                       (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
                       0

@@ -3,13 +3,19 @@ import React, { useEffect, useState } from 'react'
 import { Modal, Form, InputNumber, Input, Button, Space, message } from 'antd'
 import { MetodoPagoSelect } from '../MetodoPagoSelect'
 import { MonedaSelect } from '../MonedaSelect'
-import { VentaPago, PaymentCreateRequest, PaymentUpdateRequest } from '@/app/api/pagos'
+import {
+  VentaPago,
+  PaymentCreateRequest,
+  PaymentUpdateRequest,
+} from '@/app/api/pagos'
 import { formatCurrency } from '@/app/utils/currency'
 
 interface PaymentFormModalProps {
   open: boolean
   onCancel: () => void
-  onSave: (payload: PaymentCreateRequest | PaymentUpdateRequest) => Promise<void>
+  onSave: (
+    payload: PaymentCreateRequest | PaymentUpdateRequest
+  ) => Promise<void>
   initialValues?: VentaPago
   ventaTotal: number
   totalPagado: number
@@ -23,7 +29,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   initialValues,
   ventaTotal,
   totalPagado,
-  isVendido
+  isVendido,
 }) => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
@@ -31,7 +37,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
   const isEdit = !!initialValues
   const saldoPendiente = ventaTotal - totalPagado
-  const montoMaximo = isEdit 
+  const montoMaximo = isEdit
     ? saldoPendiente + (initialValues?.monto || 0)
     : saldoPendiente
 
@@ -39,10 +45,11 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
     if (open) {
       if (initialValues) {
         form.setFieldsValue({
-          metodo_pago_id: initialValues.metodoPagoId || initialValues.metodo_pago_id,
+          metodo_pago_id:
+            initialValues.metodoPagoId || initialValues.metodo_pago_id,
           moneda_id: initialValues.monedaId || initialValues.moneda_id,
           monto: initialValues.monto,
-          referencia_pago: initialValues.referencia_pago || ''
+          referencia_pago: initialValues.referencia_pago || '',
         })
         setMonto(initialValues.monto)
       } else {
@@ -80,66 +87,63 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       open={open}
       onCancel={onCancel}
       footer={[
-        <Button key="cancel" onClick={onCancel} disabled={loading}>
+        <Button key='cancel' onClick={onCancel} disabled={loading}>
           Cancelar
         </Button>,
         <Button
-          key="save"
-          type="primary"
+          key='save'
+          type='primary'
           loading={loading}
           onClick={handleSubmit}
           disabled={isVendido}
         >
           {isEdit ? 'Actualizar' : 'Guardar'}
-        </Button>
+        </Button>,
       ]}
       width={500}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        disabled={isVendido}
-      >
+      <Form form={form} layout='vertical' disabled={isVendido}>
         <Form.Item
-          label="Método de Pago"
-          name="metodo_pago_id"
+          label='Método de Pago'
+          name='metodo_pago_id'
           rules={[{ required: true, message: 'Seleccione un método de pago' }]}
         >
-          <MetodoPagoSelect
-            disabled={isVendido}
-          />
+          <MetodoPagoSelect disabled={isVendido} />
         </Form.Item>
 
         <Form.Item
-          label="Moneda"
-          name="moneda_id"
+          label='Moneda'
+          name='moneda_id'
           rules={[{ required: true, message: 'Seleccione una moneda' }]}
         >
-          <MonedaSelect
-            disabled={isVendido}
-          />
+          <MonedaSelect disabled={isVendido} />
         </Form.Item>
 
         <Form.Item
-          label="Monto"
-          name="monto"
+          label='Monto'
+          name='monto'
           rules={[
             { required: true, message: 'Ingrese el monto' },
-            { 
-              type: 'number', 
-              min: 0.01, 
-              message: 'El monto debe ser mayor a 0' 
+            {
+              type: 'number',
+              min: 0.01,
+              message: 'El monto debe ser mayor a 0',
             },
             {
               validator: (_, value) => {
                 if (value && value > montoMaximo) {
                   return Promise.reject(
-                    new Error(`El monto no puede exceder ${formatCurrency(undefined, montoMaximo)}`)
+                    new Error(
+                      `El monto no puede exceder ${formatCurrency(
+                        undefined,
+                        montoMaximo
+                      )}`
+                    )
                   )
                 }
                 return Promise.resolve()
-              }
-            }
+              },
+            },
           ]}
         >
           <InputNumber
@@ -149,47 +153,62 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             step={0.01}
             precision={2}
             onChange={handleMontoChange}
-            placeholder="0.00"
-            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-            parser={(value) => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+            placeholder='0.00'
+            formatter={value =>
+              `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+            }
+            parser={value => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
           />
         </Form.Item>
 
-        <Form.Item
-          label="Referencia de Pago"
-          name="referencia_pago"
-        >
+        <Form.Item label='Referencia de Pago' name='referencia_pago'>
           <Input
             style={{ width: '100%' }}
-            placeholder="Opcional"
+            placeholder='Opcional'
             maxLength={50}
           />
         </Form.Item>
 
         {!isVendido && (
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#f5f5f5', 
-            borderRadius: '6px',
-            marginTop: '16px'
-          }}>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <div><strong>Total de la Venta:</strong> {formatCurrency(undefined, ventaTotal)}</div>
-              <div><strong>Total Pagado:</strong> {formatCurrency(undefined, totalPagado)}</div>
-              <div><strong>Saldo Pendiente:</strong> {formatCurrency(undefined, saldoPendiente)}</div>
-              <div><strong>Monto Máximo:</strong> {formatCurrency(undefined, montoMaximo)}</div>
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '6px',
+              marginTop: '16px',
+            }}
+          >
+            <Space direction='vertical' size='small' style={{ width: '100%' }}>
+              <div>
+                <strong>Total de la Venta:</strong>{' '}
+                {formatCurrency(undefined, ventaTotal)}
+              </div>
+              <div>
+                <strong>Total Pagado:</strong>{' '}
+                {formatCurrency(undefined, totalPagado)}
+              </div>
+              <div>
+                <strong>Saldo Pendiente:</strong>{' '}
+                {formatCurrency(undefined, saldoPendiente)}
+              </div>
+              <div>
+                <strong>Monto Máximo:</strong>{' '}
+                {formatCurrency(undefined, montoMaximo)}
+              </div>
             </Space>
           </div>
         )}
 
         {isVendido && (
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#fff2e8', 
-            borderRadius: '6px',
-            marginTop: '16px',
-            border: '1px solid #ffd591'
-          }}>
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: '#fff2e8',
+              borderRadius: '6px',
+              marginTop: '16px',
+              border: '1px solid #ffd591',
+            }}
+          >
             <div style={{ color: '#d46b08' }}>
               <strong>⚠️ Esta venta ya está vendida</strong>
               <br />
