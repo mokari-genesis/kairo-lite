@@ -18,6 +18,8 @@ import {
   ReporteMovimientoInventario,
   ReporteStockActual,
 } from '@/app/api/reportes'
+import { getSalesFlat } from '@/app/api/sales'
+import { formatCurrency } from '@/app/utils/currency'
 import {
   Card,
   message,
@@ -61,6 +63,12 @@ function ReportesPage() {
       title: 'Stock Actual',
       description: 'Muestra el inventario actual con valores totales',
       icon: <DatabaseOutlined />,
+    },
+    {
+      key: 'ventas-con-pagos',
+      title: 'Ventas con Pagos',
+      description: 'Reporte de ventas con información de pagos y saldos',
+      icon: <BarChartOutlined />,
     },
     // {
     //   key: 'inventario-con-metodo',
@@ -179,6 +187,96 @@ function ReportesPage() {
     },
   ]
 
+  const ventasConPagosColumns = [
+    {
+      key: 'id',
+      title: 'ID Venta',
+      dataIndex: 'id',
+      type: 'text',
+    },
+    {
+      key: 'fecha_venta',
+      title: 'Fecha de Venta',
+      dataIndex: 'fecha_venta',
+      type: 'text',
+    },
+    {
+      key: 'cliente_nombre',
+      title: 'Cliente',
+      dataIndex: 'cliente_nombre',
+      type: 'text',
+    },
+    {
+      key: 'cliente_nit',
+      title: 'NIT',
+      dataIndex: 'cliente_nit',
+      type: 'text',
+    },
+    {
+      key: 'estado_venta',
+      title: 'Estado',
+      dataIndex: 'estado_venta',
+      type: 'text',
+      render: (estado: string) => {
+        const colors: Record<string, string> = {
+          generado: '#2db7f5',
+          vendido: '#87d068',
+          cancelado: '#f50',
+        }
+        return (
+          <span style={{ 
+            color: colors[estado] || '#666',
+            fontWeight: 'bold'
+          }}>
+            {estado?.charAt(0).toUpperCase() + estado?.slice(1)}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'total_venta',
+      title: 'Total de Venta',
+      dataIndex: 'total_venta',
+      type: 'text',
+      render: (total: string) => formatCurrency(undefined, parseFloat(total)),
+    },
+    {
+      key: 'total_pagado',
+      title: 'Total Pagado',
+      dataIndex: 'total_pagado',
+      type: 'text',
+      render: (total: string | number, record: any) => {
+        const totalPagado = record.total_pagado || record.monto_pagado || 0
+        return formatCurrency(undefined, Number(totalPagado))
+      },
+    },
+    {
+      key: 'saldo_pendiente',
+      title: 'Saldo Pendiente',
+      dataIndex: 'saldo_pendiente',
+      type: 'text',
+      render: (saldo: string | number, record: any) => {
+        const total = parseFloat(record.total_venta)
+        const totalPagado = record.total_pagado || record.monto_pagado || 0
+        const saldoPendiente = total - Number(totalPagado)
+        return (
+          <span style={{ 
+            color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
+            fontWeight: saldoPendiente > 0 ? 'bold' : 'normal'
+          }}>
+            {formatCurrency(undefined, saldoPendiente)}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'usuario_nombre',
+      title: 'Vendedor',
+      dataIndex: 'usuario_nombre',
+      type: 'text',
+    },
+  ]
+
   const inventarioConMetodoColumns = [
     {
       key: 'producto_codigo',
@@ -284,6 +382,9 @@ function ReportesPage() {
       case 'stock-actual':
         setColumns(stockActualColumns)
         break
+      case 'ventas-con-pagos':
+        setColumns(ventasConPagosColumns)
+        break
       case 'inventario-con-metodo':
         setColumns(inventarioConMetodoColumns)
         break
@@ -305,6 +406,9 @@ function ReportesPage() {
       switch (reportType) {
         case 'stock-actual':
           result = await getReporteStockActual(filters)
+          break
+        case 'ventas-con-pagos':
+          result = await getSalesFlat(filters)
           break
         case 'inventario-con-metodo':
           result = await getReporteInventarioConMetodo(filters)

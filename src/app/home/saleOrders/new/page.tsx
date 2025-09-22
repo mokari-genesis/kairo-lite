@@ -25,6 +25,8 @@ import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
+import { PaymentSubForm } from '@/app/components/pagos/PaymentSubForm'
+import { VentaPago } from '@/app/api/pagos'
 
 interface PurchaseDetail {
   producto_id: number
@@ -53,6 +55,7 @@ export default function NewPurchase() {
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [metodoPago, setMetodoPago] = useState<any>()
+  const [pagos, setPagos] = useState<VentaPago[]>([])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -231,17 +234,27 @@ export default function NewPurchase() {
         return
       }
 
+      // Validar que si hay pagos, la suma no exceda el total
+      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const totalPagos = pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+      
+      if (pagos.length > 0 && totalPagos > totalVenta) {
+        message.error('La suma de los pagos no puede exceder el total de la venta')
+        return
+      }
+
       const data = {
         ...values,
         empresa_id: 1,
         usuario_id: 1,
-        total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
+        total: totalVenta,
         estado: 'generado',
         metodo_pago_id: values.metodo_pago_id,
         moneda_id: 1,
         moneda: '$',
         referencia_pago: values.referencia_pago || '',
         detalle: details,
+        pagos: pagos.length > 0 ? pagos : undefined, // Solo incluir si hay pagos
       }
 
       const confirm = await modal.confirm({
@@ -512,6 +525,12 @@ export default function NewPurchase() {
                   .toFixed(2)}
               </h3>
             </div>
+
+            {/* Sub-formulario de Pagos */}
+            <PaymentSubForm
+              total={details.reduce((acc, curr) => acc + curr.subtotal, 0)}
+              onPaymentsChange={setPagos}
+            />
 
             <Form.Item>
               <Space>

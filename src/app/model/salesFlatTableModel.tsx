@@ -1,5 +1,6 @@
 import { ColumnConfig } from '../components/DataTable'
 import { Badge } from 'antd'
+import { formatCurrency } from '../utils/currency'
 
 export interface FilterConfig {
   type: 'text' | 'select'
@@ -58,7 +59,34 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     title: 'Total',
     dataIndex: 'total_venta',
     key: 'total_venta',
-    render: (total: string) => `$.${parseFloat(total).toFixed(2)}`,
+    render: (total: string) => formatCurrency(undefined, parseFloat(total)),
+  },
+  {
+    title: 'Total Pagado',
+    dataIndex: 'total_pagado',
+    key: 'total_pagado',
+    render: (total: string | number, record: any) => {
+      const totalPagado = record.total_pagado || record.monto_pagado || 0
+      return formatCurrency(undefined, Number(totalPagado))
+    },
+  },
+  {
+    title: 'Saldo Pendiente',
+    dataIndex: 'saldo_pendiente',
+    key: 'saldo_pendiente',
+    render: (saldo: string | number, record: any) => {
+      const total = parseFloat(record.total_venta)
+      const totalPagado = record.total_pagado || record.monto_pagado || 0
+      const saldoPendiente = total - Number(totalPagado)
+      return (
+        <span style={{ 
+          color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
+          fontWeight: saldoPendiente > 0 ? 'bold' : 'normal'
+        }}>
+          {formatCurrency(undefined, saldoPendiente)}
+        </span>
+      )
+    },
   },
 ]
 
@@ -85,11 +113,21 @@ export const SalesFlatfilterConfigs: FilterConfig[] = [
     type: 'select' as const,
     key: 'estado_venta',
     placeholder: 'Estado de Venta',
-    width: '25%',
+    width: '20%',
     options: [
       { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
       { value: 'cancelado', label: 'Cancelado' },
+    ],
+  },
+  {
+    type: 'select' as const,
+    key: 'con_saldo_pendiente',
+    placeholder: 'Con Saldo Pendiente',
+    width: '20%',
+    options: [
+      { value: 'true', label: 'Sí' },
+      { value: 'false', label: 'No' },
     ],
   },
 ]

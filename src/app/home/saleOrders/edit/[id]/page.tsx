@@ -28,6 +28,8 @@ import { getSalesFlat } from '@/app/api/sales'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
 import { getReporteStockActual } from '@/app/api/reportes'
 import { use } from 'react'
+import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
+import { Venta } from '@/app/api/pagos'
 
 interface PurchaseDetail {
   producto_id: number
@@ -64,6 +66,7 @@ export default function EditPurchase({
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [saleData, setSaleData] = useState<any>(null)
   const [metodoPago, setMetodoPago] = useState<any>()
+  const [ventaData, setVentaData] = useState<Venta | null>(null)
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -72,6 +75,18 @@ export default function EditPurchase({
         if (sales && sales.length > 0) {
           const sale = sales[0]
           setSaleData(sale)
+          
+          // Crear objeto Venta para la sección de pagos
+          const venta: Venta = {
+            id: sale.id,
+            total: parseFloat(sale.total_venta),
+            estado: sale.estado_venta as 'generado' | 'vendido' | 'cancelado',
+            moneda_id: 1, // Por defecto GTQ
+            pagos: [], // Se cargará dinámicamente
+            totalPagado: 0,
+            saldoPendiente: parseFloat(sale.total_venta)
+          }
+          setVentaData(venta)
 
           // Cargar los datos del cliente
           const clients = await getClients({ nit: sale.cliente_nit })
@@ -686,6 +701,11 @@ export default function EditPurchase({
               </Form.Item>
             </Space>
           </Form>
+
+          {/* Sección de Pagos */}
+          {ventaData && (
+            <PaymentsSection venta={ventaData} />
+          )}
         </Space>
       </Card>
       {contextHolder}
