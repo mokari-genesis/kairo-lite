@@ -65,15 +65,6 @@ export const Salescolumns: ColumnConfig[] = [
     ],
   },
   {
-    key: 'cantidad',
-    title: 'Cantidad',
-    dataIndex: 'cantidad',
-    type: 'text',
-    render: (stock: number) => {
-      return <Badge color={'#87d068'} text={stock} />
-    },
-  },
-  {
     key: 'metodo_pago',
     title: 'Metodo de pago',
     dataIndex: 'metodos_pago',
@@ -93,6 +84,15 @@ export const Salescolumns: ColumnConfig[] = [
     dataIndex: 'precio_unitario',
     type: 'text',
     render: (precio: number) => `$${precio}`,
+  },
+  {
+    key: 'cantidad',
+    title: 'Cantidad',
+    dataIndex: 'cantidad',
+    type: 'text',
+    render: (stock: number) => {
+      return <Badge color={'#87d068'} text={stock} />
+    },
   },
   {
     key: 'total_venta',

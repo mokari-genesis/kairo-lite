@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Table,
   Tag,
@@ -53,6 +53,149 @@ export const UnifiedPaymentMethodsTable: React.FC<
   showSummary = true,
 }) => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+
+  // Función para generar colores únicos basados en el ID de venta
+  const generateColorForSalesId = (salesId: string | number): string => {
+    const colors = [
+      '#d6f7ff', // Azul más fuerte
+      '#d9f7be', // Verde más fuerte
+      '#ffd8bf', // Naranja más fuerte
+      '#efdbff', // Púrpura más fuerte
+      '#fff1b8', // Amarillo más fuerte
+      '#bae7ff', // Azul más visible
+      '#d9f7be', // Verde más visible
+      '#ffccc7', // Rojo más visible
+      '#efdbff', // Púrpura más visible
+      '#fff1b8', // Amarillo más visible
+    ]
+
+    // Convertir el ID a un número y usar módulo para obtener un índice
+    const idStr = String(salesId)
+    let hash = 0
+    for (let i = 0; i < idStr.length; i++) {
+      const char = idStr.charCodeAt(i)
+      hash = (hash << 5) - hash + char
+      hash = hash & hash // Convertir a 32bit integer
+    }
+
+    return colors[Math.abs(hash) % colors.length]
+  }
+
+  // Función para obtener el ícono basado en el método de pago
+  const getPaymentMethodIcon = (metodoPago: string): string => {
+    const metodoLower = metodoPago.toLowerCase()
+
+    // Mapeo de métodos de pago a iconos
+    if (metodoLower.includes('efectivo') || metodoLower.includes('cash')) {
+      return '💵' // Dinero en efectivo
+    } else if (
+      metodoLower.includes('tarjeta') ||
+      metodoLower.includes('card')
+    ) {
+      return '💳' // Tarjeta de crédito/débito
+    } else if (
+      metodoLower.includes('transferencia') ||
+      metodoLower.includes('transfer')
+    ) {
+      return '🏦' // Transferencia bancaria
+    } else if (
+      metodoLower.includes('cheque') ||
+      metodoLower.includes('check')
+    ) {
+      return '📄' // Cheque
+    } else if (
+      metodoLower.includes('paypal') ||
+      metodoLower.includes('paypal')
+    ) {
+      return '🅿️' // PayPal
+    } else if (
+      metodoLower.includes('bitcoin') ||
+      metodoLower.includes('crypto')
+    ) {
+      return '₿' // Bitcoin/Crypto
+    } else if (metodoLower.includes('venmo') || metodoLower.includes('zelle')) {
+      return '📱' // Apps de pago móvil
+    } else if (
+      metodoLower.includes('apple') ||
+      metodoLower.includes('google')
+    ) {
+      return '📲' // Apple Pay / Google Pay
+    } else if (
+      metodoLower.includes('deposito') ||
+      metodoLower.includes('deposit')
+    ) {
+      return '🏧' // Depósito
+    } else if (
+      metodoLower.includes('credito') ||
+      metodoLower.includes('credit')
+    ) {
+      return '💳' // Crédito
+    } else if (
+      metodoLower.includes('debito') ||
+      metodoLower.includes('debit')
+    ) {
+      return '💳' // Débito
+    } else {
+      return '💰' // Ícono genérico para métodos no reconocidos
+    }
+  }
+
+  // Función para obtener la clase CSS de la fila basada en el ID de venta
+  const getRowClassName = (
+    record: MetodoPagoUnificado,
+    index: number
+  ): string => {
+    const salesId = record.venta_id
+    if (!salesId) return ''
+
+    // Contar cuántas veces aparece este ID de venta
+    const salesIdCount =
+      data.data?.filter(sale => sale.venta_id === salesId).length || 0
+
+    // Si solo aparece una vez, usar clase blanca
+    if (salesIdCount === 1) {
+      return 'unified-payment-row-unique'
+    }
+
+    return `unified-payment-row-${salesId}`
+  }
+
+  // Generar estilos CSS dinámicos para las filas agrupadas por ID de venta
+  useEffect(() => {
+    if (!data.data || data.data.length === 0) return
+
+    // Obtener IDs de venta únicos
+    const uniqueSalesIds = [...new Set(data.data.map(sale => sale.venta_id))]
+
+    // Filtrar solo los IDs que aparecen más de una vez (ventas con múltiples métodos de pago)
+    const groupedSalesIds = uniqueSalesIds.filter(salesId => {
+      const count = data.data.filter(sale => sale.venta_id === salesId).length
+      return count > 1
+    })
+
+    // Crear estilos CSS dinámicos
+    const styleId = 'unified-payment-row-styles'
+    let styleElement = document.getElementById(styleId)
+
+    if (!styleElement) {
+      styleElement = document.createElement('style')
+      styleElement.id = styleId
+      document.head.appendChild(styleElement)
+    }
+
+    // Generar CSS: blanco para filas únicas y colores para ventas agrupadas
+    const cssRules = [
+      // Estilo para filas únicas (blanco)
+      '.unified-payment-row-unique { background-color: #ffffff !important; }',
+      // Estilos para ventas agrupadas (con colores)
+      ...groupedSalesIds.map(salesId => {
+        const backgroundColor = generateColorForSalesId(salesId)
+        return `.unified-payment-row-${salesId} { background-color: ${backgroundColor} !important; }`
+      }),
+    ].join('\n')
+
+    styleElement.textContent = cssRules
+  }, [data.data])
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -175,6 +318,14 @@ export const UnifiedPaymentMethodsTable: React.FC<
       dataIndex: 'metodo_pago',
       key: 'metodo_pago',
       width: 130,
+      render: value => (
+        <Space>
+          <span style={{ fontSize: '16px' }}>
+            {getPaymentMethodIcon(value)}
+          </span>
+          {value}
+        </Space>
+      ),
       sorter: (a, b) => a.metodo_pago.localeCompare(b.metodo_pago),
     },
     {
@@ -301,36 +452,36 @@ export const UnifiedPaymentMethodsTable: React.FC<
       sorter: (a, b) =>
         new Date(a.fecha_venta).getTime() - new Date(b.fecha_venta).getTime(),
     },
-    {
-      title: 'Fecha Pago',
-      dataIndex: 'fecha_pago',
-      key: 'fecha_pago',
-      width: 120,
-      render: value =>
-        value ? (
-          <Space>
-            <CalendarOutlined />
-            {new Date(value).toLocaleDateString('es-GT')}
-          </Space>
-        ) : (
-          <Text type='secondary'>-</Text>
-        ),
-      sorter: (a, b) => {
-        if (!a.fecha_pago && !b.fecha_pago) return 0
-        if (!a.fecha_pago) return 1
-        if (!b.fecha_pago) return -1
-        return (
-          new Date(a.fecha_pago).getTime() - new Date(b.fecha_pago).getTime()
-        )
-      },
-    },
+    // {
+    //   title: 'Fecha Pago',
+    //   dataIndex: 'fecha_pago',
+    //   key: 'fecha_pago',
+    //   width: 120,
+    //   render: value =>
+    //     value ? (
+    //       <Space>
+    //         <CalendarOutlined />
+    //         {new Date(value).toLocaleDateString('es-GT')}
+    //       </Space>
+    //     ) : (
+    //       <Text type='secondary'>-</Text>
+    //     ),
+    //   sorter: (a, b) => {
+    //     if (!a.fecha_pago && !b.fecha_pago) return 0
+    //     if (!a.fecha_pago) return 1
+    //     if (!b.fecha_pago) return -1
+    //     return (
+    //       new Date(a.fecha_pago).getTime() - new Date(b.fecha_pago).getTime()
+    //     )
+    //   },
+    // },
     {
       title: 'Acciones',
       key: 'acciones',
       width: 100,
       fixed: 'right',
       render: (_, record) => (
-        <Space>
+        <Space style={{ display: 'flex', justifyContent: 'center' }}>
           {onViewDetails && (
             <Tooltip title='Ver detalles'>
               <Button
@@ -340,7 +491,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
               />
             </Tooltip>
           )}
-          {onPrintTicket && (
+          {/* {onPrintTicket && (
             <Tooltip title='Imprimir ticket'>
               <Button
                 type='text'
@@ -348,7 +499,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
                 onClick={() => onPrintTicket(record)}
               />
             </Tooltip>
-          )}
+          )} */}
         </Space>
       ),
     },
@@ -447,6 +598,22 @@ export const UnifiedPaymentMethodsTable: React.FC<
 
       {/* Data Table */}
       <Card>
+        <div
+          style={{
+            backgroundColor: '#f8f9fa',
+            borderRadius: '6px',
+            border: '1px solid #e9ecef',
+            fontSize: '13px',
+            color: '#6c757d',
+            fontStyle: 'italic',
+            marginBottom: '16px',
+            padding: '8px 12px',
+          }}
+        >
+          💡 <strong>Nota:</strong> Las filas con el mismo color de fondo
+          pertenecen a la misma venta. Las filas blancas representan ventas con
+          un solo método de pago.
+        </div>
         <Table
           columns={columns}
           dataSource={data.data}
@@ -457,6 +624,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
           scroll={{ x: 1500 }}
           size='small'
           bordered
+          rowClassName={getRowClassName}
         />
       </Card>
     </div>

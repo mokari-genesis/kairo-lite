@@ -151,6 +151,65 @@ export default function MetodosPagoUnificadoPage() {
     message.info('Función de exportación en desarrollo')
   }, [])
 
+  // Función para obtener el ícono basado en el método de pago
+  const getPaymentMethodIcon = (metodoPago: string): string => {
+    const metodoLower = metodoPago.toLowerCase()
+
+    // Mapeo de métodos de pago a iconos
+    if (metodoLower.includes('efectivo') || metodoLower.includes('cash')) {
+      return '💵' // Dinero en efectivo
+    } else if (
+      metodoLower.includes('tarjeta') ||
+      metodoLower.includes('card')
+    ) {
+      return '💳' // Tarjeta de crédito/débito
+    } else if (
+      metodoLower.includes('transferencia') ||
+      metodoLower.includes('transfer')
+    ) {
+      return '🏦' // Transferencia bancaria
+    } else if (
+      metodoLower.includes('cheque') ||
+      metodoLower.includes('check')
+    ) {
+      return '📄' // Cheque
+    } else if (
+      metodoLower.includes('paypal') ||
+      metodoLower.includes('paypal')
+    ) {
+      return '🅿️' // PayPal
+    } else if (
+      metodoLower.includes('bitcoin') ||
+      metodoLower.includes('crypto')
+    ) {
+      return '₿' // Bitcoin/Crypto
+    } else if (metodoLower.includes('venmo') || metodoLower.includes('zelle')) {
+      return '📱' // Apps de pago móvil
+    } else if (
+      metodoLower.includes('apple') ||
+      metodoLower.includes('google')
+    ) {
+      return '📲' // Apple Pay / Google Pay
+    } else if (
+      metodoLower.includes('deposito') ||
+      metodoLower.includes('deposit')
+    ) {
+      return '🏧' // Depósito
+    } else if (
+      metodoLower.includes('credito') ||
+      metodoLower.includes('credit')
+    ) {
+      return '💳' // Crédito
+    } else if (
+      metodoLower.includes('debito') ||
+      metodoLower.includes('debit')
+    ) {
+      return '💳' // Débito
+    } else {
+      return '💰' // Ícono genérico para métodos no reconocidos
+    }
+  }
+
   const renderDetailModal = () => (
     <Modal
       title={`Detalles de Venta ${selectedRecord?.venta_id}`}
@@ -176,6 +235,36 @@ export default function MetodosPagoUnificadoPage() {
     >
       {selectedRecord && (
         <div>
+          {/* Sección destacada del método de pago */}
+          <Card
+            style={{
+              marginBottom: '20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: '12px',
+            }}
+          >
+            <div style={{ textAlign: 'center', color: 'white' }}>
+              <Title level={3} style={{ color: 'white', margin: '0 0 8px 0' }}>
+                {getPaymentMethodIcon(selectedRecord.metodo_pago)} Método de
+                Pago
+              </Title>
+              <div
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  marginBottom: '8px',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                }}
+              >
+                {selectedRecord.metodo_pago}
+              </div>
+              <div style={{ fontSize: '16px', opacity: 0.9 }}>
+                {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
+              </div>
+            </div>
+          </Card>
+
           <Descriptions bordered column={2}>
             <Descriptions.Item label='ID Venta' span={1}>
               <Text code>{selectedRecord.venta_id}</Text>
@@ -193,7 +282,18 @@ export default function MetodosPagoUnificadoPage() {
               {selectedRecord.usuario_nombre}
             </Descriptions.Item>
             <Descriptions.Item label='Método de Pago' span={1}>
-              {selectedRecord.metodo_pago}
+              <Tag
+                color='blue'
+                style={{
+                  fontSize: '14px',
+                  padding: '4px 12px',
+                  fontWeight: 'bold',
+                  borderRadius: '6px',
+                }}
+              >
+                {getPaymentMethodIcon(selectedRecord.metodo_pago)}{' '}
+                {selectedRecord.metodo_pago}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label='Moneda' span={1}>
               {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
