@@ -1,7 +1,18 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import React, { useState } from 'react'
-import { Card, message, Modal, Space, Input } from 'antd'
+import React, { useState, useMemo } from 'react'
+import {
+  Card,
+  message,
+  Modal,
+  Space,
+  Input,
+  Row,
+  Col,
+  Statistic,
+  Badge,
+  Tag,
+} from 'antd'
 import { motion } from 'framer-motion'
 import { FilterSection } from '../../components/FilterSection'
 import { DataTable } from '../../components/DataTable'
@@ -23,6 +34,15 @@ import {
 } from '@/app/api/sales'
 import { UpdateStateRequest } from '@/app/api/products'
 import { ticketTemplate } from '@/app/templates/ticket-template'
+import {
+  DollarOutlined,
+  ShoppingCartOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  ClockCircleOutlined,
+  UserOutlined,
+  CalendarOutlined,
+} from '@ant-design/icons'
 const pageSize = 10
 
 export default function SaleOrders() {
@@ -32,6 +52,60 @@ export default function SaleOrders() {
   const [filters, setFilters] = useState<Record<string, any>>({})
   const router = useRouter()
   const { data: salesData, isLoading: salesLoading } = useSalesFlat(filters)
+
+  // Calcular estadísticas de ventas
+  const salesStats = useMemo(() => {
+    if (!salesData || salesData.length === 0) {
+      return {
+        totalVentas: 0,
+        totalVendidas: 0,
+        totalCanceladas: 0,
+        totalMonto: 0,
+        totalPagado: 0,
+        totalPendiente: 0,
+        promedioVenta: 0,
+        porcentajePagado: 0,
+      }
+    }
+
+    const totalVentas = salesData.length
+    const totalVendidas = salesData.filter(
+      sale => sale.estado_venta === 'vendido'
+    ).length
+    const totalCanceladas = salesData.filter(
+      sale => sale.estado_venta === 'cancelado'
+    ).length
+
+    const totalMonto = salesData.reduce(
+      (sum, sale) => sum + parseFloat(sale.total_venta),
+      0
+    )
+
+    const totalPagado = salesData.reduce((sum, sale) => {
+      const pagos =
+        (sale as any).pagos?.reduce(
+          (pagoSum: number, pago: any) => pagoSum + (pago.monto || 0),
+          0
+        ) || 0
+      return sum + pagos
+    }, 0)
+
+    const totalPendiente = totalMonto - totalPagado
+    const promedioVenta = totalVentas > 0 ? totalMonto / totalVentas : 0
+    const porcentajePagado =
+      totalMonto > 0 ? (totalPagado / totalMonto) * 100 : 0
+
+    return {
+      totalVentas,
+      totalVendidas,
+      totalCanceladas,
+      totalMonto,
+      totalPagado,
+      totalPendiente,
+      promedioVenta,
+      porcentajePagado,
+    }
+  }, [salesData])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -188,6 +262,205 @@ export default function SaleOrders() {
       >
         <Space direction='vertical' size='large' style={{ width: '100%' }}>
           <PageHeader title='Órdenes de Venta' onNewClick={handleNewClick} />
+
+          {/* Tarjetas de Estadísticas */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Ventas
+                    </span>
+                  }
+                  value={salesStats.totalVentas}
+                  prefix={<ShoppingCartOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Completadas
+                    </span>
+                  }
+                  value={salesStats.totalVendidas}
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Canceladas
+                    </span>
+                  }
+                  value={salesStats.totalCanceladas}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Monto Total
+                    </span>
+                  }
+                  value={salesStats.totalMonto}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Segunda fila de estadísticas */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Pagado
+                    </span>
+                  }
+                  value={salesStats.totalPagado}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Saldo Pendiente
+                    </span>
+                  }
+                  value={salesStats.totalPendiente}
+                  precision={2}
+                  prefix={<ClockCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#333',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: '#333', opacity: 0.8 }}>
+                      Promedio por Venta
+                    </span>
+                  }
+                  value={salesStats.promedioVenta}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: '#333' }} />}
+                  valueStyle={{ color: '#333' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#333',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: '#333', opacity: 0.8 }}>
+                      % Pagado
+                    </span>
+                  }
+                  value={salesStats.porcentajePagado}
+                  precision={1}
+                  suffix='%'
+                  prefix={<CheckCircleOutlined style={{ color: '#333' }} />}
+                  valueStyle={{
+                    color:
+                      salesStats.porcentajePagado >= 80
+                        ? '#52c41a'
+                        : salesStats.porcentajePagado >= 50
+                        ? '#faad14'
+                        : '#ff4d4f',
+                  }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
           <FilterSection
             filters={SalesFlatfilterConfigs}
