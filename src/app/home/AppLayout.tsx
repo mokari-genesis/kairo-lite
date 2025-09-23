@@ -42,7 +42,7 @@ const pathToMenuKey: Record<string, string> = {
   '/home/metodosPago': '7',
   '/home/metodosPago/new': '7',
 
-  '/home/metodosPagoUnificado': '8',
+  '/home/metodosPagoUnificado': '6-3',
 
   // '/home/monedas': '9',
   // '/home/monedas/new': '9',
@@ -139,6 +139,15 @@ export default function AppLayout({ children }: any) {
             router.push('/home/reportes')
           },
         },
+        {
+          key: '6-3',
+          label: 'Métodos de Pago Unificados',
+          icon: React.createElement(DollarOutlined),
+          onClick: () => {
+            setSelectedKey('6-3')
+            router.push('/home/metodosPagoUnificado')
+          },
+        },
       ],
     },
     {
@@ -148,15 +157,6 @@ export default function AppLayout({ children }: any) {
       onClick: () => {
         setSelectedKey('7')
         router.push('/home/metodosPago')
-      },
-    },
-    {
-      key: '8',
-      label: 'Métodos de Pago Unificados',
-      icon: React.createElement(BarChartOutlined),
-      onClick: () => {
-        setSelectedKey('8')
-        router.push('/home/metodosPagoUnificado')
       },
     },
     // {

@@ -247,7 +247,10 @@ function HomeSales() {
               alignItems: 'center',
             }}
           >
-            <PageHeader title='Reporte de Ventas' showNewButton={false} />
+            <PageHeader
+              title='Reporte de Ventas (Productos)'
+              showNewButton={false}
+            />
             <Button
               type='primary'
               onClick={handleExportExcel}
@@ -411,7 +414,7 @@ function HomeSales() {
           />
 
           {/* Métodos de Pago Section */}
-          <SummaryCards
+          {/* <SummaryCards
             items={[
               {
                 title: 'Método Más Usado',
@@ -454,7 +457,7 @@ function HomeSales() {
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '16px',
             }}
-          />
+          /> */}
         </Space>
       </Card>
     </motion.div>
