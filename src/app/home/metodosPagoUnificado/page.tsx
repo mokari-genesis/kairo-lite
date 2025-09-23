@@ -80,6 +80,7 @@ export default function MetodosPagoUnificadoPage() {
   // Handle summary filters change
   const handleSummaryFiltersChange = useCallback(
     (newFilters: any) => {
+      console.log('Page - handleSummaryFiltersChange:', newFilters)
       updateSummaryFilters(newFilters)
       loadSummaryData(newFilters)
     },
@@ -454,6 +455,7 @@ export default function MetodosPagoUnificadoPage() {
             key='summary'
           >
             <UnifiedPaymentMethodsSummary
+              key={`summary-${summaryFilters.agrupar_por}`}
               filters={summaryFilters}
               onFiltersChange={handleSummaryFiltersChange}
               summaryData={summaryData}

@@ -69,11 +69,11 @@ export const UnifiedPaymentMethodsTable: React.FC<
 
     const totalVentas = data.data.length
     const totalMonto = data.data.reduce(
-      (sum, record) => sum + parseFloat(record.total_venta),
+      (sum, record) => sum + parseFloat(record.monto_pago),
       0
     )
     const totalPagado = data.data.reduce(
-      (sum, record) => sum + parseFloat(record.total_pagado_venta),
+      (sum, record) => sum + parseFloat(record.total_por_metodo_en_venta),
       0
     )
     const totalPendiente = data.data.reduce(
@@ -204,37 +204,19 @@ export const UnifiedPaymentMethodsTable: React.FC<
       sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
     },
     {
-      title: 'Monto Pagado',
-      dataIndex: 'total_pagado_venta',
-      key: 'total_pagado_venta',
-      width: 120,
-      align: 'right',
-      render: (value, record) => (
-        <Text
-          style={{
-            color: getPaymentProgressColor(
-              parseFloat(value),
-              parseFloat(record.total_venta)
-            ),
-          }}
-        >
-          {formatCurrency(record.moneda_codigo, parseFloat(value))}
-        </Text>
-      ),
-      sorter: (a, b) =>
-        parseFloat(a.total_pagado_venta) - parseFloat(b.total_pagado_venta),
-    },
-    {
       title: 'Monto Pendiente',
       dataIndex: 'saldo_pendiente_venta',
       key: 'saldo_pendiente_venta',
-      width: 130,
+      width: 120,
       align: 'right',
-      render: (value, record) => (
-        <Text type={parseFloat(value) > 0 ? 'danger' : 'success'}>
-          {formatCurrency(record.moneda_codigo, parseFloat(value))}
-        </Text>
-      ),
+      render: (value: any, record: any) => {
+        const numValue = parseFloat(value)
+        return (
+          <Text strong style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
+            {formatCurrency(record.moneda_codigo, parseFloat(value))}
+          </Text>
+        )
+      },
       sorter: (a, b) =>
         parseFloat(a.saldo_pendiente_venta) -
         parseFloat(b.saldo_pendiente_venta),

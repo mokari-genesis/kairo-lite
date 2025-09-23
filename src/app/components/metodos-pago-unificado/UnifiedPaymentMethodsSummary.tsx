@@ -61,11 +61,29 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   error = null,
 }) => {
   // Use groupBy from filters or default to 'metodo_pago'
-  const groupBy = filters.agrupar_por || 'metodo_pago'
+  const groupBy = filters.agrupar_por ?? 'metodo_pago'
+
+  // Debug logging
+  console.log('UnifiedPaymentMethodsSummary - filters:', filters)
+  console.log('UnifiedPaymentMethodsSummary - groupBy:', groupBy)
 
   const [paymentMethods, setPaymentMethods] = useState<SelectOption[]>([])
   const [clients, setClients] = useState<SelectOption[]>([])
   const [currencies, setCurrencies] = useState<SelectOption[]>([])
+  const [localGroupBy, setLocalGroupBy] =
+    useState<MetodosPagoUnificadoResumenFilters['agrupar_por']>(groupBy)
+
+  // Effect to log when filters change
+  useEffect(() => {
+    console.log('Filters changed in UnifiedPaymentMethodsSummary:', filters)
+    console.log('Current groupBy value:', groupBy)
+    setLocalGroupBy(groupBy)
+  }, [filters, groupBy])
+
+  // Effect to log when localGroupBy changes
+  useEffect(() => {
+    console.log('LocalGroupBy changed:', localGroupBy)
+  }, [localGroupBy])
 
   // Helper function to safely access summaryData
   const getSafeSummaryData = () => {
@@ -127,13 +145,16 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   // Handle groupBy change
   const handleGroupByChange = useCallback(
     (newGroupBy: MetodosPagoUnificadoResumenFilters['agrupar_por']) => {
+      console.log('Changing groupBy to:', newGroupBy)
+      setLocalGroupBy(newGroupBy)
       // Notify parent component about the filter change
       if (onFiltersChange) {
         const newFilters: MetodosPagoUnificadoResumenFilters = {
+          ...filters,
           empresa_id: 1,
           agrupar_por: newGroupBy,
-          ...filters,
         }
+        console.log('New filters:', newFilters)
         onFiltersChange(newFilters)
       }
     },
@@ -168,6 +189,32 @@ export const UnifiedPaymentMethodsSummary: React.FC<
     return icons[agrupar_por]
   }
 
+  // Function to get the appropriate key based on groupBy
+  // Maps groupBy values to their corresponding data field names
+  const getGroupByKey = (
+    agrupar_por: MetodosPagoUnificadoResumenFilters['agrupar_por']
+  ) => {
+    const keyMap = {
+      metodo_pago: 'metodo_pago',
+      cliente: 'grupo_nombre',
+      usuario: 'grupo_nombre',
+      moneda: 'grupo_nombre',
+      fecha_venta_dia: 'fecha_venta_dia',
+      fecha_pago_dia: 'fecha_pago_dia',
+    }
+    return keyMap[agrupar_por] || 'metodo_pago'
+  }
+
+  // Function to get the display value for a record based on groupBy
+  // Usage: getGroupByDisplayValue(record, 'cliente') returns record.cliente_nombre
+  const getGroupByDisplayValue = (
+    record: any,
+    agrupar_por: MetodosPagoUnificadoResumenFilters['agrupar_por']
+  ) => {
+    const key = getGroupByKey(agrupar_por)
+    return record[key] || 'Sin datos'
+  }
+
   const getPerformanceColor = (porcentaje: number) => {
     if (porcentaje >= 90) return '#52c41a'
     if (porcentaje >= 70) return '#1890ff'
@@ -185,8 +232,8 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   const summaryColumns = [
     {
       title: getGroupByLabel(groupBy),
-      dataIndex: 'metodo_pago',
-      key: 'metodo_pago',
+      dataIndex: getGroupByKey(groupBy),
+      key: getGroupByKey(groupBy),
       render: (value: string) => (
         <Space>
           {getGroupByIcon(groupBy)}
@@ -209,20 +256,9 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       align: 'right' as const,
       sorter: (a: any, b: any) =>
         parseFloat(a.total_ventas_monto) - parseFloat(b.total_ventas_monto),
-      render: (value: string) => (
-        <Text strong>{formatCurrency('GTQ', parseFloat(value))}</Text>
-      ),
-    },
-    {
-      title: 'Monto Pagado',
-      dataIndex: 'total_monto_pagado',
-      key: 'total_monto_pagado',
-      align: 'right' as const,
-      sorter: (a: any, b: any) =>
-        parseFloat(a.total_monto_pagado) - parseFloat(b.total_monto_pagado),
-      render: (value: string) => (
-        <Text style={{ color: '#52c41a' }}>
-          {formatCurrency('GTQ', parseFloat(value))}
+      render: (value: string, record: any) => (
+        <Text strong>
+          {formatCurrency(record.moneda_codigo, parseFloat(value))}
         </Text>
       ),
     },
@@ -234,11 +270,11 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       sorter: (a: any, b: any) =>
         parseFloat(a.total_saldo_pendiente) -
         parseFloat(b.total_saldo_pendiente),
-      render: (value: string) => {
+      render: (value: string, record: any) => {
         const numValue = parseFloat(value)
         return (
           <Text style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
-            {formatCurrency('GTQ', numValue)}
+            {formatCurrency(record.moneda_codigo, numValue)}
           </Text>
         )
       },
@@ -280,16 +316,20 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             <Space>
               <Text strong>Agrupar por:</Text>
               <Select
-                value={groupBy}
+                value={localGroupBy}
                 onChange={handleGroupByChange}
                 style={{ width: 200 }}
+                placeholder='Seleccionar agrupación'
+                onFocus={() =>
+                  console.log('Select focused, current value:', localGroupBy)
+                }
               >
                 <Option value='metodo_pago'>Método de Pago</Option>
                 <Option value='cliente'>Cliente</Option>
                 <Option value='usuario'>Usuario</Option>
                 <Option value='moneda'>Moneda</Option>
-                <Option value='fecha_venta_dia'>Fecha de Venta (Día)</Option>
-                <Option value='fecha_pago_dia'>Fecha de Pago (Día)</Option>
+                {/* <Option value='fecha_venta_dia'>Fecha de Venta (Día)</Option>
+                <Option value='fecha_pago_dia'>Fecha de Pago (Día)</Option> */}
               </Select>
             </Space>
           </Col>
@@ -353,7 +393,14 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             <Table
               columns={summaryColumns}
               dataSource={safeSummaryData.data}
-              rowKey='metodo_pago_id'
+              rowKey={record => {
+                const keyField = getGroupByKey(groupBy)
+                return (
+                  (record as any)[keyField] ||
+                  record.metodo_pago_id ||
+                  `row-${Math.random()}`
+                )
+              }}
               pagination={{
                 pageSize: 10,
                 showSizeChanger: true,

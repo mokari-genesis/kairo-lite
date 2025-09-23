@@ -57,6 +57,11 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       agrupar_por: 'metodo_pago',
     })
 
+  // Debug logging for summary filters
+  useEffect(() => {
+    console.log('Summary filters state changed:', summaryFilters)
+  }, [summaryFilters])
+
   // Load table data
   const loadTableData = useCallback(
     async (newFilters?: MetodosPagoUnificadoFilters) => {
@@ -147,6 +152,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
   // Update summary filters
   const updateSummaryFilters = useCallback(
     (newFilters: MetodosPagoUnificadoResumenFilters) => {
+      console.log('Updating summary filters:', newFilters)
       setSummaryFilters(newFilters)
     },
     []
