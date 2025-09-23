@@ -49,7 +49,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             initialValues.metodoPagoId || initialValues.metodo_pago_id,
           moneda_id: initialValues.monedaId || initialValues.moneda_id,
           monto: initialValues.monto,
-          referencia_pago: initialValues.referencia_pago || '',
         })
         setMonto(initialValues.monto)
       } else {
@@ -161,14 +160,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           />
         </Form.Item>
 
-        <Form.Item label='Referencia de Pago' name='referencia_pago'>
-          <Input
-            style={{ width: '100%' }}
-            placeholder='Opcional'
-            maxLength={50}
-          />
-        </Form.Item>
-
         {!isVendido && (
           <div
             style={{
@@ -212,7 +203,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             <div style={{ color: '#d46b08' }}>
               <strong>⚠️ Esta venta ya está vendida</strong>
               <br />
-              No se pueden realizar cambios en los pagos.
+              No se pueden realizar cambios en los pagos, si asi lo deseas debes
+              cancelar la venta y editarla.
             </div>
           </div>
         )}

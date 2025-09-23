@@ -14,7 +14,7 @@ export const fetchApi = async <T>({
   api,
   body,
   method,
-  service,  
+  service,
 }: {
   api: string
   body?: any
@@ -24,20 +24,20 @@ export const fetchApi = async <T>({
 }): Promise<T> => {
   let authenticatedUser: CognitoUserSession | null
   let idToken: string = ''
-  
-  try {    
+
+  try {
     authenticatedUser = await Auth.currentSession()
-    idToken = authenticatedUser?.getIdToken().getJwtToken()    
+    idToken = authenticatedUser?.getIdToken().getJwtToken()
   } catch (err) {
     if (err !== 'No current user') {
-      console.log("No user")
+      console.log('No user')
     }
   }
 
   const response = await fetch(`${api}${service}`, {
     method,
-    headers: {      
-      Authorization: idToken      
+    headers: {
+      Authorization: idToken,
     },
     body: JSON.stringify(body),
   })

@@ -106,42 +106,6 @@ export default function SaleOrders() {
     }
   }
 
-  const handleCheck = async (record: any) => {
-    try {
-      const confirm = await modal.confirm({
-        title: 'Confirmación',
-        content: '¿Estás seguro de confirmar la venta?',
-      })
-
-      if (!confirm) return
-
-      setIsLoading(true)
-
-      const updateData: UpdateStateRequest = {
-        venta_id: record.id,
-        estado: 'vendido',
-      }
-
-      if (record.estado_venta === 'cancelado') {
-        await updateSale(updateData)
-      } else if (record.estado_venta === 'vendido') {
-        await updateSaleStatus(updateData)
-      } else {
-        message.warning('Ya se encuentra vendido')
-        return
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: [QueryKey.salesFlatInfo, filters],
-      })
-      message.success('Venta confirmada')
-    } catch (error: any) {
-      message.error(error.message || 'Error al actualizar la venta')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handlePrintTicket = async (record: any) => {
     try {
       // Show modal to get description
@@ -246,7 +210,6 @@ export default function SaleOrders() {
             showActions={true}
             showDelete={true}
             onDelete={handleDelete}
-            onCheck={handleCheck}
             onView={handleEdit}
             showView={true}
             onCancel={handleCancel}

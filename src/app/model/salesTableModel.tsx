@@ -76,7 +76,7 @@ export const Salescolumns: ColumnConfig[] = [
   {
     key: 'metodo_pago',
     title: 'Metodo de pago',
-    dataIndex: 'metodo_pago',
+    dataIndex: 'metodos_pago',
     type: 'text',
     render: (metodo_pago: string) => metodo_pago,
   },

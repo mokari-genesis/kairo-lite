@@ -57,11 +57,6 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
   const pagos = isLocalMode ? externalPagos : hookPagos
   const loading = isLocalMode ? externalLoading || false : hookLoading
 
-  console.log('PaymentsSection - isLocalMode:', isLocalMode)
-  console.log('PaymentsSection - externalPagos:', externalPagos)
-  console.log('PaymentsSection - hookPagos:', hookPagos)
-  console.log('PaymentsSection - final pagos:', pagos)
-
   const isVendido = venta.estado === 'vendido'
   // Calcular total pagado basado en los pagos actuales
   const totalPagado = sumPagos(pagos)

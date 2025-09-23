@@ -37,17 +37,12 @@ export const MetodoPagoSelect = forwardRef<any, MetodoPagoSelectProps>(
         if (search && search.trim()) {
           filters.nombre = search.trim()
         }
-
-        console.log('Fetching payment methods with filters:', filters)
         const metodosPago = await getMetodosPago(filters)
-        console.log('Received payment methods:', metodosPago)
-
         const formattedOptions = metodosPago.map(metodo => ({
           label: metodo.nombre,
           value: metodo.id,
           metodoPago: metodo,
         }))
-        console.log('Formatted options:', formattedOptions)
         setOptions(formattedOptions)
       } catch (error) {
         console.error('Error fetching payment methods:', error)
@@ -69,13 +64,11 @@ export const MetodoPagoSelect = forwardRef<any, MetodoPagoSelectProps>(
     }
 
     const handleChange = (selectedValue: number, option: any) => {
-      console.log('MetodoPagoSelect handleChange:', { selectedValue, option })
       if (onChange) {
         // Buscar el método de pago completo en las opciones
         const metodoCompleto = options.find(
           opt => opt.value === selectedValue
         )?.metodoPago
-        console.log('Método completo encontrado:', metodoCompleto)
         onChange(selectedValue, metodoCompleto)
       }
     }
@@ -86,7 +79,6 @@ export const MetodoPagoSelect = forwardRef<any, MetodoPagoSelectProps>(
         style={{ width: '100%' }}
         value={value}
         onChange={(selectedValue, option) => {
-          console.log('Select onChange directo:', { selectedValue, option })
           handleChange(selectedValue, option)
         }}
         options={options}

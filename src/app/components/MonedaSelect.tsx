@@ -37,11 +37,7 @@ export const MonedaSelect = forwardRef<any, MonedaSelectProps>(
         if (search && search.trim()) {
           filters.nombre = search.trim()
         }
-
-        console.log('Fetching currencies with filters:', filters)
         const monedas = await getMonedas(filters)
-        console.log('Received currencies:', monedas)
-
         const formattedOptions = monedas.map(moneda => ({
           label: `${moneda.codigo} - ${moneda.nombre} ${
             moneda.simbolo ? `(${moneda.simbolo})` : ''
@@ -49,7 +45,6 @@ export const MonedaSelect = forwardRef<any, MonedaSelectProps>(
           value: moneda.id,
           moneda: moneda,
         }))
-        console.log('Formatted currency options:', formattedOptions)
         setOptions(formattedOptions)
       } catch (error) {
         console.error('Error fetching currencies:', error)
@@ -71,13 +66,11 @@ export const MonedaSelect = forwardRef<any, MonedaSelectProps>(
     }
 
     const handleChange = (selectedValue: number, option: any) => {
-      console.log('MonedaSelect handleChange:', { selectedValue, option })
       if (onChange) {
         // Buscar la moneda completa en las opciones
         const monedaCompleta = options.find(
           opt => opt.value === selectedValue
         )?.moneda
-        console.log('Moneda completa encontrada:', monedaCompleta)
         onChange(selectedValue, monedaCompleta)
       }
     }
@@ -88,10 +81,6 @@ export const MonedaSelect = forwardRef<any, MonedaSelectProps>(
         style={{ width: '100%' }}
         value={value}
         onChange={(selectedValue, option) => {
-          console.log('Select onChange directo Moneda:', {
-            selectedValue,
-            option,
-          })
           handleChange(selectedValue, option)
         }}
         options={options}

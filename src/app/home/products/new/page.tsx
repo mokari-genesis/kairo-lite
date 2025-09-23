@@ -64,7 +64,6 @@ export default function NewProduct() {
             tipo: 'sugerido',
             precio: parseFloat(values.precio),
           })
-          console.log('Precio sugerido creado exitosamente')
         } catch (priceError) {
           console.error('Error creating suggested price:', priceError)
           // No mostramos error al usuario ya que el producto ya se creó exitosamente

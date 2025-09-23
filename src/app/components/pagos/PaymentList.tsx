@@ -18,78 +18,78 @@ export const PaymentList: React.FC<PaymentListProps> = ({
   loading,
   onEdit,
   onDelete,
-  isVendido
+  isVendido,
 }) => {
   const columns = [
     {
       title: 'Método de Pago',
       dataIndex: 'metodoPagoNombre',
       key: 'metodoPagoNombre',
-      render: (text: string, record: VentaPago) => 
-        text || record.metodo_pago || '-'
+      render: (text: string, record: VentaPago) =>
+        text || record.metodo_pago || '-',
     },
     {
       title: 'Moneda',
       dataIndex: 'monedaCodigo',
       key: 'monedaCodigo',
-      render: (text: string, record: VentaPago) => 
-        text || record.moneda_codigo || '-'
+      render: (text: string, record: VentaPago) =>
+        text || record.moneda_codigo || '-',
     },
     {
       title: 'Monto',
       dataIndex: 'monto',
       key: 'monto',
-      render: (monto: number, record: VentaPago) => 
-        formatCurrency(record.monedaCodigo || record.moneda_codigo, monto)
+      render: (monto: number, record: VentaPago) =>
+        formatCurrency(record.monedaCodigo || record.moneda_codigo, monto),
     },
     {
       title: 'Referencia',
       dataIndex: 'referencia_pago',
       key: 'referencia_pago',
-      render: (text: string) => text || '-'
+      render: (text: string) => text || '-',
     },
     {
       title: 'Fecha',
       dataIndex: 'fecha',
       key: 'fecha',
-      render: (fecha: string) => 
-        fecha ? new Date(fecha).toLocaleString('es-GT') : '-'
+      render: (fecha: string) =>
+        fecha ? new Date(fecha).toLocaleString('es-GT') : '-',
     },
     {
       title: 'Acciones',
       key: 'actions',
-      render: (_, record: VentaPago) => (
-        <Space size="small">
+      render: (_: any, record: VentaPago) => (
+        <Space size='small'>
           <Button
-            type="link"
+            type='link'
             icon={<EditOutlined />}
             onClick={() => onEdit(record)}
             disabled={isVendido}
-            size="small"
+            size='small'
           >
             Editar
           </Button>
           <Popconfirm
-            title="¿Eliminar pago?"
-            description="Esta acción no se puede deshacer"
+            title='¿Eliminar pago?'
+            description='Esta acción no se puede deshacer'
             onConfirm={() => onDelete(record.id)}
-            okText="Sí, eliminar"
-            cancelText="Cancelar"
+            okText='Sí, eliminar'
+            cancelText='Cancelar'
             disabled={isVendido}
           >
             <Button
-              type="link"
+              type='link'
               danger
               icon={<DeleteOutlined />}
               disabled={isVendido}
-              size="small"
+              size='small'
             >
               Eliminar
             </Button>
           </Popconfirm>
         </Space>
-      )
-    }
+      ),
+    },
   ]
 
   return (
@@ -97,9 +97,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({
       columns={columns}
       dataSource={pagos}
       loading={loading}
-      rowKey="id"
+      rowKey='id'
       pagination={false}
-      size="small"
+      size='small'
       scroll={{ x: 600 }}
     />
   )

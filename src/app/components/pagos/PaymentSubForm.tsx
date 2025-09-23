@@ -61,19 +61,12 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
     field: keyof VentaPago,
     value: any
   ) => {
-    console.log(`Actualizando pago ${index}, campo: ${field}, valor:`, value)
-    console.log('Estado actual de pagos antes del cambio:', pagos)
-
     setPagos(prevPagos => {
       const newPagos = [...prevPagos]
       newPagos[index] = {
         ...newPagos[index],
         [field]: value,
       }
-      console.log(
-        'Nuevo estado de pagos después del cambio:',
-        JSON.stringify(newPagos, null, 2)
-      )
       onPaymentsChange(newPagos)
       return newPagos
     })
@@ -93,7 +86,6 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
         <MetodoPagoSelect
           value={record.metodo_pago_id || undefined}
           onChange={(value, metodo) => {
-            console.log('MetodoPagoSelect onChange:', { value, metodo, index })
             handlePaymentChange(index, 'metodo_pago_id', value)
             handlePaymentChange(index, 'metodoPagoNombre', metodo?.nombre)
           }}
@@ -115,7 +107,6 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
         <MonedaSelect
           value={record.moneda_id || undefined}
           onChange={(value, moneda) => {
-            console.log('MonedaSelect onChange:', { value, moneda, index })
             handlePaymentChange(index, 'moneda_id', value)
             handlePaymentChange(index, 'monedaCodigo', moneda?.codigo)
           }}

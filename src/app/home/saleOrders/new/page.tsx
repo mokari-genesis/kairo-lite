@@ -235,9 +235,6 @@ export default function NewPurchase() {
       // Validar que si hay pagos, la suma no exceda el total
       const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
 
-      // Filtrar pagos válidos (que tengan metodo_pago_id, moneda_id y monto > 0)
-      console.log('Pagos originales:', JSON.stringify(pagos))
-
       const pagosValidos = pagos.filter(pago => {
         const isValid =
           pago.metodo_pago_id !== undefined &&
@@ -247,18 +244,8 @@ export default function NewPurchase() {
           pago.moneda_id !== null &&
           pago.moneda_id > 0 &&
           pago.monto > 0
-        console.log(`Pago ${pago.id}:`, {
-          metodo_pago_id: pago.metodo_pago_id,
-          moneda_id: pago.moneda_id,
-          monto: pago.monto,
-          isValid,
-          tipo_metodo_pago_id: typeof pago.metodo_pago_id,
-          tipo_moneda_id: typeof pago.moneda_id,
-        })
         return isValid
       })
-
-      console.log('Pagos válidos:', pagosValidos)
 
       const totalPagos = pagosValidos.reduce(
         (acc, pago) => acc + (pago.monto || 0),
@@ -305,12 +292,10 @@ export default function NewPurchase() {
         estado: 'vendido',
         moneda_id: 1,
         moneda: '$',
-        referencia_pago: values.referencia_pago || '',
+        comentario: values.comentario || '',
         detalle: details,
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
-
-      console.log('Datos a enviar a la API:', JSON.stringify(data))
 
       const confirm = await modal.confirm({
         title: 'Generar venta',
@@ -509,8 +494,8 @@ export default function NewPurchase() {
             <Row>
               <Col span={24}>
                 <Space direction='vertical' style={{ width: '100%' }}>
-                  <label>Referencia de Pago (Opcional)</label>
-                  <Form.Item style={{ marginBottom: 0 }} name='referencia_pago'>
+                  <label>Comentario (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='comentario'>
                     <Input placeholder='Número de transacción, cheque, etc.' />
                   </Form.Item>
                 </Space>
@@ -563,10 +548,6 @@ export default function NewPurchase() {
             <PaymentSubForm
               total={details.reduce((acc, curr) => acc + curr.subtotal, 0)}
               onPaymentsChange={newPagos => {
-                console.log(
-                  'PaymentSubForm onPaymentsChange recibido:',
-                  JSON.stringify(newPagos, null, 2)
-                )
                 setPagos(newPagos)
               }}
             />

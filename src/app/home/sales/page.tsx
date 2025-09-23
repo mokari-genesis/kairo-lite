@@ -52,11 +52,11 @@ function HomeSales() {
       'Descripción Producto': sale.producto_descripcion,
       'Estado de la venta': sale.estado_venta,
       'Cantidad vendida': sale.cantidad,
-      'Metodo de pago': sale.metodo_pago,
+      'Metodo de pago': sale.metodos_pago,
       'Tipo de precio aplicado': sale.tipo_precio_aplicado,
       Precio: sale.precio_unitario,
       'Total venta': sale.total_venta,
-      'Referencia de pago': sale.referencia_pago,
+      Comentario: sale.comentario,
     }))
 
     // Crear libro de Excel
@@ -87,7 +87,7 @@ function HomeSales() {
     // Agrupar por método de pago
     const paymentMethodCounts = soldSales.reduce(
       (acc: Record<string, { count: number; total: number }>, curr) => {
-        const method = curr.metodo_pago || 'Sin método'
+        const method = curr.metodos_pago || 'Sin método'
         if (!acc[method]) {
           acc[method] = { count: 0, total: 0 }
         }

@@ -29,6 +29,8 @@ import { getReporteStockActual } from '@/app/api/reportes'
 import { use } from 'react'
 import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
+import { getMetodosPago } from '@/app/api/metodos-pago'
+import { getMonedas } from '@/app/api/monedas'
 
 interface PurchaseDetail {
   producto_id: number
@@ -98,7 +100,7 @@ export default function EditPurchase({
                 label: `${currentClient.nombre} - ${currentClient.nit}`,
                 details: currentClient,
               },
-              referencia_pago: (sale as any).referencia_pago,
+              comentario: (sale as any).comentario,
             })
           }
 
@@ -166,13 +168,6 @@ export default function EditPurchase({
     }
   }, [details])
 
-  // Monitorear cambios en el estado de pagos
-  useEffect(() => {
-    console.log('=== PAGOS STATE CHANGED ===')
-    console.log('New pagos state:', pagos)
-    console.log('Pagos length:', pagos.length)
-  }, [pagos])
-
   // Función para sincronizar pagos desde PaymentsSection
   const syncPayments = async () => {
     try {
@@ -183,31 +178,85 @@ export default function EditPurchase({
     }
   }
 
-  // Funciones para manejar pagos localmente
-  const handleAddPayment = (payment: Omit<VentaPago, 'id'>) => {
-    const newPayment: VentaPago = {
-      ...payment,
-      id: Date.now(), // ID temporal para pagos nuevos
+  // Funciones auxiliares para obtener nombres de métodos de pago y monedas
+  const getMetodoPagoNombre = async (metodoPagoId: number): Promise<string> => {
+    try {
+      const metodosPago = await getMetodosPago({ activo: 1 })
+      const metodo = metodosPago.find(m => m.id === metodoPagoId)
+      return metodo?.nombre || `Método ${metodoPagoId}`
+    } catch (error) {
+      console.error('Error getting payment method name:', error)
+      return `Método ${metodoPagoId}`
     }
-    console.log('=== ADDING PAYMENT ===')
-    console.log('New payment:', newPayment)
-    console.log('Current pagos before:', pagos)
-
-    setPagos(prev => {
-      const updated = [...prev, newPayment]
-      console.log('Updated pagos state:', updated)
-      console.log('=== PAYMENT ADDED ===')
-      return updated
-    })
   }
 
-  const handleEditPayment = (
+  const getMonedaCodigo = async (monedaId: number): Promise<string> => {
+    try {
+      const monedas = await getMonedas({ activo: 1 })
+      const moneda = monedas.find(m => m.id === monedaId)
+      return moneda?.codigo || `Moneda ${monedaId}`
+    } catch (error) {
+      console.error('Error getting currency code:', error)
+      return `Moneda ${monedaId}`
+    }
+  }
+
+  // Funciones para manejar pagos localmente
+  const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
+    try {
+      // Obtener nombres de método de pago y moneda
+      const [metodoPagoNombre, monedaCodigo] = await Promise.all([
+        getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        ),
+        getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
+      ])
+
+      const newPayment: VentaPago = {
+        ...payment,
+        id: Date.now(), // ID temporal para pagos nuevos
+        metodoPagoNombre,
+        monedaCodigo,
+        fecha: new Date().toISOString(), // Fecha actual
+      }
+
+      setPagos(prev => [...prev, newPayment])
+    } catch (error) {
+      console.error('Error adding payment:', error)
+      message.error('Error al agregar el pago')
+    }
+  }
+
+  const handleEditPayment = async (
     paymentId: number,
     payment: Partial<VentaPago>
   ) => {
-    setPagos(prev =>
-      prev.map(p => (p.id === paymentId ? { ...p, ...payment } : p))
-    )
+    try {
+      let updatedPayment = { ...payment }
+
+      // Si se cambió el método de pago, obtener el nombre
+      if (payment.metodo_pago_id || payment.metodoPagoId) {
+        const metodoPagoNombre = await getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        )
+        updatedPayment.metodoPagoNombre = metodoPagoNombre
+      }
+
+      // Si se cambió la moneda, obtener el código
+      if (payment.moneda_id || payment.monedaId) {
+        const monedaCodigo = await getMonedaCodigo(
+          payment.moneda_id || payment.monedaId || 0
+        )
+        updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      setPagos(prev =>
+        prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
+      )
+    } catch (error) {
+      console.error('Error editing payment:', error)
+      message.error('Error al editar el pago')
+    }
   }
 
   const handleDeletePayment = (paymentId: number) => {
@@ -438,10 +487,6 @@ export default function EditPurchase({
 
       // Validar que si hay pagos, la suma no exceda el total
       const totalVenta = updatedTotal
-
-      // Filtrar pagos válidos (que tengan metodo_pago_id, moneda_id y monto > 0)
-      console.log('Pagos originales:', JSON.stringify(pagos))
-
       const pagosValidos = pagos.filter(pago => {
         const isValid =
           pago.metodo_pago_id !== undefined &&
@@ -453,12 +498,8 @@ export default function EditPurchase({
           pago.monto !== undefined &&
           pago.monto !== null &&
           pago.monto > 0
-
-        console.log(`Pago ${JSON.stringify(pago)} es válido:`, isValid)
         return isValid
       })
-
-      console.log('Pagos válidos:', pagosValidos)
 
       const totalPagos = pagosValidos.reduce(
         (acc, pago) => acc + (pago.monto || 0),
@@ -500,9 +541,6 @@ export default function EditPurchase({
         message.warning(mensaje)
       }
 
-      console.log('Final pagos state before sending:', pagos)
-      console.log('Pagos válidos to send:', pagosValidos)
-
       const data = {
         venta_id: parseInt(resolvedParams.id),
         empresa_id: 1,
@@ -513,7 +551,7 @@ export default function EditPurchase({
         detalle: details,
         moneda_id: 1,
         moneda: '$',
-        referencia_pago: values.referencia_pago || '',
+        comentario: values.comentario || '',
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
 
@@ -742,8 +780,8 @@ export default function EditPurchase({
             <Row>
               <Col span={24}>
                 <Space direction='vertical' style={{ width: '100%' }}>
-                  <label>Referencia de Pago (Opcional)</label>
-                  <Form.Item style={{ marginBottom: 0 }} name='referencia_pago'>
+                  <label>Comentario (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='comentario'>
                     <Input placeholder='Número de transacción, cheque, etc.' />
                   </Form.Item>
                 </Space>
