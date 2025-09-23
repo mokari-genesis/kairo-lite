@@ -73,7 +73,6 @@ export const createProductoPrecio = async (
   productoPrecio: CreateProductoPrecioRequest
 ): Promise<LambdaResponse<any>> => {
   try {
-    console.log('Creating product price:', productoPrecio)
     const response = await fetchApi<LambdaResponse<any>>({
       api: API_URL,
       service: '/productos-precios',
