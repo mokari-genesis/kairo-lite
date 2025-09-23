@@ -8,11 +8,21 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useClients } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import { queryClient, QueryKey } from '@/app/utils/query'
-import { Card, message, Space } from 'antd'
+import {
+  Card,
+  message,
+  Space,
+  Row,
+  Col,
+  Statistic,
+  Badge,
+  Tag,
+  Button,
+} from 'antd'
 import { motion } from 'framer-motion'
 import {
   ClientColumns,
@@ -23,6 +33,8 @@ import {
   updateClient,
   UpdateClientRequest,
 } from '@/app/api/clients'
+import { TeamOutlined, UserOutlined, BankOutlined } from '@ant-design/icons'
+import * as XLSX from 'xlsx'
 
 function Home() {
   const [isLoading, setIsLoading] = useState(false)
@@ -83,6 +95,58 @@ function Home() {
 
   const { data: dataCLients, isLoading: clientLoading } = useClients(filters)
 
+  // Calcular estadísticas de clientes
+  const clientsStats = useMemo(() => {
+    if (!dataCLients || dataCLients.length === 0) {
+      return {
+        totalClientes: 0,
+        clientesEmpresa: 0,
+        clientesPersona: 0,
+      }
+    }
+
+    const totalClientes = dataCLients.length
+    const clientesEmpresa = dataCLients.filter(
+      client => client.tipo === 'empresa'
+    ).length
+    const clientesPersona = dataCLients.filter(
+      client => client.tipo === 'persona'
+    ).length
+
+    return {
+      totalClientes,
+      clientesEmpresa,
+      clientesPersona,
+    }
+  }, [dataCLients])
+
+  const handleExportExcel = () => {
+    if (!dataCLients || dataCLients.length === 0) {
+      message.warning('No hay datos para exportar')
+      return
+    }
+
+    // Preparar los datos para Excel
+    const excelData = dataCLients.map(client => ({
+      ID: client.id,
+      Nombre: client.nombre,
+      Tipo: client.tipo,
+      NIT: client.nit,
+      Email: client.email,
+      Teléfono: client.telefono,
+      Dirección: client.direccion,
+    }))
+
+    // Crear libro de Excel
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(excelData)
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
+
+    // Generar archivo
+    XLSX.writeFile(wb, 'clientes.xlsx')
+    message.success('Archivo exportado exitosamente')
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -98,7 +162,100 @@ function Home() {
         }}
       >
         <Space direction='vertical' size='large' style={{ width: '100%' }}>
-          <PageHeader title='Clientes' onNewClick={handleNewClick} />
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <PageHeader title='Clientes' onNewClick={handleNewClick} />
+            <div
+              style={{
+                margin: 10,
+                width: '100%',
+                textAlign: 'right',
+              }}
+            >
+              <Button
+                type='primary'
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
+              >
+                Exportar a Excel
+              </Button>
+            </div>
+          </div>
+
+          {/* Tarjetas de Estadísticas */}
+          <Row gutter={[16, 16]} justify='center'>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Clientes
+                    </span>
+                  }
+                  value={clientsStats.totalClientes}
+                  prefix={<TeamOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Empresas
+                    </span>
+                  }
+                  value={clientsStats.clientesEmpresa}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Personas
+                    </span>
+                  }
+                  value={clientsStats.clientesPersona}
+                  prefix={<UserOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
           <FilterSection
             filters={ClientFilterConfigs}
