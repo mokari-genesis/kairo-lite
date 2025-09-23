@@ -691,6 +691,8 @@ function ReportesPage() {
         valorInventarioMayorista: 0,
         valorInventarioDistribuidores: 0,
         valorInventarioEspecial: 0,
+        promedioVenta: 0,
+        ventasCompletadas: 0,
       }
     }
 
@@ -711,6 +713,18 @@ function ReportesPage() {
       }, 0)
       const totalPendiente = totalVentas - totalPagado
 
+      const promedioVenta =
+        totalRegistros > 0 ? totalVentas / totalRegistros : 0
+      const ventasCompletadas = data.filter(record => {
+        const total = parseFloat(record.total_venta || 0)
+        const pagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
+        return total > 0 && pagado >= total
+      }).length
+
       return {
         totalRegistros,
         totalVentas,
@@ -722,6 +736,8 @@ function ReportesPage() {
         valorInventarioMayorista: 0,
         valorInventarioDistribuidores: 0,
         valorInventarioEspecial: 0,
+        promedioVenta,
+        ventasCompletadas,
       }
     } else if (selectedReport === 'stock-actual') {
       const totalStock = data.reduce(
@@ -765,6 +781,8 @@ function ReportesPage() {
         valorInventarioMayorista,
         valorInventarioDistribuidores,
         valorInventarioEspecial,
+        promedioVenta: 0,
+        ventasCompletadas: 0,
       }
     }
 
@@ -779,6 +797,10 @@ function ReportesPage() {
       valorInventarioMayorista: 0,
       valorInventarioDistribuidores: 0,
       valorInventarioEspecial: 0,
+      promedioVenta: 0,
+      ventasCompletadas: 0,
+      ventasParciales: 0,
+      porcentajeCobranza: 0,
     }
   }, [data, selectedReport])
 
@@ -980,6 +1002,61 @@ function ReportesPage() {
             </>
           )}
         </Row>
+
+        {/* Segunda fila de estadísticas para ventas con pagos */}
+        {selectedReport === 'ventas-con-pagos' && (
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Promedio por Venta
+                    </span>
+                  }
+                  value={reportStats.promedioVenta}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Completadas
+                    </span>
+                  }
+                  value={reportStats.ventasCompletadas}
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
 
         {/* Segunda fila de estadísticas para stock actual */}
         {selectedReport === 'stock-actual' && (

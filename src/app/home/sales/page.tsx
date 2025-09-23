@@ -8,12 +8,21 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSales, useMetodosPago } from '@/app/hooks/useHooks'
-import { Card, Col, Row, Space, Button, message } from 'antd'
+import { Card, Col, Row, Space, Button, message, Statistic } from 'antd'
 import { motion } from 'framer-motion'
+import {
+  ShoppingCartOutlined,
+  DollarOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  DatabaseOutlined,
+  BarChartOutlined,
+  UserOutlined,
+  CalendarOutlined,
+} from '@ant-design/icons'
 import { Salescolumns, SalesfilterConfigs } from '@/app/model/salesTableModel'
-import { SummaryCards } from '../../components/SummaryCards'
 import * as XLSX from 'xlsx'
 
 function HomeSales() {
@@ -123,6 +132,55 @@ function HomeSales() {
   }
 
   const paymentStats = getPaymentMethodStats()
+
+  // Calcular estadísticas de ventas
+  const salesStats = useMemo(() => {
+    if (!dataSales || dataSales.length === 0) {
+      return {
+        totalRegistros: 0,
+        totalVentasConfirmadas: 0,
+        totalVentasCanceladas: 0,
+        promedioVenta: 0,
+        ventasCompletadas: 0,
+        totalClientes: 0,
+      }
+    }
+
+    const totalRegistros = dataSales.length
+    const ventasConfirmadas = dataSales.filter(
+      sale => sale.estado_venta === 'vendido'
+    )
+    const ventasCanceladas = dataSales.filter(
+      sale => sale.estado_venta === 'cancelado'
+    )
+
+    const totalVentasConfirmadas = ventasConfirmadas.reduce(
+      (sum, sale) => sum + (parseFloat(sale.total_venta) || 0),
+      0
+    )
+    const totalVentasCanceladas = ventasCanceladas.reduce(
+      (sum, sale) => sum + (parseFloat(sale.total_venta) || 0),
+      0
+    )
+
+    const promedioVenta =
+      ventasConfirmadas.length > 0
+        ? totalVentasConfirmadas / ventasConfirmadas.length
+        : 0
+
+    const ventasCompletadas = ventasConfirmadas.length
+    const totalClientes = new Set(dataSales.map(sale => sale.cliente_nombre))
+      .size
+
+    return {
+      totalRegistros,
+      totalVentasConfirmadas,
+      totalVentasCanceladas,
+      promedioVenta,
+      ventasCompletadas,
+      totalClientes,
+    }
+  }, [dataSales])
 
   // Función para generar colores únicos basados en el ID de venta
   const generateColorForSalesId = (salesId: string | number): string => {
@@ -259,6 +317,160 @@ function HomeSales() {
               Exportar a Excel
             </Button>
           </div>
+
+          {/* Tarjetas de Estadísticas */}
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Registros
+                    </span>
+                  }
+                  value={salesStats.totalRegistros}
+                  prefix={<DatabaseOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Confirmadas
+                    </span>
+                  }
+                  value={salesStats.totalVentasConfirmadas}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Canceladas
+                    </span>
+                  }
+                  value={salesStats.totalVentasCanceladas}
+                  precision={2}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Promedio por Venta
+                    </span>
+                  }
+                  value={salesStats.promedioVenta}
+                  precision={2}
+                  prefix={<BarChartOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Segunda fila de estadísticas */}
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Completadas
+                    </span>
+                  }
+                  value={salesStats.ventasCompletadas}
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Clientes
+                    </span>
+                  }
+                  value={salesStats.totalClientes}
+                  prefix={<UserOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
           <div
             style={{
               backgroundColor: '#f8f9fa',
@@ -346,71 +558,6 @@ function HomeSales() {
               expandRowByClick: false,
               rowExpandable: () => true,
             }}
-          />
-
-          <SummaryCards
-            items={[
-              {
-                title: 'Total ventas confirmadas',
-                value:
-                  dataSales
-                    ?.filter(sale => sale.estado_venta === 'vendido')
-                    .reduce(
-                      (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
-                      0
-                    ) || 0,
-                prefix: '$ ',
-                color: '#52c41a',
-              },
-              {
-                title: 'Total ventas canceladas',
-                value:
-                  dataSales
-                    ?.filter(sale => sale.estado_venta === 'cancelado')
-                    .reduce(
-                      (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
-                      0
-                    ) || 0,
-                prefix: '$ ',
-                color: '#f5222d',
-              },
-            ]}
-          />
-          <SummaryCards
-            items={[
-              {
-                title: 'Producto más vendido',
-                value: (() => {
-                  const soldProducts =
-                    dataSales?.filter(
-                      sale => sale.estado_venta === 'vendido'
-                    ) || []
-                  if (soldProducts.length === 0) return 'No hay ventas'
-
-                  const productCounts = soldProducts.reduce(
-                    (acc: Record<string, number>, curr) => {
-                      const productName =
-                        curr.producto_descripcion || 'Desconocido'
-                      acc[productName] =
-                        (acc[productName] || 0) + (curr.cantidad || 0)
-                      return acc
-                    },
-                    {}
-                  )
-
-                  const sortedProducts = Object.entries(productCounts).sort(
-                    (a, b) => b[1] - a[1]
-                  )
-                  const [mostSoldProduct, quantity] = sortedProducts[0] || [
-                    'No hay ventas',
-                    0,
-                  ]
-
-                  return `${mostSoldProduct} (${quantity} unidades)`
-                })(),
-                color: '#112345',
-              },
-            ]}
           />
 
           {/* Métodos de Pago Section */}
