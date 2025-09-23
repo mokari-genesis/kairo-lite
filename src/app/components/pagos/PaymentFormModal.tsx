@@ -49,6 +49,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             initialValues.metodoPagoId || initialValues.metodo_pago_id,
           moneda_id: initialValues.monedaId || initialValues.moneda_id,
           monto: initialValues.monto,
+          referencia_pago: initialValues.referencia_pago,
         })
         setMonto(initialValues.monto)
       } else {
@@ -157,6 +158,13 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
             }
             parser={value => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+          />
+        </Form.Item>
+
+        <Form.Item label='Referencia (Opcional)' name='referencia_pago'>
+          <Input
+            placeholder='Número de transacción, cheque, etc.'
+            maxLength={50}
           />
         </Form.Item>
 

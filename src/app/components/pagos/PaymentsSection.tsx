@@ -126,6 +126,8 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
         return 'success'
       case 'cancelado':
         return 'error'
+      case 'pendiente':
+        return 'processing'
       default:
         return 'default'
     }
@@ -137,6 +139,8 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
         return 'Vendido'
       case 'cancelado':
         return 'Cancelado'
+      case 'pendiente':
+        return 'Pendiente'
       default:
         return estado
     }

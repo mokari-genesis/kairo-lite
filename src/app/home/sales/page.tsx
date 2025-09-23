@@ -107,9 +107,6 @@ function HomeSales() {
       }))
       .sort((a, b) => b.count - a.count)
 
-    // Debug: mostrar los métodos encontrados
-    console.log('Métodos de pago encontrados:', sortedMethods)
-
     // Si solo hay un método de pago, mostrar solo el más usado
     if (sortedMethods.length === 1) {
       return {
@@ -350,18 +347,6 @@ function HomeSales() {
 
           <SummaryCards
             items={[
-              {
-                title: 'Total ventas generadas',
-                value:
-                  dataSales
-                    ?.filter(sale => sale.estado_venta === 'vendido')
-                    .reduce(
-                      (acc, curr) => acc + (parseFloat(curr.total_venta) || 0),
-                      0
-                    ) || 0,
-                prefix: '$ ',
-                color: '#1890ff',
-              },
               {
                 title: 'Total ventas confirmadas',
                 value:

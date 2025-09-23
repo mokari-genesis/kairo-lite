@@ -24,8 +24,10 @@ import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
-import { PaymentSubForm } from '@/app/components/pagos/PaymentSubForm'
-import { VentaPago } from '@/app/api/pagos'
+import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
+import { Venta, VentaPago } from '@/app/api/pagos'
+import { getMetodosPago } from '@/app/api/metodos-pago'
+import { getMonedas } from '@/app/api/monedas'
 
 interface PurchaseDetail {
   producto_id: number
@@ -54,6 +56,23 @@ export default function NewPurchase() {
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [pagos, setPagos] = useState<VentaPago[]>([])
+  const [ventaData, setVentaData] = useState<Venta | null>(null)
+
+  // Crear objeto Venta para la sección de pagos
+  useEffect(() => {
+    const total = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+    const venta: Venta = {
+      id: 0, // ID temporal para ventas nuevas
+      total,
+      estado: 'pendiente',
+      moneda_id: 1, // Por defecto GTQ
+      pagos: pagos,
+      totalPagado: pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+      saldoPendiente:
+        total - pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+    }
+    setVentaData(venta)
+  }, [details, pagos])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -208,6 +227,91 @@ export default function NewPurchase() {
     const newDetails = [...details]
     newDetails.splice(index, 1)
     setDetails(newDetails)
+  }
+
+  // Funciones auxiliares para obtener nombres de métodos de pago y monedas
+  const getMetodoPagoNombre = async (metodoPagoId: number): Promise<string> => {
+    try {
+      const metodosPago = await getMetodosPago({ activo: 1 })
+      const metodo = metodosPago.find(m => m.id === metodoPagoId)
+      return metodo?.nombre || `Método ${metodoPagoId}`
+    } catch (error) {
+      console.error('Error getting payment method name:', error)
+      return `Método ${metodoPagoId}`
+    }
+  }
+
+  const getMonedaCodigo = async (monedaId: number): Promise<string> => {
+    try {
+      const monedas = await getMonedas({ activo: 1 })
+      const moneda = monedas.find(m => m.id === monedaId)
+      return moneda?.codigo || `Moneda ${monedaId}`
+    } catch (error) {
+      console.error('Error getting currency code:', error)
+      return `Moneda ${monedaId}`
+    }
+  }
+
+  // Handlers para gestión de pagos
+  const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
+    try {
+      // Obtener nombres de método de pago y moneda
+      const [metodoPagoNombre, monedaCodigo] = await Promise.all([
+        getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        ),
+        getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
+      ])
+
+      const newPayment: VentaPago = {
+        ...payment,
+        id: Date.now(), // ID temporal para pagos nuevos
+        metodoPagoNombre,
+        monedaCodigo,
+        fecha: new Date().toISOString(), // Fecha actual
+      }
+
+      setPagos(prev => [...prev, newPayment])
+    } catch (error) {
+      console.error('Error adding payment:', error)
+      message.error('Error al agregar el pago')
+    }
+  }
+
+  const handleEditPayment = async (
+    paymentId: number,
+    payment: Partial<VentaPago>
+  ) => {
+    try {
+      let updatedPayment = { ...payment }
+
+      // Si se cambió el método de pago, obtener el nombre
+      if (payment.metodo_pago_id || payment.metodoPagoId) {
+        const metodoPagoNombre = await getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        )
+        updatedPayment.metodoPagoNombre = metodoPagoNombre
+      }
+
+      // Si se cambió la moneda, obtener el código
+      if (payment.moneda_id || payment.monedaId) {
+        const monedaCodigo = await getMonedaCodigo(
+          payment.moneda_id || payment.monedaId || 0
+        )
+        updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      setPagos(prev =>
+        prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
+      )
+    } catch (error) {
+      console.error('Error editing payment:', error)
+      message.error('Error al editar el pago')
+    }
+  }
+
+  const handleDeletePayment = (paymentId: number) => {
+    setPagos(prev => prev.filter(p => p.id !== paymentId))
   }
 
   const onFinish = async (values: any) => {
@@ -544,13 +648,16 @@ export default function NewPurchase() {
               </h3>
             </div>
 
-            {/* Sub-formulario de Pagos */}
-            <PaymentSubForm
-              total={details.reduce((acc, curr) => acc + curr.subtotal, 0)}
-              onPaymentsChange={newPagos => {
-                setPagos(newPagos)
-              }}
-            />
+            {/* Sección de Pagos */}
+            {ventaData && (
+              <PaymentsSection
+                venta={ventaData}
+                pagos={pagos}
+                onAddPayment={handleAddPayment}
+                onEditPayment={handleEditPayment}
+                onDeletePayment={handleDeletePayment}
+              />
+            )}
 
             <Form.Item>
               <Space>
