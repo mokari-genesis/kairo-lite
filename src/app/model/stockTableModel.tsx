@@ -1,6 +1,17 @@
 import { ColumnConfig } from '../components/DataTable'
-import { Badge } from 'antd'
+import { Badge, Space, Tag } from 'antd'
 import { ReactNode } from 'react'
+import {
+  IdcardOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  BarcodeOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  CalendarOutlined,
+  CommentOutlined,
+  InboxOutlined,
+} from '@ant-design/icons'
 
 // Define FilterConfig interface since it's not exported
 export interface FilterConfig {
@@ -18,6 +29,12 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'id',
     type: 'text',
     disabled: true,
+    render: (value: any) => (
+      <Space>
+        <IdcardOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'venta_id',
@@ -25,18 +42,12 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'venta_id',
     type: 'text',
     disabled: true,
-    render: (venta_id: number) => {
-      return (
-        <span
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          {venta_id}
-        </span>
-      )
-    },
+    render: (value: any) => (
+      <Space>
+        <ShoppingCartOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 'bold', color: '#1890ff' }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'producto',
@@ -44,6 +55,12 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'producto',
     type: 'text',
     disabled: true,
+    render: (value: any) => (
+      <Space>
+        <InboxOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'producto_id',
@@ -51,37 +68,25 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'producto_id',
     type: 'text',
     disabled: true,
-    render: (venta_id: number) => {
-      return (
-        <span
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          {venta_id}
-        </span>
-      )
-    },
+    render: (value: any) => (
+      <Space>
+        <IdcardOutlined style={{ color: '#faad14' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'codigo_producto',
-    title: 'Codigo producto',
+    title: 'Código Producto',
     dataIndex: 'codigo_producto',
     type: 'text',
     disabled: true,
-    render: (venta_id: number) => {
-      return (
-        <span
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          {venta_id}
-        </span>
-      )
-    },
+    render: (value: any) => (
+      <Space>
+        <BarcodeOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'usuario',
@@ -89,33 +94,43 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'usuario',
     type: 'text',
     disabled: true,
+    render: (value: any) => (
+      <Space>
+        <UserOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'tipo_movimiento',
-    title: 'Tipo de movimiento',
+    title: 'Tipo de Movimiento',
     dataIndex: 'tipo_movimiento',
     type: 'select',
-    render: (tipo_movimiento: string) => {
-      const colors: Record<string, string> = {
-        entrada: '#87d068',
-        venta: '#108ee9',
-        ajuste: '#108ee9',
-        salida: '#f50',
-        devolucion: '#f50',
+    render: (value: any) => {
+      const tipoConfig = {
+        entrada: { color: 'green', icon: <ArrowUpOutlined />, text: 'Entrada' },
+        salida: { color: 'red', icon: <ArrowDownOutlined />, text: 'Salida' },
+        venta: { color: 'blue', icon: <ShoppingCartOutlined />, text: 'Venta' },
+        ajuste: { color: 'orange', icon: <InboxOutlined />, text: 'Ajuste' },
+        devolucion: {
+          color: 'purple',
+          icon: <ArrowUpOutlined />,
+          text: 'Devolución',
+        },
       }
+      const config =
+        tipoConfig[value as keyof typeof tipoConfig] || tipoConfig.entrada
+
       return (
-        <Badge
-          style={{
-            textAlign: 'center',
-            width: '100%',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-          color={colors[tipo_movimiento]}
-          text={
-            tipo_movimiento.charAt(0).toUpperCase() + tipo_movimiento.slice(1)
-          }
-        />
+        <Tag
+          color={config.color}
+          style={{ borderRadius: '6px', fontWeight: 'bold' }}
+        >
+          <Space>
+            {config.icon}
+            {config.text}
+          </Space>
+        </Tag>
       )
     },
     options: [
@@ -125,80 +140,97 @@ export const StockColumns: ColumnConfig[] = [
   },
   {
     key: 'cantidad',
-    title: 'Cantidad movimiento',
+    title: 'Cantidad',
     dataIndex: 'cantidad',
     type: 'text',
-    render: (venta_id: number) => {
-      return (
-        <span
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          {venta_id}
-        </span>
-      )
-    },
+    render: (value: any) => (
+      <Space>
+        <InboxOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'stock_actual',
-    title: 'Stock actual',
+    title: 'Stock Actual',
     dataIndex: 'stock_actual',
     type: 'text',
     disabled: true,
     render: (stock: number) => {
-      const color = stock > 10 ? '#87d068' : stock > 5 ? '#f5a623' : '#f50'
+      const stockConfig = {
+        color: stock > 10 ? '#52c41a' : stock > 5 ? '#faad14' : '#ff4d4f',
+        text: stock > 10 ? 'Alto' : stock > 5 ? 'Medio' : 'Bajo',
+      }
+
       return (
         stock && (
-          <Badge
-            style={{
-              textAlign: 'center',
-              width: '100%',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            color={color}
-            text={stock}
-          />
+          <Space>
+            <InboxOutlined style={{ color: stockConfig.color }} />
+            <span style={{ fontWeight: 'bold', color: stockConfig.color }}>
+              {stock}
+            </span>
+            <Tag
+              color={
+                stockConfig.color === '#52c41a'
+                  ? 'success'
+                  : stockConfig.color === '#faad14'
+                  ? 'warning'
+                  : 'error'
+              }
+              style={{ borderRadius: '4px', fontSize: '11px' }}
+            >
+              {stockConfig.text}
+            </Tag>
+          </Space>
         )
       )
     },
   },
   {
     key: 'stock_movimiento',
-    title: 'Stock antes del movimiento',
+    title: 'Stock Anterior',
     dataIndex: 'stock_movimiento',
     type: 'text',
     disabled: true,
     render: (stock: number) => {
-      const color = stock > 10 ? '#87d068' : stock > 5 ? '#f5a623' : '#f50'
+      const stockConfig = {
+        color: stock > 10 ? '#52c41a' : stock > 5 ? '#faad14' : '#ff4d4f',
+      }
+
       return (
-        <Badge
-          style={{
-            textAlign: 'center',
-            width: '100%',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-          color={color}
-          text={stock}
-        />
+        <Space>
+          <InboxOutlined style={{ color: stockConfig.color }} />
+          <span style={{ fontWeight: 'bold', color: stockConfig.color }}>
+            {stock}
+          </span>
+        </Space>
       )
     },
   },
   {
     key: 'fecha',
-    title: 'Fecha de creación',
+    title: 'Fecha de Creación',
     dataIndex: 'fecha',
     type: 'date',
     hidden: true,
+    render: (value: any) => (
+      <Space>
+        <CalendarOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'comentario',
     title: 'Comentario',
     dataIndex: 'comentario',
     type: 'text',
+    render: (value: any) => (
+      <Space>
+        <CommentOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 500 }}>{value || 'Sin comentario'}</span>
+      </Space>
+    ),
   },
 ]
 
