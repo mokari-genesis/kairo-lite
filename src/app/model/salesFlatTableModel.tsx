@@ -211,16 +211,6 @@ export const SalesFlatfilterConfigs: FilterConfig[] = [
       { value: 'cancelado', label: 'Cancelado' },
     ],
   },
-  {
-    type: 'select' as const,
-    key: 'con_saldo_pendiente',
-    placeholder: 'Con Saldo Pendiente',
-    width: '20%',
-    options: [
-      { value: 'true', label: 'Sí' },
-      { value: 'false', label: 'No' },
-    ],
-  },
 ]
 
 const colors: Record<string, string> = {

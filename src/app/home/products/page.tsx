@@ -8,7 +8,7 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useProducts } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import {
@@ -26,12 +26,25 @@ import {
   Row,
   Col,
   Modal,
+  Statistic,
+  Badge,
+  Tag,
 } from 'antd'
 import { motion } from 'framer-motion'
 import { columns } from '@/app/model/productsTableModel'
 import { filterConfigs } from '@/app/model/productsTableModel'
 import { ProductoPreciosManager } from '@/app/components/ProductoPreciosManager'
 import * as XLSX from 'xlsx'
+import {
+  ProductOutlined,
+  ShoppingOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  DollarOutlined,
+  InboxOutlined,
+  TagOutlined,
+  ShopOutlined,
+} from '@ant-design/icons'
 
 function Home() {
   const [api, contextHolder] = notification.useNotification()
@@ -113,6 +126,55 @@ function Home() {
 
   const { data: dataProducts, isLoading: productLoading } = useProducts(filters)
 
+  // Calcular estadísticas de productos
+  const productsStats = useMemo(() => {
+    if (!dataProducts || dataProducts.length === 0) {
+      return {
+        totalProductos: 0,
+        productosActivos: 0,
+        productosInactivos: 0,
+        stockTotal: 0,
+        stockBajo: 0,
+        stockAgotado: 0,
+        valorInventario: 0,
+      }
+    }
+
+    const totalProductos = dataProducts.length
+    const productosActivos = dataProducts.filter(
+      product => product.estado === 'activo'
+    ).length
+    const productosInactivos = dataProducts.filter(
+      product => product.estado === 'inactivo'
+    ).length
+
+    const stockTotal = dataProducts.reduce(
+      (sum, product) => sum + product.stock,
+      0
+    )
+    const stockBajo = dataProducts.filter(
+      product => product.stock > 0 && product.stock <= 5
+    ).length
+    const stockAgotado = dataProducts.filter(
+      product => product.stock === 0
+    ).length
+
+    const valorInventario = dataProducts.reduce(
+      (sum, product) => sum + product.stock * product.precio,
+      0
+    )
+
+    return {
+      totalProductos,
+      productosActivos,
+      productosInactivos,
+      stockTotal,
+      stockBajo,
+      stockAgotado,
+      valorInventario,
+    }
+  }, [dataProducts])
+
   const handleExportExcel = () => {
     if (!dataProducts || dataProducts.length === 0) {
       message.warning('No hay datos para exportar')
@@ -183,28 +245,196 @@ function Home() {
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               alignItems: 'center',
             }}
           >
             <PageHeader title='Productos' onNewClick={handleNewClick} />
+            <div
+              style={{
+                margin: 10,
+                width: '100%',
+                textAlign: 'right',
+              }}
+            >
+              <Button
+                type='primary'
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
+              >
+                Exportar a Excel
+              </Button>
+            </div>
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginTop: -30,
-            }}
-          >
-            <Button
-              type='primary'
-              onClick={handleExportExcel}
-              icon={<span>📊</span>}
-            >
-              Exportar a Excel
-            </Button>
-          </div>
+          {/* Tarjetas de Estadísticas */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Productos
+                    </span>
+                  }
+                  value={productsStats.totalProductos}
+                  prefix={<ProductOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Productos Activos
+                    </span>
+                  }
+                  value={productsStats.productosActivos}
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Productos Inactivos
+                    </span>
+                  }
+                  value={productsStats.productosInactivos}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Stock Total
+                    </span>
+                  }
+                  value={productsStats.stockTotal}
+                  prefix={<InboxOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Segunda fila de estadísticas */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Stock Bajo
+                    </span>
+                  }
+                  value={productsStats.stockBajo}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Stock Agotado
+                    </span>
+                  }
+                  value={productsStats.stockAgotado}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#333',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: '#333', opacity: 0.8 }}>
+                      Valor Inventario (precio sugerido)
+                    </span>
+                  }
+                  value={productsStats.valorInventario}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: '#333' }} />}
+                  valueStyle={{ color: '#333' }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
           <FilterSection
             filters={filterConfigs}
