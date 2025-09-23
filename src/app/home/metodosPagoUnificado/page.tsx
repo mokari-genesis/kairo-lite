@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   Card,
   Tabs,
@@ -100,6 +100,13 @@ export default function MetodosPagoUnificadoPage() {
     },
     [filters, loadTableData, updateFilters, handlePageChange]
   )
+
+  // Load summary data when summary tab is active
+  useEffect(() => {
+    if (activeTab === 'summary') {
+      loadSummaryData()
+    }
+  }, [activeTab, loadSummaryData])
 
   // Handle tab change
   const handleTabChange = useCallback(
@@ -248,7 +255,7 @@ export default function MetodosPagoUnificadoPage() {
               <Text style={{ color: '#52c41a' }}>
                 {formatCurrency(
                   selectedRecord.moneda_simbolo,
-                  parseFloat(selectedRecord.total_pagado_venta)
+                  parseFloat(selectedRecord.monto_pago)
                 )}
               </Text>
             </Descriptions.Item>
@@ -449,6 +456,9 @@ export default function MetodosPagoUnificadoPage() {
             <UnifiedPaymentMethodsSummary
               filters={summaryFilters}
               onFiltersChange={handleSummaryFiltersChange}
+              summaryData={summaryData}
+              loading={loading}
+              error={error}
             />
           </TabPane>
 

@@ -191,17 +191,17 @@ export const UnifiedPaymentMethodsTable: React.FC<
       ),
     },
     {
-      title: 'Monto Total',
-      dataIndex: 'total_venta',
-      key: 'total_venta',
+      title: 'Monto Transaccion',
+      dataIndex: 'monto_pago',
+      key: 'monto_pago',
       width: 120,
       align: 'right',
       render: (value, record) => (
         <Text strong>
-          {formatCurrency(record.moneda_simbolo, parseFloat(value))}
+          {formatCurrency(record.moneda_codigo, parseFloat(value))}
         </Text>
       ),
-      sorter: (a, b) => parseFloat(a.total_venta) - parseFloat(b.total_venta),
+      sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
     },
     {
       title: 'Monto Pagado',
@@ -218,7 +218,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
             ),
           }}
         >
-          {formatCurrency(record.moneda_simbolo, parseFloat(value))}
+          {formatCurrency(record.moneda_codigo, parseFloat(value))}
         </Text>
       ),
       sorter: (a, b) =>
@@ -232,7 +232,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
       align: 'right',
       render: (value, record) => (
         <Text type={parseFloat(value) > 0 ? 'danger' : 'success'}>
-          {formatCurrency(record.moneda_simbolo, parseFloat(value))}
+          {formatCurrency(record.moneda_codigo, parseFloat(value))}
         </Text>
       ),
       sorter: (a, b) =>

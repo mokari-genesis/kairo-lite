@@ -2,7 +2,10 @@
  * Utilidades para formateo de moneda
  */
 
-export const formatCurrency = (monedaCodigo?: string, monto: number): string => {
+export const formatCurrency = (
+  monedaCodigo?: string,
+  monto?: number
+): string => {
   const currencyCode = monedaCodigo || 'GTQ'
   const amount = Number(monto) || 0
 
@@ -34,13 +37,16 @@ export const calculateSaldo = (total: number, totalPagado: number): number => {
 
 export const getCurrencySymbol = (monedaCodigo?: string): string => {
   const currencyCode = monedaCodigo || 'GTQ'
-  
+
   try {
     const formatter = new Intl.NumberFormat('es-GT', {
       style: 'currency',
       currency: currencyCode,
     })
-    return formatter.formatToParts(0).find(part => part.type === 'currency')?.value || 'Q'
+    return (
+      formatter.formatToParts(0).find(part => part.type === 'currency')
+        ?.value || 'Q'
+    )
   } catch (error) {
     return 'Q'
   }

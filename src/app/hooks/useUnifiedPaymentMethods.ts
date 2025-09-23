@@ -90,12 +90,41 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       setError(null)
 
       try {
-        const filtersToUse = newFilters || summaryFilters
-        const response = await getMetodosPagoUnificadoResumen(filtersToUse)
-        setSummaryData(response)
+        // Get current filters from state
+        const currentFilters = newFilters || summaryFilters
+        const response = await getMetodosPagoUnificadoResumen(currentFilters)
+
+        // Ensure we have the data array
+        const dataArray = Array.isArray(response.data) ? response.data : []
+
+        // Transform the API response to match expected structure
+        const transformedResponse = {
+          data: dataArray,
+          total_general: {
+            total_ventas: dataArray.reduce(
+              (sum, item) => sum + (item.total_ventas || 0),
+              0
+            ),
+            total_monto: dataArray.reduce(
+              (sum, item) => sum + parseFloat(item.total_ventas_monto || '0'),
+              0
+            ),
+            total_pagado: dataArray.reduce(
+              (sum, item) => sum + parseFloat(item.total_monto_pagado || '0'),
+              0
+            ),
+            total_pendiente: dataArray.reduce(
+              (sum, item) =>
+                sum + parseFloat(item.total_saldo_pendiente || '0'),
+              0
+            ),
+          },
+        }
+
+        setSummaryData(transformedResponse)
 
         if (newFilters) {
-          setSummaryFilters(filtersToUse)
+          setSummaryFilters(currentFilters)
         }
       } catch (err: any) {
         setError(err.message || 'Error al cargar los datos del resumen')
@@ -104,7 +133,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         setLoading(false)
       }
     },
-    [] // Remove summaryFilters dependency to avoid infinite loops
+    [] // Remove dependencies to avoid infinite loops
   )
 
   // Update filters

@@ -39,14 +39,20 @@ export interface MetodoPagoUnificado {
 }
 
 export interface MetodoPagoUnificadoResumen {
-  agrupacion: string
+  metodo_pago_id: number
+  metodo_pago: string
+  grupo_nombre: string | null
   total_ventas: number
-  total_monto: number
-  total_pagado: number
-  total_pendiente: number
-  promedio_monto: number
-  porcentaje_pagado: number
-  cantidad_registros: number
+  total_pagos: number
+  total_monto_pagado: string
+  promedio_monto_pago: string
+  monto_minimo: string
+  monto_maximo: string
+  total_ventas_monto: string
+  promedio_venta: string
+  total_saldo_pendiente: string
+  ventas_completadas: number
+  ventas_pendientes: number
 }
 
 export interface MetodosPagoUnificadoFilters {
@@ -91,6 +97,14 @@ export interface MetodosPagoUnificadoResponse {
   hasMore: boolean
 }
 
+// Raw API response interface
+export interface MetodosPagoUnificadoResumenApiResponse {
+  data: MetodoPagoUnificadoResumen[]
+  msg: string
+  status: string
+}
+
+// Transformed response interface
 export interface MetodosPagoUnificadoResumenResponse {
   data: MetodoPagoUnificadoResumen[]
   total_general: {
@@ -162,7 +176,7 @@ export const getMetodosPagoUnificado = async (
 
 export const getMetodosPagoUnificadoResumen = async (
   filters: MetodosPagoUnificadoResumenFilters
-): Promise<MetodosPagoUnificadoResumenResponse> => {
+): Promise<MetodosPagoUnificadoResumenApiResponse> => {
   try {
     const queryParams = new URLSearchParams()
 
@@ -173,25 +187,13 @@ export const getMetodosPagoUnificadoResumen = async (
       }
     })
 
-    const response = await fetchApi<
-      LambdaResponse<MetodosPagoUnificadoResumenResponse>
-    >({
+    const response = await fetchApi<any>({
       api: API_URL,
       service: `/metodos-pago-unificado/resumen?${queryParams.toString()}`,
       method: 'GET',
     })
 
-    return (
-      response.data || {
-        data: [],
-        total_general: {
-          total_ventas: 0,
-          total_monto: 0,
-          total_pagado: 0,
-          total_pendiente: 0,
-        },
-      }
-    )
+    return response as MetodosPagoUnificadoResumenApiResponse
   } catch (error: any) {
     console.error('Error fetching unified payment methods summary:', error)
     if (error.message) {
