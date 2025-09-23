@@ -1,0 +1,264 @@
+import { fetchApi, LambdaResponse } from './constants'
+import { getFriendlyErrorMessage } from '../utils/errorMessages'
+
+const API_URL = 'https://20qc8ho1uh.execute-api.us-east-1.amazonaws.com/prod'
+
+// Interfaces for the unified payment methods data structure
+export interface MetodoPagoUnificado {
+  empresa_id: number
+  empresa_nombre: string
+  venta_id: number
+  fecha_venta: string
+  fecha_venta_dia: string
+  estado_venta: string
+  estado_pago: string
+  total_venta: string
+  moneda_id: number
+  moneda_codigo: string
+  moneda_nombre: string
+  moneda_simbolo: string
+  comentario_venta?: string
+  cliente_id: number
+  cliente_nombre: string
+  cliente_telefono?: string
+  cliente_email?: string
+  usuario_id: number
+  usuario_nombre: string
+  pago_id: number
+  metodo_pago_id: number
+  metodo_pago: string
+  monto_pago: string
+  referencia_pago?: string
+  fecha_pago: string
+  fecha_pago_dia: string
+  total_pagado_venta: string
+  cantidad_pagos_venta: number
+  total_por_metodo_en_venta: string
+  saldo_pendiente_venta: string
+  venta_es_vendida_bool: number
+}
+
+export interface MetodoPagoUnificadoResumen {
+  agrupacion: string
+  total_ventas: number
+  total_monto: number
+  total_pagado: number
+  total_pendiente: number
+  promedio_monto: number
+  porcentaje_pagado: number
+  cantidad_registros: number
+}
+
+export interface MetodosPagoUnificadoFilters {
+  // Filtros básicos
+  empresa_id: number
+  venta_id?: number
+  cliente_id?: number
+  usuario_id?: number
+  metodo_pago_id?: number
+  moneda_id?: number
+  estado_venta?: string
+  estado_pago?: string
+
+  // Filtros de fecha
+  fecha_venta_inicio?: string // YYYY-MM-DD
+  fecha_venta_fin?: string // YYYY-MM-DD
+  fecha_pago_inicio?: string // YYYY-MM-DD
+  fecha_pago_fin?: string // YYYY-MM-DD
+
+  // Filtros adicionales
+  venta_es_vendida?: boolean
+  limit?: number
+  offset?: number
+}
+
+export interface MetodosPagoUnificadoResumenFilters
+  extends Omit<MetodosPagoUnificadoFilters, 'limit' | 'offset'> {
+  agrupar_por:
+    | 'metodo_pago'
+    | 'cliente'
+    | 'usuario'
+    | 'moneda'
+    | 'fecha_venta_dia'
+    | 'fecha_pago_dia'
+}
+
+export interface MetodosPagoUnificadoResponse {
+  data: MetodoPagoUnificado[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
+export interface MetodosPagoUnificadoResumenResponse {
+  data: MetodoPagoUnificadoResumen[]
+  total_general: {
+    total_ventas: number
+    total_monto: number
+    total_pagado: number
+    total_pendiente: number
+  }
+}
+
+// Service functions
+export const getMetodosPagoUnificado = async (
+  filters: MetodosPagoUnificadoFilters
+): Promise<MetodosPagoUnificadoResponse> => {
+  try {
+    const queryParams = new URLSearchParams()
+
+    // Add all filters to query params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value))
+      }
+    })
+
+    const response = await fetchApi<LambdaResponse<MetodoPagoUnificado[]>>({
+      api: API_URL,
+      service: `/metodos-pago-unificado?${queryParams.toString()}`,
+      method: 'GET',
+    })
+
+    console.log('Raw API response:', response)
+    console.log('Response data structure:', {
+      data: response.data,
+      dataLength: Array.isArray(response.data)
+        ? response.data.length
+        : 'Not an array',
+    })
+
+    // Map the response to the expected structure
+    // The API returns data directly in response.data as an array
+    const data = Array.isArray(response.data) ? response.data : []
+    const total = data.length
+    const page = Math.floor((filters.offset || 0) / (filters.limit || 100)) + 1
+    const pageSize = filters.limit || 100
+    const hasMore = (filters.offset || 0) + pageSize < total
+
+    console.log('Mapped data:', { data, total, page, pageSize, hasMore })
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      hasMore,
+    }
+  } catch (error: any) {
+    console.error('Error fetching unified payment methods:', error)
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    })
+    if (error.message) {
+      throw new Error(getFriendlyErrorMessage(error.message))
+    }
+    throw error
+  }
+}
+
+export const getMetodosPagoUnificadoResumen = async (
+  filters: MetodosPagoUnificadoResumenFilters
+): Promise<MetodosPagoUnificadoResumenResponse> => {
+  try {
+    const queryParams = new URLSearchParams()
+
+    // Add all filters to query params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value))
+      }
+    })
+
+    const response = await fetchApi<
+      LambdaResponse<MetodosPagoUnificadoResumenResponse>
+    >({
+      api: API_URL,
+      service: `/metodos-pago-unificado/resumen?${queryParams.toString()}`,
+      method: 'GET',
+    })
+
+    return (
+      response.data || {
+        data: [],
+        total_general: {
+          total_ventas: 0,
+          total_monto: 0,
+          total_pagado: 0,
+          total_pendiente: 0,
+        },
+      }
+    )
+  } catch (error: any) {
+    console.error('Error fetching unified payment methods summary:', error)
+    if (error.message) {
+      throw new Error(getFriendlyErrorMessage(error.message))
+    }
+    throw error
+  }
+}
+
+// Helper functions for common use cases
+export const getMetodosPagoUnificadoWithPagination = async (
+  filters: Omit<MetodosPagoUnificadoFilters, 'limit' | 'offset'>,
+  page: number = 1,
+  pageSize: number = 100
+): Promise<MetodosPagoUnificadoResponse> => {
+  return getMetodosPagoUnificado({
+    ...filters,
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  })
+}
+
+export const getMetodosPagoUnificadoByDateRange = async (
+  empresa_id: number,
+  fecha_inicio: string,
+  fecha_fin: string,
+  additionalFilters?: Partial<MetodosPagoUnificadoFilters>
+): Promise<MetodosPagoUnificadoResponse> => {
+  return getMetodosPagoUnificado({
+    empresa_id,
+    fecha_venta_inicio: fecha_inicio,
+    fecha_venta_fin: fecha_fin,
+    ...additionalFilters,
+  })
+}
+
+export const getMetodosPagoUnificadoByClient = async (
+  empresa_id: number,
+  cliente_id: number,
+  additionalFilters?: Partial<MetodosPagoUnificadoFilters>
+): Promise<MetodosPagoUnificadoResponse> => {
+  return getMetodosPagoUnificado({
+    empresa_id,
+    cliente_id,
+    ...additionalFilters,
+  })
+}
+
+export const getMetodosPagoUnificadoByPaymentMethod = async (
+  empresa_id: number,
+  metodo_pago_id: number,
+  additionalFilters?: Partial<MetodosPagoUnificadoFilters>
+): Promise<MetodosPagoUnificadoResponse> => {
+  return getMetodosPagoUnificado({
+    empresa_id,
+    metodo_pago_id,
+    ...additionalFilters,
+  })
+}
+
+export const getMetodosPagoUnificadoPendingPayments = async (
+  empresa_id: number,
+  additionalFilters?: Partial<MetodosPagoUnificadoFilters>
+): Promise<MetodosPagoUnificadoResponse> => {
+  return getMetodosPagoUnificado({
+    empresa_id,
+    estado_pago: 'pendiente',
+    ...additionalFilters,
+  })
+}
