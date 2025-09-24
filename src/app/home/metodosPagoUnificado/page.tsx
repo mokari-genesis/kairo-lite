@@ -216,17 +216,17 @@ export default function MetodosPagoUnificadoPage() {
       open={detailModalVisible}
       onCancel={() => setDetailModalVisible(false)}
       footer={[
-        <Button
-          key='print'
-          icon={<PrinterOutlined />}
-          onClick={() => {
-            if (selectedRecord) {
-              handlePrintTicket(selectedRecord)
-            }
-          }}
-        >
-          Imprimir
-        </Button>,
+        // <Button
+        //   key='print'
+        //   icon={<PrinterOutlined />}
+        //   onClick={() => {
+        //     if (selectedRecord) {
+        //       handlePrintTicket(selectedRecord)
+        //     }
+        //   }}
+        // >
+        //   Imprimir
+        // </Button>,
         <Button key='close' onClick={() => setDetailModalVisible(false)}>
           Cerrar
         </Button>,
@@ -323,7 +323,7 @@ export default function MetodosPagoUnificadoPage() {
                 {selectedRecord.estado_venta.toUpperCase()}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label='Estado de Pago' span={1}>
+            {/* <Descriptions.Item label='Estado de Pago' span={1}>
               <Tag
                 color={
                   selectedRecord.estado_pago === 'pagado'
@@ -337,7 +337,7 @@ export default function MetodosPagoUnificadoPage() {
               >
                 {selectedRecord.estado_pago.toUpperCase()}
               </Tag>
-            </Descriptions.Item>
+            </Descriptions.Item> */}
           </Descriptions>
 
           <Divider />

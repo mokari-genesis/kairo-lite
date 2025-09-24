@@ -451,6 +451,12 @@ export default function EditPurchase({
 
   const onFinish = async (values: any) => {
     try {
+      // Validar que la venta no esté cancelada
+      if (saleData?.estado_venta === 'cancelado') {
+        message.error('No se puede actualizar una venta que ha sido cancelada')
+        return
+      }
+
       if (details.length === 0) {
         message.error('Debe agregar al menos un producto')
         return
@@ -723,6 +729,29 @@ export default function EditPurchase({
         }}
       >
         <PageHeader title='Editar Venta' showNewButton={false} />
+
+        {/* Mensaje de advertencia para ventas canceladas */}
+        {saleData?.estado_venta === 'cancelado' && (
+          <div
+            style={{
+              backgroundColor: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '6px',
+              padding: '16px',
+              marginBottom: '24px',
+              color: '#cf1322',
+            }}
+          >
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              ⚠️ Venta Cancelada
+            </div>
+            <div>
+              Esta venta ha sido cancelada y no puede ser actualizada. Solo
+              puede ver los detalles de la venta.
+            </div>
+          </div>
+        )}
+
         <Form
           form={form}
           layout='vertical'
@@ -853,7 +882,17 @@ export default function EditPurchase({
                 >
                   Regresar
                 </Button>
-                <Button loading={isLoading} type='primary' htmlType='submit'>
+                <Button
+                  loading={isLoading}
+                  type='primary'
+                  htmlType='submit'
+                  disabled={saleData?.estado_venta === 'cancelado'}
+                  title={
+                    saleData?.estado_venta === 'cancelado'
+                      ? 'No se puede actualizar una venta cancelada'
+                      : ''
+                  }
+                >
                   Actualizar
                 </Button>
               </Space>

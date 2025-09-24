@@ -95,6 +95,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
         total_monto: 0,
         total_pagado: 0,
         total_pendiente: 0,
+        total_cancelado: 0,
       },
     }
   }
@@ -255,30 +256,30 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       key: 'total_ventas_monto',
       align: 'right' as const,
       sorter: (a: any, b: any) =>
-        parseFloat(a.total_ventas_monto) - parseFloat(b.total_ventas_monto),
+        parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
       render: (value: string, record: any) => (
         <Text strong>
           {formatCurrency(record.moneda_codigo, parseFloat(value))}
         </Text>
       ),
     },
-    {
-      title: 'Monto Pendiente',
-      dataIndex: 'total_saldo_pendiente',
-      key: 'total_saldo_pendiente',
-      align: 'right' as const,
-      sorter: (a: any, b: any) =>
-        parseFloat(a.total_saldo_pendiente) -
-        parseFloat(b.total_saldo_pendiente),
-      render: (value: string, record: any) => {
-        const numValue = parseFloat(value)
-        return (
-          <Text style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
-            {formatCurrency(record.moneda_codigo, numValue)}
-          </Text>
-        )
-      },
-    },
+    // {
+    //   title: 'Estado',
+    //   dataIndex: 'estado_venta',
+    //   key: 'estado_venta',
+    //   align: 'right' as const,
+    //   sorter: (a: any, b: any) =>
+    //     parseFloat(a.estado_venta) - parseFloat(b.estado_venta),
+    //   render: (value: string) => {
+    //     return (
+    //       <Text
+    //         style={{ color: value === 'cancelado' ? '#ff4d4f' : '#52c41a' }}
+    //       >
+    //         {value}
+    //       </Text>
+    //     )
+    //   },
+    // },
   ]
 
   if (loading) {
@@ -343,7 +344,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             <BarChartOutlined /> Resumen General
           </Title>
           <Row gutter={16}>
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={8}>
               <Statistic
                 title='Total de Ventas'
                 value={safeSummaryData.total_general.total_ventas || 0}
@@ -351,28 +352,19 @@ export const UnifiedPaymentMethodsSummary: React.FC<
                 valueStyle={{ color: '#1890ff' }}
               />
             </Col>
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={8}>
               <Statistic
                 title='Monto Total'
                 value={safeSummaryData.total_general.total_monto || 0}
                 precision={2}
                 prefix={<DollarOutlined />}
-                valueStyle={{ color: '#722ed1' }}
-              />
-            </Col>
-            <Col xs={12} sm={6}>
-              <Statistic
-                title='Total Pagado'
-                value={safeSummaryData.total_general.total_pagado || 0}
-                precision={2}
-                prefix={<DollarOutlined />}
                 valueStyle={{ color: '#52c41a' }}
               />
             </Col>
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={8}>
               <Statistic
-                title='Total Pendiente'
-                value={safeSummaryData.total_general.total_pendiente || 0}
+                title='Total cancelado'
+                value={safeSummaryData.total_general.total_cancelado || 0}
                 precision={2}
                 prefix={<DollarOutlined />}
                 valueStyle={{ color: '#ff4d4f' }}

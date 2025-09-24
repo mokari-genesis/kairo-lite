@@ -38,14 +38,26 @@ export interface ReporteMovimientoInventario {
 export interface ReporteStockActual {
   id: number
   producto_id: number
-  producto_codigo: string
-  producto_descripcion: string
+  codigo: string
+  serie?: string
+  descripcion: string
   categoria: string
-  stock_actual: number
+  stock: number
+  stock_actual?: number
   precio_sugerido: number
+  precio_minorista?: number
+  precio_mayorista?: number
+  precio_distribuidores?: number
+  precio_especial?: number
   valor_total: number
+  valor_stock_sugerido?: number
+  valor_stock_minorista?: number
+  valor_stock_mayorista?: number
+  valor_stock_distribuidores?: number
+  valor_stock_especial?: number
   proveedor_id?: number
   proveedor_nombre?: string
+  proveedor_tipo?: 'nacional' | 'internacional'
   ultima_actualizacion: string
 }
 

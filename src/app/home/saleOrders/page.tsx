@@ -60,11 +60,11 @@ export default function SaleOrders() {
         totalVentas: 0,
         totalVendidas: 0,
         totalCanceladas: 0,
-        totalMonto: 0,
-        totalPagado: 0,
-        totalPendiente: 0,
+        totalMontoNoCanceladas: 0,
+        totalMontoCanceladas: 0,
         promedioVenta: 0,
-        porcentajePagado: 0,
+        porcentajeVentas: 0,
+        porcentajeVentasCanceladas: 0,
       }
     }
 
@@ -76,34 +76,32 @@ export default function SaleOrders() {
       sale => sale.estado_venta === 'cancelado'
     ).length
 
-    const totalMonto = salesData.reduce(
-      (sum, sale) => sum + parseFloat(sale.total_venta),
-      0
-    )
+    const totalMontoNoCanceladas = salesData
+      .filter(sale => sale.estado_venta !== 'cancelado')
+      .reduce((sum, sale) => sum + parseFloat(sale.total_venta), 0)
 
-    const totalPagado = salesData.reduce((sum, sale) => {
-      const pagos =
-        (sale as any).pagos?.reduce(
-          (pagoSum: number, pago: any) => pagoSum + (pago.monto || 0),
-          0
-        ) || 0
-      return sum + pagos
-    }, 0)
+    const totalMontoCanceladas = salesData
+      .filter(sale => sale.estado_venta === 'cancelado')
+      .reduce((sum, sale) => sum + parseFloat(sale.total_venta), 0)
 
-    const totalPendiente = totalMonto - totalPagado
-    const promedioVenta = totalVentas > 0 ? totalMonto / totalVentas : 0
-    const porcentajePagado =
-      totalMonto > 0 ? (totalPagado / totalMonto) * 100 : 0
+    const promedioVenta =
+      totalVentas > 0
+        ? (totalMontoNoCanceladas + totalMontoCanceladas) / totalVentas
+        : 0
+    const porcentajeVentas =
+      totalVentas > 0 ? (totalVendidas / totalVentas) * 100 : 0
+    const porcentajeVentasCanceladas =
+      totalVentas > 0 ? (totalCanceladas / totalVentas) * 100 : 0
 
     return {
       totalVentas,
       totalVendidas,
       totalCanceladas,
-      totalMonto,
-      totalPagado,
-      totalPendiente,
+      totalMontoNoCanceladas,
+      totalMontoCanceladas,
       promedioVenta,
-      porcentajePagado,
+      porcentajeVentas,
+      porcentajeVentasCanceladas,
     }
   }, [salesData])
 
@@ -264,8 +262,8 @@ export default function SaleOrders() {
           <PageHeader title='Órdenes de Venta' onNewClick={handleNewClick} />
 
           {/* Tarjetas de Estadísticas */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={6}>
+          <Row gutter={[16, 16]} justify='center'>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
@@ -287,7 +285,7 @@ export default function SaleOrders() {
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
@@ -309,7 +307,7 @@ export default function SaleOrders() {
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
@@ -333,34 +331,11 @@ export default function SaleOrders() {
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Card
-                style={{
-                  background:
-                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  color: 'white',
-                }}
-              >
-                <Statistic
-                  title={
-                    <span style={{ color: 'white', opacity: 0.9 }}>
-                      Monto Total
-                    </span>
-                  }
-                  value={salesStats.totalMonto}
-                  precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
-                  valueStyle={{ color: 'white' }}
-                />
-              </Card>
-            </Col>
           </Row>
 
           {/* Segunda fila de estadísticas */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={6}>
+          <Row gutter={[16, 16]} justify='center'>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
@@ -372,18 +347,16 @@ export default function SaleOrders() {
               >
                 <Statistic
                   title={
-                    <span style={{ color: 'white', opacity: 0.9 }}>
-                      Total Pagado
-                    </span>
+                    <span style={{ color: 'white', opacity: 0.9 }}>Ventas</span>
                   }
-                  value={salesStats.totalPagado}
+                  value={salesStats.totalMontoNoCanceladas}
                   precision={2}
                   prefix={<DollarOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
@@ -396,67 +369,65 @@ export default function SaleOrders() {
                 <Statistic
                   title={
                     <span style={{ color: 'white', opacity: 0.9 }}>
-                      Saldo Pendiente
+                      Ventas Canceladas
                     </span>
                   }
-                  value={salesStats.totalPendiente}
+                  value={salesStats.totalMontoCanceladas}
                   precision={2}
-                  prefix={<ClockCircleOutlined style={{ color: 'white' }} />}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
-                    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   border: 'none',
                   borderRadius: '12px',
-                  color: '#333',
+                  color: 'white',
                 }}
               >
                 <Statistic
                   title={
-                    <span style={{ color: '#333', opacity: 0.8 }}>
-                      Promedio por Venta
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      % de Ventas
                     </span>
                   }
-                  value={salesStats.promedioVenta}
-                  precision={2}
-                  prefix={<DollarOutlined style={{ color: '#333' }} />}
-                  valueStyle={{ color: '#333' }}
+                  value={salesStats.porcentajeVentas}
+                  precision={1}
+                  suffix='%'
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={20} sm={10} md={5}>
               <Card
                 style={{
                   background:
-                    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
                   border: 'none',
                   borderRadius: '12px',
-                  color: '#333',
+                  color: 'white',
                 }}
               >
                 <Statistic
                   title={
-                    <span style={{ color: '#333', opacity: 0.8 }}>
-                      % Pagado
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      % de Ventas Canceladas
                     </span>
                   }
-                  value={salesStats.porcentajePagado}
+                  value={salesStats.porcentajeVentasCanceladas}
                   precision={1}
                   suffix='%'
-                  prefix={<CheckCircleOutlined style={{ color: '#333' }} />}
-                  valueStyle={{
-                    color:
-                      salesStats.porcentajePagado >= 80
-                        ? '#52c41a'
-                        : salesStats.porcentajePagado >= 50
-                        ? '#faad14'
-                        : '#ff4d4f',
-                  }}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
+                  valueStyle={{ color: 'white' }}
                 />
               </Card>
             </Col>

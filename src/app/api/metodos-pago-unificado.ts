@@ -112,6 +112,7 @@ export interface MetodosPagoUnificadoResumenResponse {
     total_monto: number
     total_pagado: number
     total_pendiente: number
+    total_cancelado: number
   }
 }
 

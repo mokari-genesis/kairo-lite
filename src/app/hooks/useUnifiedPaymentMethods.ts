@@ -88,6 +88,36 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
     [] // Remove filters dependency to avoid infinite loops
   )
 
+  // Calculate total cancelled sales from API
+  const calculateTotalCancelled = useCallback(
+    async (filters: MetodosPagoUnificadoFilters) => {
+      try {
+        // Get all data with cancelled sales filter to calculate total
+        const cancelledFilters = {
+          ...filters,
+          estado_venta: 'cancelado',
+          limit: 1000, // Get more records to ensure we have all cancelled sales
+          offset: 0,
+        }
+
+        const cancelledData = await getMetodosPagoUnificado(cancelledFilters)
+
+        if (!cancelledData.data || cancelledData.data.length === 0) {
+          return 0
+        }
+
+        return cancelledData.data.reduce(
+          (sum, record) => sum + parseFloat(record.total_venta || '0'),
+          0
+        )
+      } catch (error) {
+        console.error('Error calculating total cancelled:', error)
+        return 0
+      }
+    },
+    []
+  )
+
   // Load summary data
   const loadSummaryData = useCallback(
     async (newFilters?: MetodosPagoUnificadoResumenFilters) => {
@@ -102,6 +132,22 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         // Ensure we have the data array
         const dataArray = Array.isArray(response.data) ? response.data : []
 
+        // Calculate total cancelled from API
+        const totalCancelled = await calculateTotalCancelled(currentFilters)
+
+        // Get all data to calculate totals excluding cancelled sales
+        const allDataFilters = {
+          ...currentFilters,
+          limit: 1000,
+          offset: 0,
+        }
+        const allData = await getMetodosPagoUnificado(allDataFilters)
+
+        // Filter out cancelled sales for total calculations
+        const nonCancelledData = allData.data.filter(
+          record => record.estado_venta !== 'cancelado'
+        )
+
         // Transform the API response to match expected structure
         const transformedResponse = {
           data: dataArray,
@@ -110,12 +156,13 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
               (sum, item) => sum + (item.total_ventas || 0),
               0
             ),
-            total_monto: dataArray.reduce(
-              (sum, item) => sum + parseFloat(item.total_ventas_monto || '0'),
+            total_monto: nonCancelledData.reduce(
+              (sum, record) => sum + parseFloat(record.monto_pago || '0'),
               0
             ),
-            total_pagado: dataArray.reduce(
-              (sum, item) => sum + parseFloat(item.total_monto_pagado || '0'),
+            total_pagado: nonCancelledData.reduce(
+              (sum, record) =>
+                sum + parseFloat(record.total_pagado_venta || '0'),
               0
             ),
             total_pendiente: dataArray.reduce(
@@ -123,6 +170,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
                 sum + parseFloat(item.total_saldo_pendiente || '0'),
               0
             ),
+            total_cancelado: totalCancelled,
           },
         }
 
@@ -138,7 +186,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         setLoading(false)
       }
     },
-    [] // Remove dependencies to avoid infinite loops
+    [calculateTotalCancelled, tableData] // Add dependencies
   )
 
   // Update filters
@@ -167,6 +215,31 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
   const refreshData = useCallback(async () => {
     await Promise.all([loadTableData(), loadSummaryData()])
   }, [loadTableData, loadSummaryData])
+
+  // Update summary data when table data changes
+  useEffect(() => {
+    const updateTotalCancelled = async () => {
+      if (summaryData) {
+        const totalCancelled = await calculateTotalCancelled(filters)
+        setSummaryData(prevSummary => {
+          if (!prevSummary) return prevSummary
+          // Only update if the value has actually changed to prevent infinite loops
+          if (prevSummary.total_general.total_cancelado === totalCancelled) {
+            return prevSummary
+          }
+          return {
+            ...prevSummary,
+            total_general: {
+              ...prevSummary.total_general,
+              total_cancelado: totalCancelled,
+            },
+          }
+        })
+      }
+    }
+
+    updateTotalCancelled()
+  }, [filters, calculateTotalCancelled]) // Use filters instead of tableData
 
   // Load initial data
   useEffect(() => {

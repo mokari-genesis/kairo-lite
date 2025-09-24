@@ -24,6 +24,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
+  BarChartOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons'
 import {
   MetodoPagoUnificado,
@@ -187,10 +189,16 @@ export const UnifiedPaymentMethodsTable: React.FC<
     const cssRules = [
       // Estilo para filas únicas (blanco)
       '.unified-payment-row-unique { background-color: #ffffff !important; }',
+      '.unified-payment-row-unique:hover { background-color: #ffffff !important; }',
+      '.unified-payment-row-unique:hover > td { background-color: #ffffff !important; }',
       // Estilos para ventas agrupadas (con colores)
       ...groupedSalesIds.map(salesId => {
         const backgroundColor = generateColorForSalesId(salesId)
-        return `.unified-payment-row-${salesId} { background-color: ${backgroundColor} !important; }`
+        return [
+          `.unified-payment-row-${salesId} { background-color: ${backgroundColor} !important; }`,
+          `.unified-payment-row-${salesId}:hover { background-color: ${backgroundColor} !important; }`,
+          `.unified-payment-row-${salesId}:hover > td { background-color: ${backgroundColor} !important; }`,
+        ].join('\n')
       }),
     ].join('\n')
 
@@ -205,43 +213,53 @@ export const UnifiedPaymentMethodsTable: React.FC<
         totalMonto: 0,
         totalPagado: 0,
         totalPendiente: 0,
+        totalCancelado: 0,
         promedioVenta: 0,
-        porcentajePagado: 0,
       }
     }
 
+    // Filter out cancelled sales for total calculations
+    const nonCancelledData = data.data.filter(
+      record => record.estado_venta !== 'cancelado'
+    )
+    const cancelledData = data.data.filter(
+      record => record.estado_venta === 'cancelado'
+    )
+
     const totalVentas = data.data.length
-    const totalMonto = data.data.reduce(
-      (sum, record) => sum + parseFloat(record.monto_pago),
+    const totalMonto = nonCancelledData.reduce(
+      (sum, record) => sum + parseFloat(record.monto_pago || '0'),
       0
     )
-    const totalPagado = data.data.reduce(
-      (sum, record) => sum + parseFloat(record.total_por_metodo_en_venta),
+    const totalPagado = nonCancelledData.reduce(
+      (sum, record) => sum + parseFloat(record.total_pagado_venta || '0'),
       0
     )
     const totalPendiente = data.data.reduce(
-      (sum, record) => sum + parseFloat(record.saldo_pendiente_venta),
+      (sum, record) => sum + parseFloat(record.saldo_pendiente_venta || '0'),
+      0
+    )
+    const totalCancelado = cancelledData.reduce(
+      (sum, record) => sum + parseFloat(record.total_venta || '0'),
       0
     )
     const promedioVenta = totalVentas > 0 ? totalMonto / totalVentas : 0
-    const porcentajePagado =
-      totalMonto > 0 ? (totalPagado / totalMonto) * 100 : 0
 
     return {
       totalVentas,
       totalMonto,
       totalPagado,
       totalPendiente,
+      totalCancelado,
       promedioVenta,
-      porcentajePagado,
     }
   }, [data.data])
 
   const getEstadoVentaTag = (estado: string) => {
     const statusMap = {
       pendiente: { color: 'warning', icon: <ClockCircleOutlined /> },
-      completada: { color: 'success', icon: <CheckCircleOutlined /> },
-      cancelada: { color: 'error', icon: <ExclamationCircleOutlined /> },
+      vendido: { color: 'success', icon: <CheckCircleOutlined /> },
+      cancelado: { color: 'error', icon: <ExclamationCircleOutlined /> },
       en_proceso: { color: 'processing', icon: <ClockCircleOutlined /> },
     }
 
@@ -354,62 +372,62 @@ export const UnifiedPaymentMethodsTable: React.FC<
       ),
       sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
     },
-    {
-      title: 'Monto Pendiente',
-      dataIndex: 'saldo_pendiente_venta',
-      key: 'saldo_pendiente_venta',
-      width: 120,
-      align: 'right',
-      render: (value: any, record: any) => {
-        const numValue = parseFloat(value)
-        return (
-          <Text strong style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
-            {formatCurrency(record.moneda_codigo, parseFloat(value))}
-          </Text>
-        )
-      },
-      sorter: (a, b) =>
-        parseFloat(a.saldo_pendiente_venta) -
-        parseFloat(b.saldo_pendiente_venta),
-    },
-    {
-      title: 'Progreso',
-      key: 'progreso',
-      width: 120,
-      render: (_, record) => {
-        const montoTotal = parseFloat(record.total_venta)
-        const montoPagado = parseFloat(record.total_pagado_venta)
-        const porcentaje =
-          montoTotal > 0 ? Math.round((montoPagado / montoTotal) * 100) : 0
+    // {
+    //   title: 'Monto Pendiente',
+    //   dataIndex: 'saldo_pendiente_venta',
+    //   key: 'saldo_pendiente_venta',
+    //   width: 120,
+    //   align: 'right',
+    //   render: (value: any, record: any) => {
+    //     const numValue = parseFloat(value)
+    //     return (
+    //       <Text strong style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
+    //         {formatCurrency(record.moneda_codigo, parseFloat(value))}
+    //       </Text>
+    //     )
+    //   },
+    //   sorter: (a, b) =>
+    //     parseFloat(a.saldo_pendiente_venta) -
+    //     parseFloat(b.saldo_pendiente_venta),
+    // },
+    // {
+    //   title: 'Progreso',
+    //   key: 'progreso',
+    //   width: 120,
+    //   render: (_, record) => {
+    //     const montoTotal = parseFloat(record.total_venta)
+    //     const montoPagado = parseFloat(record.total_pagado_venta)
+    //     const porcentaje =
+    //       montoTotal > 0 ? Math.round((montoPagado / montoTotal) * 100) : 0
 
-        return (
-          <div style={{ width: '100%' }}>
-            <div
-              style={{
-                width: '100%',
-                height: '8px',
-                backgroundColor: '#f0f0f0',
-                borderRadius: '4px',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  width: `${porcentaje}%`,
-                  height: '100%',
-                  backgroundColor: getPaymentProgressColor(
-                    montoPagado,
-                    montoTotal
-                  ),
-                  transition: 'width 0.3s ease',
-                }}
-              />
-            </div>
-            <Text style={{ fontSize: '12px' }}>{porcentaje}%</Text>
-          </div>
-        )
-      },
-    },
+    //     return (
+    //       <div style={{ width: '100%' }}>
+    //         <div
+    //           style={{
+    //             width: '100%',
+    //             height: '8px',
+    //             backgroundColor: '#f0f0f0',
+    //             borderRadius: '4px',
+    //             overflow: 'hidden',
+    //           }}
+    //         >
+    //           <div
+    //             style={{
+    //               width: `${porcentaje}%`,
+    //               height: '100%',
+    //               backgroundColor: getPaymentProgressColor(
+    //                 montoPagado,
+    //                 montoTotal
+    //               ),
+    //               transition: 'width 0.3s ease',
+    //             }}
+    //           />
+    //         </div>
+    //         <Text style={{ fontSize: '12px' }}>{porcentaje}%</Text>
+    //       </div>
+    //     )
+    //   },
+    // },
     {
       title: 'Estado Venta',
       dataIndex: 'estado_venta',
@@ -424,20 +442,20 @@ export const UnifiedPaymentMethodsTable: React.FC<
       ],
       onFilter: (value, record) => record.estado_venta === value,
     },
-    {
-      title: 'Estado Pago',
-      dataIndex: 'estado_pago',
-      key: 'estado_pago',
-      width: 120,
-      render: value => getEstadoPagoTag(value),
-      filters: [
-        { text: 'Pendiente', value: 'pendiente' },
-        { text: 'Pagado', value: 'pagado' },
-        { text: 'Parcial', value: 'parcial' },
-        { text: 'Cancelado', value: 'cancelado' },
-      ],
-      onFilter: (value, record) => record.estado_pago === value,
-    },
+    // {
+    //   title: 'Estado Pago',
+    //   dataIndex: 'estado_pago',
+    //   key: 'estado_pago',
+    //   width: 120,
+    //   render: value => getEstadoPagoTag(value),
+    //   filters: [
+    //     { text: 'Pendiente', value: 'pendiente' },
+    //     { text: 'Pagado', value: 'pagado' },
+    //     { text: 'Parcial', value: 'parcial' },
+    //     { text: 'Cancelado', value: 'cancelado' },
+    //   ],
+    //   onFilter: (value, record) => record.estado_pago === value,
+    // },
     {
       title: 'Fecha Venta',
       dataIndex: 'fecha_venta',
@@ -533,34 +551,30 @@ export const UnifiedPaymentMethodsTable: React.FC<
       {showSummary && (
         <Card size='small' style={{ marginBottom: 16 }}>
           <Row gutter={16}>
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={8}>
               <Statistic
+                style={{ textAlign: 'center' }}
                 title='Total Ventas'
                 value={summaryStats.totalVentas}
-                prefix={<Badge count={summaryStats.totalVentas} />}
+                prefix={<ShoppingCartOutlined />}
               />
             </Col>
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={8}>
               <Statistic
-                title='Monto Total'
+                style={{ textAlign: 'center' }}
+                title='Total Vendido'
                 value={summaryStats.totalMonto}
+                valueStyle={{ color: '#52c41a' }}
                 precision={2}
                 prefix={<DollarOutlined />}
               />
             </Col>
-            <Col xs={12} sm={6}>
+
+            <Col xs={12} sm={8}>
               <Statistic
-                title='Total Pagado'
-                value={summaryStats.totalPagado}
-                precision={2}
-                valueStyle={{ color: '#3f8600' }}
-                prefix={<DollarOutlined />}
-              />
-            </Col>
-            <Col xs={12} sm={6}>
-              <Statistic
-                title='Total Pendiente'
-                value={summaryStats.totalPendiente}
+                style={{ textAlign: 'center' }}
+                title='Total cancelado'
+                value={summaryStats.totalCancelado}
                 precision={2}
                 valueStyle={{ color: '#cf1322' }}
                 prefix={<DollarOutlined />}
@@ -574,22 +588,6 @@ export const UnifiedPaymentMethodsTable: React.FC<
                 value={summaryStats.promedioVenta}
                 precision={2}
                 prefix={<DollarOutlined />}
-              />
-            </Col>
-            <Col xs={12} sm={6}>
-              <Statistic
-                title='% Pagado'
-                value={summaryStats.porcentajePagado}
-                precision={1}
-                suffix='%'
-                valueStyle={{
-                  color:
-                    summaryStats.porcentajePagado >= 80
-                      ? '#3f8600'
-                      : summaryStats.porcentajePagado >= 50
-                      ? '#faad14'
-                      : '#cf1322',
-                }}
               />
             </Col>
           </Row>

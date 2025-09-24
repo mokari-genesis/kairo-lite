@@ -66,6 +66,63 @@ function ReportesPage() {
 
   const router = useRouter()
 
+  // Configuración de filtros para el reporte de Stock Actual
+  const stockActualFilterConfigs = [
+    {
+      type: 'text' as const,
+      key: 'codigo',
+      placeholder: 'Código Producto',
+      width: '25%',
+    },
+    {
+      type: 'text' as const,
+      key: 'serie',
+      placeholder: 'Serie Producto',
+      width: '25%',
+    },
+    {
+      type: 'text' as const,
+      key: 'descripcion',
+      placeholder: 'Descripción',
+      width: '25%',
+    },
+    {
+      type: 'select' as const,
+      key: 'categoria',
+      placeholder: 'Categoría',
+      width: '25%',
+      options: [
+        { value: 'otros', label: 'Otro' },
+        { value: 'electronica', label: 'Electrónica' },
+        { value: 'ropa', label: 'Ropa' },
+        { value: 'hogar', label: 'Hogar' },
+        { value: 'deportes', label: 'Deportes' },
+        { value: 'libros', label: 'Libros' },
+        { value: 'juegos', label: 'Juegos' },
+        { value: 'herramientas', label: 'Herramientas' },
+        { value: 'alimentacion', label: 'Alimentación' },
+        { value: 'belleza', label: 'Belleza' },
+        { value: 'automotriz', label: 'Automotriz' },
+      ],
+    },
+    {
+      type: 'text' as const,
+      key: 'proveedor_nombre',
+      placeholder: 'Proveedor',
+      width: '25%',
+    },
+    {
+      type: 'select' as const,
+      key: 'proveedor_tipo',
+      placeholder: 'Tipo Proveedor',
+      width: '25%',
+      options: [
+        { value: 'nacional', label: 'Nacional' },
+        { value: 'internacional', label: 'Internacional' },
+      ],
+    },
+  ]
+
   const reportTypes = [
     {
       key: 'stock-actual',
@@ -73,12 +130,12 @@ function ReportesPage() {
       description: 'Muestra el inventario actual con valores totales',
       icon: <DatabaseOutlined />,
     },
-    {
-      key: 'ventas-con-pagos',
-      title: 'Ventas con Pagos',
-      description: 'Reporte de ventas con información de pagos y saldos',
-      icon: <BarChartOutlined />,
-    },
+    // {
+    //   key: 'ventas-con-pagos',
+    //   title: 'Ventas con Pagos',
+    //   description: 'Reporte de ventas con información de pagos y saldos',
+    //   icon: <BarChartOutlined />,
+    // },
     // {
     //   key: 'inventario-con-metodo',
     //   title: 'Inventario con Métodos de Pago',
@@ -103,6 +160,18 @@ function ReportesPage() {
         <Space>
           <FileTextOutlined style={{ color: '#1890ff' }} />
           <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'serie',
+      title: 'Serie',
+      dataIndex: 'serie',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 500 }}>{value || 'N/A'}</span>
         </Space>
       ),
     },
@@ -138,9 +207,34 @@ function ReportesPage() {
       render: (value: any) => (
         <Space>
           <UserOutlined style={{ color: '#722ed1' }} />
-          <span style={{ fontWeight: 500 }}>{value}</span>
+          <span style={{ fontWeight: 500 }}>{value || 'N/A'}</span>
         </Space>
       ),
+    },
+    {
+      key: 'proveedor_tipo',
+      title: 'Tipo Proveedor',
+      dataIndex: 'proveedor_tipo',
+      type: 'text',
+      render: (value: any) => {
+        const tipoConfig = {
+          nacional: { color: 'blue', text: 'Nacional' },
+          internacional: { color: 'green', text: 'Internacional' },
+        }
+        const config = tipoConfig[value as keyof typeof tipoConfig] || {
+          color: 'default',
+          text: value || 'N/A',
+        }
+
+        return (
+          <Tag
+            color={config.color}
+            style={{ borderRadius: '6px', fontWeight: 'bold' }}
+          >
+            {config.text}
+          </Tag>
+        )
+      },
     },
     {
       key: 'stock',
@@ -639,6 +733,7 @@ function ReportesPage() {
 
       setData(result)
     } catch (error) {
+      console.error('Error fetching report data:', error)
       message.error('Error al cargar el reporte')
     } finally {
       setLoading(false)
@@ -741,34 +836,44 @@ function ReportesPage() {
       }
     } else if (selectedReport === 'stock-actual') {
       const totalStock = data.reduce(
-        (sum, record) => sum + (record.stock || 0),
+        (sum, record) => sum + Number(record.stock || record.stock_actual || 0),
         0
       )
-      const valorInventario = data.reduce(
-        (sum, record) =>
-          sum + (record.stock || 0) * (record.precio_sugerido || 0),
-        0
-      )
-      const valorInventarioMinorista = data.reduce(
-        (sum, record) =>
-          sum + (record.stock || 0) * (record.precio_minorista || 0),
-        0
-      )
-      const valorInventarioMayorista = data.reduce(
-        (sum, record) =>
-          sum + (record.stock || 0) * (record.precio_mayorista || 0),
-        0
-      )
-      const valorInventarioDistribuidores = data.reduce(
-        (sum, record) =>
-          sum + (record.stock || 0) * (record.precio_distribuidores || 0),
-        0
-      )
-      const valorInventarioEspecial = data.reduce(
-        (sum, record) =>
-          sum + (record.stock || 0) * (record.precio_especial || 0),
-        0
-      )
+      const valorInventario = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_sugerido || 0)
+        const valorPreCalculado = Number(record.valor_stock_sugerido || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioMinorista = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_minorista || 0)
+        const valorPreCalculado = Number(record.valor_stock_minorista || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioMayorista = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_mayorista || 0)
+        const valorPreCalculado = Number(record.valor_stock_mayorista || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioDistribuidores = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_distribuidores || 0)
+        const valorPreCalculado = Number(record.valor_stock_distribuidores || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioEspecial = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_especial || 0)
+        const valorPreCalculado = Number(record.valor_stock_especial || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
 
       return {
         totalRegistros,
@@ -1158,6 +1263,16 @@ function ReportesPage() {
               </Card>
             </Col>
           </Row>
+        )}
+
+        {/* Filtros para el reporte de Stock Actual */}
+        {selectedReport === 'stock-actual' && (
+          <div style={{ marginBottom: '24px' }}>
+            <FilterSection
+              filters={stockActualFilterConfigs}
+              onFilterChange={onFilterChange}
+            />
+          </div>
         )}
 
         <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
