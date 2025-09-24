@@ -14,7 +14,7 @@ export const fetchApi = async <T>({
   api,
   body,
   method,
-  service,  
+  service,
 }: {
   api: string
   body?: any
@@ -24,20 +24,24 @@ export const fetchApi = async <T>({
 }): Promise<T> => {
   let authenticatedUser: CognitoUserSession | null
   let idToken: string = ''
-  
-  try {    
+
+  try {
     authenticatedUser = await Auth.currentSession()
-    idToken = authenticatedUser?.getIdToken().getJwtToken()    
+    idToken = authenticatedUser?.getIdToken().getJwtToken()
+    console.log('Authentication successful, token length:', idToken.length)
   } catch (err) {
+    console.log('Authentication error:', err)
     if (err !== 'No current user') {
-      console.log("No user")
+      console.log('No user')
     }
   }
 
-  const response = await fetch(`${api}${service}`, {
+  const url = `${api}${service}`
+
+  const response = await fetch(url, {
     method,
-    headers: {      
-      Authorization: idToken      
+    headers: {
+      Authorization: idToken,
     },
     body: JSON.stringify(body),
   })
@@ -45,6 +49,11 @@ export const fetchApi = async <T>({
   const result = await response.json()
 
   if (!response.ok || result.status === 'FAILURE') {
+    console.error('API Error:', {
+      status: response.status,
+      message: result.message || result.data?.message || result.msg,
+      result,
+    })
     throw Error(result.message || result.data?.message || result.msg)
   }
 

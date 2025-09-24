@@ -18,7 +18,6 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { editSale } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
-import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
 import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
@@ -28,6 +27,10 @@ import { getSalesFlat } from '@/app/api/sales'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
 import { getReporteStockActual } from '@/app/api/reportes'
 import { use } from 'react'
+import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
+import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
+import { getMetodosPago } from '@/app/api/metodos-pago'
+import { getMonedas } from '@/app/api/monedas'
 
 interface PurchaseDetail {
   producto_id: number
@@ -63,7 +66,8 @@ export default function EditPurchase({
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [saleData, setSaleData] = useState<any>(null)
-  const [metodoPago, setMetodoPago] = useState<any>()
+  const [ventaData, setVentaData] = useState<Venta | null>(null)
+  const [pagos, setPagos] = useState<VentaPago[]>([])
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -72,6 +76,18 @@ export default function EditPurchase({
         if (sales && sales.length > 0) {
           const sale = sales[0]
           setSaleData(sale)
+
+          // Crear objeto Venta para la sección de pagos
+          const venta: Venta = {
+            id: sale.id,
+            total: parseFloat(sale.total_venta),
+            estado: sale.estado_venta as 'vendido' | 'cancelado',
+            moneda_id: 1, // Por defecto GTQ
+            pagos: [], // Se cargará dinámicamente
+            totalPagado: 0,
+            saldoPendiente: parseFloat(sale.total_venta),
+          }
+          setVentaData(venta)
 
           // Cargar los datos del cliente
           const clients = await getClients({ nit: sale.cliente_nit })
@@ -84,8 +100,7 @@ export default function EditPurchase({
                 label: `${currentClient.nombre} - ${currentClient.nit}`,
                 details: currentClient,
               },
-              metodo_pago_id: (sale as any).metodo_pago_id,
-              referencia_pago: (sale as any).referencia_pago,
+              comentario: (sale as any).comentario,
             })
           }
 
@@ -124,6 +139,17 @@ export default function EditPurchase({
               }
             })
           )
+
+          // Cargar pagos existentes
+          try {
+            const existingPagos = await listPayments(
+              parseInt(resolvedParams.id)
+            )
+            setPagos(existingPagos)
+          } catch (error) {
+            console.error('Error loading payments:', error)
+            setPagos([])
+          }
         }
       } catch (error) {
         message.error('Error al cargar los datos de la venta')
@@ -133,6 +159,109 @@ export default function EditPurchase({
 
     fetchSaleData()
   }, [resolvedParams.id, form, router])
+
+  // Actualizar el total de la venta cuando cambien los productos
+  useEffect(() => {
+    if (ventaData && details.length > 0) {
+      const newTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      setVentaData(prev => (prev ? { ...prev, total: newTotal } : null))
+    }
+  }, [details])
+
+  // Función para sincronizar pagos desde PaymentsSection
+  const syncPayments = async () => {
+    try {
+      const updatedPagos = await listPayments(parseInt(resolvedParams.id))
+      setPagos(updatedPagos)
+    } catch (error) {
+      console.error('Error syncing payments:', error)
+    }
+  }
+
+  // Funciones auxiliares para obtener nombres de métodos de pago y monedas
+  const getMetodoPagoNombre = async (metodoPagoId: number): Promise<string> => {
+    try {
+      const metodosPago = await getMetodosPago({ activo: 1 })
+      const metodo = metodosPago.find(m => m.id === metodoPagoId)
+      return metodo?.nombre || `Método ${metodoPagoId}`
+    } catch (error) {
+      console.error('Error getting payment method name:', error)
+      return `Método ${metodoPagoId}`
+    }
+  }
+
+  const getMonedaCodigo = async (monedaId: number): Promise<string> => {
+    try {
+      const monedas = await getMonedas({ activo: 1 })
+      const moneda = monedas.find(m => m.id === monedaId)
+      return moneda?.codigo || `Moneda ${monedaId}`
+    } catch (error) {
+      console.error('Error getting currency code:', error)
+      return `Moneda ${monedaId}`
+    }
+  }
+
+  // Funciones para manejar pagos localmente
+  const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
+    try {
+      // Obtener nombres de método de pago y moneda
+      const [metodoPagoNombre, monedaCodigo] = await Promise.all([
+        getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        ),
+        getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
+      ])
+
+      const newPayment: VentaPago = {
+        ...payment,
+        id: Date.now(), // ID temporal para pagos nuevos
+        metodoPagoNombre,
+        monedaCodigo,
+        fecha: new Date().toISOString(), // Fecha actual
+      }
+
+      setPagos(prev => [...prev, newPayment])
+    } catch (error) {
+      console.error('Error adding payment:', error)
+      message.error('Error al agregar el pago')
+    }
+  }
+
+  const handleEditPayment = async (
+    paymentId: number,
+    payment: Partial<VentaPago>
+  ) => {
+    try {
+      let updatedPayment = { ...payment }
+
+      // Si se cambió el método de pago, obtener el nombre
+      if (payment.metodo_pago_id || payment.metodoPagoId) {
+        const metodoPagoNombre = await getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        )
+        updatedPayment.metodoPagoNombre = metodoPagoNombre
+      }
+
+      // Si se cambió la moneda, obtener el código
+      if (payment.moneda_id || payment.monedaId) {
+        const monedaCodigo = await getMonedaCodigo(
+          payment.moneda_id || payment.monedaId || 0
+        )
+        updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      setPagos(prev =>
+        prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
+      )
+    } catch (error) {
+      console.error('Error editing payment:', error)
+      message.error('Error al editar el pago')
+    }
+  }
+
+  const handleDeletePayment = (paymentId: number) => {
+    setPagos(prev => prev.filter(p => p.id !== paymentId))
+  }
 
   const handleProductChange = async (
     value: number,
@@ -151,23 +280,22 @@ export default function EditPurchase({
     const newDetails = [...details]
     if (product) {
       // Load current stock for the selected product
-      let currentStock = product.stock || 0
+      let currentStock = 0
       try {
         const stockData = await getReporteStockActual()
         const productStock = stockData.find(
           stock => stock.producto_id === value
         )
-        currentStock = productStock?.stock_actual || 0
+        currentStock =
+          (productStock as any)?.stock || productStock?.stock_actual || 0
       } catch (error) {
         console.error('Error loading stock:', error)
+        message.error('Error al cargar el stock del producto')
       }
 
       // For new products, available stock is just the current stock
       // For existing products, it's current stock + original quantity
-      const isExistingProduct = newDetails[index].producto_id > 0
-      const originalQuantity = isExistingProduct
-        ? newDetails[index].cantidad_original || 0
-        : 0
+      const originalQuantity = newDetails[index].cantidad_original || 0
       const availableStock = currentStock + originalQuantity
 
       newDetails[index] = {
@@ -323,6 +451,12 @@ export default function EditPurchase({
 
   const onFinish = async (values: any) => {
     try {
+      // Validar que la venta no esté cancelada
+      if (saleData?.estado_venta === 'cancelado') {
+        message.error('No se puede actualizar una venta que ha sido cancelada')
+        return
+      }
+
       if (details.length === 0) {
         message.error('Debe agregar al menos un producto')
         return
@@ -343,6 +477,9 @@ export default function EditPurchase({
         return
       }
 
+      // Calcular el total actualizado
+      const updatedTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
       // Check for insufficient stock
       const insufficientStock = details.some(
         detail => detail.cantidad > (detail.stock || 0)
@@ -354,18 +491,74 @@ export default function EditPurchase({
         return
       }
 
+      // Validar que si hay pagos, la suma no exceda el total
+      const totalVenta = updatedTotal
+      const pagosValidos = pagos.filter(pago => {
+        const isValid =
+          pago.metodo_pago_id !== undefined &&
+          pago.metodo_pago_id !== null &&
+          pago.metodo_pago_id > 0 &&
+          pago.moneda_id !== undefined &&
+          pago.moneda_id !== null &&
+          pago.moneda_id > 0 &&
+          pago.monto !== undefined &&
+          pago.monto !== null &&
+          pago.monto > 0
+        return isValid
+      })
+
+      const totalPagos = pagosValidos.reduce(
+        (acc, pago) => acc + (pago.monto || 0),
+        0
+      )
+
+      if (pagosValidos.length > 0 && totalPagos > totalVenta) {
+        message.error(
+          'La suma de los pagos no puede exceder el total de la venta'
+        )
+        return
+      }
+
+      // Si hay pagos inválidos, mostrar advertencia
+      if (pagos.length > 0 && pagosValidos.length !== pagos.length) {
+        const pagosInvalidos = pagos.filter(
+          pago =>
+            pago.metodo_pago_id === undefined ||
+            pago.metodo_pago_id === null ||
+            pago.metodo_pago_id <= 0 ||
+            pago.moneda_id === undefined ||
+            pago.moneda_id === null ||
+            pago.moneda_id <= 0 ||
+            pago.monto === undefined ||
+            pago.monto === null ||
+            pago.monto <= 0
+        )
+
+        let mensaje = 'Algunos pagos no están completos y serán omitidos:\n'
+        pagosInvalidos.forEach((pago, index) => {
+          const faltantes = []
+          if (!pago.metodo_pago_id) faltantes.push('método de pago')
+          if (!pago.moneda_id) faltantes.push('moneda')
+          if (!pago.monto || pago.monto <= 0) faltantes.push('monto')
+
+          mensaje += `Pago ${index + 1}: Falta ${faltantes.join(', ')}\n`
+        })
+
+        message.warning(mensaje)
+      }
+
       const data = {
         venta_id: parseInt(resolvedParams.id),
         empresa_id: 1,
         cliente_id: values.cliente_id.value || values.cliente_id,
         usuario_id: 1,
-        total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
-        estado: 'generado', //saleData?.estado_venta || 'generado',
+        total: updatedTotal,
+        estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,
-        metodo_pago_id: values.metodo_pago_id,
         moneda_id: 1,
         moneda: '$',
-        referencia_pago: values.referencia_pago || '',
+        comentario: values.comentario || '',
+        pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
 
       const confirm = await modal.confirm({
@@ -535,158 +728,177 @@ export default function EditPurchase({
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}
       >
-        <Space direction='vertical' size='large' style={{ width: '100%' }}>
-          <PageHeader title='Editar Venta' showNewButton={false} />
+        <PageHeader title='Editar Venta' showNewButton={false} />
 
-          <Form
-            form={form}
-            layout='vertical'
-            onFinish={onFinish}
-            initialValues={{
-              cliente_id: saleData?.cliente_id,
+        {/* Mensaje de advertencia para ventas canceladas */}
+        {saleData?.estado_venta === 'cancelado' && (
+          <div
+            style={{
+              backgroundColor: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '6px',
+              padding: '16px',
+              marginBottom: '24px',
+              color: '#cf1322',
             }}
           >
-            <Space direction='vertical' size='large' style={{ width: '100%' }}>
-              <Row>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Cliente</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='cliente_id'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor seleccione un cliente',
-                        },
-                      ]}
-                    >
-                      <SearchSelect
-                        form={form}
-                        name='cliente_id'
-                        fetchOptions={fetchClients}
-                        placeholder='Busque un Cliente por nombre o NIT'
-                        labelFormatter={item => `${item.nombre} (${item.nit})`}
-                        onSelect={(_, option) => {
-                          if (option && option.details) {
-                            setClient(option.details)
-                          }
-                        }}
-                      />
-                    </Form.Item>
-                    <label>Nit</label>
-                    <Input value={client?.nit} disabled />
-                    <label>Tipo Cliente</label>
-                    <Input value={client?.tipo} disabled />
-                  </Space>
-                </Col>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Telefono</label>
-                    <Input value={client?.telefono} disabled />
-                    <label>Email</label>
-                    <Input value={client?.email} disabled />
-                    <label>Direccion</label>
-                    <Input value={client?.direccion} disabled />
-                  </Space>
-                </Col>
-              </Row>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              ⚠️ Venta Cancelada
+            </div>
+            <div>
+              Esta venta ha sido cancelada y no puede ser actualizada. Solo
+              puede ver los detalles de la venta.
+            </div>
+          </div>
+        )}
 
-              <Row>
-                <Col span={12}>
-                  <Space direction='vertical' style={{ width: '90%' }}>
-                    <label>Método de Pago</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='metodo_pago_id'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor seleccione un método de pago',
-                        },
-                      ]}
-                    >
-                      <MetodoPagoSelect
-                        onChange={(value, metodo) => setMetodoPago(metodo)}
-                      />
-                    </Form.Item>
-                  </Space>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col span={24}>
-                  <Space direction='vertical' style={{ width: '100%' }}>
-                    <label>Referencia de Pago (Opcional)</label>
-                    <Form.Item
-                      style={{ marginBottom: 0 }}
-                      name='referencia_pago'
-                    >
-                      <Input placeholder='Número de transacción, cheque, etc.' />
-                    </Form.Item>
-                  </Space>
-                </Col>
-              </Row>
-
-              <div>
-                <Button
-                  type='dashed'
-                  onClick={handleAddDetail}
-                  icon={<PlusOutlined />}
-                  style={{ marginBottom: '16px' }}
-                  loading={isLoading}
-                >
-                  Agregar Producto
-                </Button>
-                <div
-                  style={{
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '6px',
-                    border: '1px solid #e9ecef',
-                    fontSize: '13px',
-                    color: '#6c757d',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  💡 <strong>Nota:</strong> El precio unitario se actualiza
-                  automáticamente cuando se selecciona un producto. Se puede
-                  editar manualmente solo cuando el tipo de precio es
-                  "Sugerido".
-                </div>
-                <Table
-                  loading={isLoading}
-                  columns={columns}
-                  dataSource={details}
-                  rowKey='key'
-                  pagination={false}
-                />
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <h3>
-                  Total: ${' '}
-                  {details
-                    .reduce((acc, curr) => acc + curr.subtotal, 0)
-                    .toFixed(2)}
-                </h3>
-              </div>
-
-              <Form.Item>
-                <Space>
-                  <Button
-                    loading={isLoading}
-                    onClick={() => router.push('/home/saleOrders')}
+        <Form
+          form={form}
+          layout='vertical'
+          onFinish={onFinish}
+          initialValues={{
+            cliente_id: saleData?.cliente_id,
+          }}
+        >
+          <Space direction='vertical' size='large' style={{ width: '100%' }}>
+            <Row>
+              <Col span={12}>
+                <Space direction='vertical' style={{ width: '90%' }}>
+                  <label>Cliente</label>
+                  <Form.Item
+                    style={{ marginBottom: 0 }}
+                    name='cliente_id'
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Por favor seleccione un cliente',
+                      },
+                    ]}
                   >
-                    Cancelar
-                  </Button>
-                  <Button loading={isLoading} type='primary' htmlType='submit'>
-                    Actualizar Venta
-                  </Button>
+                    <SearchSelect
+                      form={form}
+                      name='cliente_id'
+                      fetchOptions={fetchClients}
+                      placeholder='Busque un Cliente por nombre o NIT'
+                      labelFormatter={item => `${item.nombre} (${item.nit})`}
+                      onSelect={(_, option) => {
+                        if (option && option.details) {
+                          setClient(option.details)
+                        }
+                      }}
+                    />
+                  </Form.Item>
+                  <label>Nit</label>
+                  <Input value={client?.nit} disabled />
+                  <label>Tipo Cliente</label>
+                  <Input value={client?.tipo} disabled />
                 </Space>
-              </Form.Item>
-            </Space>
-          </Form>
-        </Space>
+              </Col>
+              <Col span={12}>
+                <Space direction='vertical' style={{ width: '90%' }}>
+                  <label>Telefono</label>
+                  <Input value={client?.telefono} disabled />
+                  <label>Email</label>
+                  <Input value={client?.email} disabled />
+                  <label>Direccion</label>
+                  <Input value={client?.direccion} disabled />
+                </Space>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col span={24}>
+                <Space direction='vertical' style={{ width: '100%' }}>
+                  <label>Comentario (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='comentario'>
+                    <Input placeholder='Número de transacción, cheque, etc.' />
+                  </Form.Item>
+                </Space>
+              </Col>
+            </Row>
+
+            <div>
+              <Button
+                type='dashed'
+                onClick={handleAddDetail}
+                icon={<PlusOutlined />}
+                style={{ marginBottom: '16px' }}
+                loading={isLoading}
+              >
+                Agregar Producto
+              </Button>
+              <div
+                style={{
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  border: '1px solid #e9ecef',
+                  fontSize: '13px',
+                  color: '#6c757d',
+                  fontStyle: 'italic',
+                }}
+              >
+                💡 <strong>Nota:</strong> El precio unitario se actualiza
+                automáticamente cuando se selecciona un producto. Se puede
+                editar manualmente solo cuando el tipo de precio es "Sugerido".
+              </div>
+              <Table
+                loading={isLoading}
+                columns={columns}
+                dataSource={details}
+                rowKey='key'
+                pagination={false}
+              />
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <h3>
+                Total: ${' '}
+                {details
+                  .reduce((acc, curr) => acc + curr.subtotal, 0)
+                  .toFixed(2)}
+              </h3>
+            </div>
+
+            {/* Sección de Pagos */}
+            {ventaData && (
+              <PaymentsSection
+                venta={{
+                  ...ventaData,
+                  total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
+                }}
+                pagos={pagos}
+                onAddPayment={handleAddPayment}
+                onEditPayment={handleEditPayment}
+                onDeletePayment={handleDeletePayment}
+                onPaymentsChange={syncPayments}
+              />
+            )}
+
+            <Form.Item>
+              <Space>
+                <Button
+                  loading={isLoading}
+                  onClick={() => router.push('/home/saleOrders')}
+                >
+                  Regresar
+                </Button>
+                <Button
+                  loading={isLoading}
+                  type='primary'
+                  htmlType='submit'
+                  disabled={saleData?.estado_venta === 'cancelado'}
+                  title={
+                    saleData?.estado_venta === 'cancelado'
+                      ? 'No se puede actualizar una venta cancelada'
+                      : ''
+                  }
+                >
+                  Actualizar
+                </Button>
+              </Space>
+            </Form.Item>
+          </Space>
+        </Form>
       </Card>
       {contextHolder}
     </motion.div>

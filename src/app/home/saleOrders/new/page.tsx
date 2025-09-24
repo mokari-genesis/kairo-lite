@@ -18,13 +18,16 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { createPurchase } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
-import { MetodoPagoSelect } from '@/app/components/MetodoPagoSelect'
 import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
+import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
+import { Venta, VentaPago } from '@/app/api/pagos'
+import { getMetodosPago } from '@/app/api/metodos-pago'
+import { getMonedas } from '@/app/api/monedas'
 
 interface PurchaseDetail {
   producto_id: number
@@ -52,7 +55,24 @@ export default function NewPurchase() {
   const router = useRouter()
   const [details, setDetails] = useState<PurchaseDetail[]>([])
   const [client, setClient] = useState<ClientsTypeResponse>()
-  const [metodoPago, setMetodoPago] = useState<any>()
+  const [pagos, setPagos] = useState<VentaPago[]>([])
+  const [ventaData, setVentaData] = useState<Venta | null>(null)
+
+  // Crear objeto Venta para la sección de pagos
+  useEffect(() => {
+    const total = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+    const venta: Venta = {
+      id: 0, // ID temporal para ventas nuevas
+      total,
+      estado: 'pendiente',
+      moneda_id: 1, // Por defecto GTQ
+      pagos: pagos,
+      totalPagado: pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+      saldoPendiente:
+        total - pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+    }
+    setVentaData(venta)
+  }, [details, pagos])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -209,6 +229,91 @@ export default function NewPurchase() {
     setDetails(newDetails)
   }
 
+  // Funciones auxiliares para obtener nombres de métodos de pago y monedas
+  const getMetodoPagoNombre = async (metodoPagoId: number): Promise<string> => {
+    try {
+      const metodosPago = await getMetodosPago({ activo: 1 })
+      const metodo = metodosPago.find(m => m.id === metodoPagoId)
+      return metodo?.nombre || `Método ${metodoPagoId}`
+    } catch (error) {
+      console.error('Error getting payment method name:', error)
+      return `Método ${metodoPagoId}`
+    }
+  }
+
+  const getMonedaCodigo = async (monedaId: number): Promise<string> => {
+    try {
+      const monedas = await getMonedas({ activo: 1 })
+      const moneda = monedas.find(m => m.id === monedaId)
+      return moneda?.codigo || `Moneda ${monedaId}`
+    } catch (error) {
+      console.error('Error getting currency code:', error)
+      return `Moneda ${monedaId}`
+    }
+  }
+
+  // Handlers para gestión de pagos
+  const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
+    try {
+      // Obtener nombres de método de pago y moneda
+      const [metodoPagoNombre, monedaCodigo] = await Promise.all([
+        getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        ),
+        getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
+      ])
+
+      const newPayment: VentaPago = {
+        ...payment,
+        id: Date.now(), // ID temporal para pagos nuevos
+        metodoPagoNombre,
+        monedaCodigo,
+        fecha: new Date().toISOString(), // Fecha actual
+      }
+
+      setPagos(prev => [...prev, newPayment])
+    } catch (error) {
+      console.error('Error adding payment:', error)
+      message.error('Error al agregar el pago')
+    }
+  }
+
+  const handleEditPayment = async (
+    paymentId: number,
+    payment: Partial<VentaPago>
+  ) => {
+    try {
+      let updatedPayment = { ...payment }
+
+      // Si se cambió el método de pago, obtener el nombre
+      if (payment.metodo_pago_id || payment.metodoPagoId) {
+        const metodoPagoNombre = await getMetodoPagoNombre(
+          payment.metodo_pago_id || payment.metodoPagoId || 0
+        )
+        updatedPayment.metodoPagoNombre = metodoPagoNombre
+      }
+
+      // Si se cambió la moneda, obtener el código
+      if (payment.moneda_id || payment.monedaId) {
+        const monedaCodigo = await getMonedaCodigo(
+          payment.moneda_id || payment.monedaId || 0
+        )
+        updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      setPagos(prev =>
+        prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
+      )
+    } catch (error) {
+      console.error('Error editing payment:', error)
+      message.error('Error al editar el pago')
+    }
+  }
+
+  const handleDeletePayment = (paymentId: number) => {
+    setPagos(prev => prev.filter(p => p.id !== paymentId))
+  }
+
   const onFinish = async (values: any) => {
     try {
       if (details.length === 0) {
@@ -231,17 +336,69 @@ export default function NewPurchase() {
         return
       }
 
+      // Validar que si hay pagos, la suma no exceda el total
+      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
+      const pagosValidos = pagos.filter(pago => {
+        const isValid =
+          pago.metodo_pago_id !== undefined &&
+          pago.metodo_pago_id !== null &&
+          pago.metodo_pago_id > 0 &&
+          pago.moneda_id !== undefined &&
+          pago.moneda_id !== null &&
+          pago.moneda_id > 0 &&
+          pago.monto > 0
+        return isValid
+      })
+
+      const totalPagos = pagosValidos.reduce(
+        (acc, pago) => acc + (pago.monto || 0),
+        0
+      )
+
+      if (pagosValidos.length > 0 && totalPagos > totalVenta) {
+        message.error(
+          'La suma de los pagos no puede exceder el total de la venta'
+        )
+        return
+      }
+
+      // Si hay pagos inválidos, mostrar advertencia
+      if (pagos.length > 0 && pagosValidos.length !== pagos.length) {
+        const pagosInvalidos = pagos.filter(
+          pago =>
+            pago.metodo_pago_id === undefined ||
+            pago.metodo_pago_id === null ||
+            pago.metodo_pago_id <= 0 ||
+            pago.moneda_id === undefined ||
+            pago.moneda_id === null ||
+            pago.moneda_id <= 0 ||
+            pago.monto <= 0
+        )
+
+        let mensaje = 'Algunos pagos no están completos y serán omitidos:\n'
+        pagosInvalidos.forEach((pago, index) => {
+          const faltantes = []
+          if (!pago.metodo_pago_id) faltantes.push('método de pago')
+          if (!pago.moneda_id) faltantes.push('moneda')
+          if (pago.monto <= 0) faltantes.push('monto')
+          mensaje += `- Pago ${index + 1}: falta ${faltantes.join(', ')}\n`
+        })
+
+        message.warning(mensaje)
+      }
+
       const data = {
         ...values,
         empresa_id: 1,
         usuario_id: 1,
-        total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
-        estado: 'generado',
-        metodo_pago_id: values.metodo_pago_id,
+        total: totalVenta,
+        estado: 'vendido',
         moneda_id: 1,
         moneda: '$',
-        referencia_pago: values.referencia_pago || '',
+        comentario: values.comentario || '',
         detalle: details,
+        pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
 
       const confirm = await modal.confirm({
@@ -439,32 +596,10 @@ export default function NewPurchase() {
             </Row>
 
             <Row>
-              <Col span={12}>
-                <Space direction='vertical' style={{ width: '90%' }}>
-                  <label>Método de Pago</label>
-                  <Form.Item
-                    style={{ marginBottom: 0 }}
-                    name='metodo_pago_id'
-                    rules={[
-                      {
-                        required: true,
-                        message: 'Por favor seleccione un método de pago',
-                      },
-                    ]}
-                  >
-                    <MetodoPagoSelect
-                      onChange={(value, metodo) => setMetodoPago(metodo)}
-                    />
-                  </Form.Item>
-                </Space>
-              </Col>
-            </Row>
-
-            <Row>
               <Col span={24}>
                 <Space direction='vertical' style={{ width: '100%' }}>
-                  <label>Referencia de Pago (Opcional)</label>
-                  <Form.Item style={{ marginBottom: 0 }} name='referencia_pago'>
+                  <label>Comentario (Opcional)</label>
+                  <Form.Item style={{ marginBottom: 0 }} name='comentario'>
                     <Input placeholder='Número de transacción, cheque, etc.' />
                   </Form.Item>
                 </Space>
@@ -512,6 +647,17 @@ export default function NewPurchase() {
                   .toFixed(2)}
               </h3>
             </div>
+
+            {/* Sección de Pagos */}
+            {ventaData && (
+              <PaymentsSection
+                venta={ventaData}
+                pagos={pagos}
+                onAddPayment={handleAddPayment}
+                onEditPayment={handleEditPayment}
+                onDeletePayment={handleDeletePayment}
+              />
+            )}
 
             <Form.Item>
               <Space>

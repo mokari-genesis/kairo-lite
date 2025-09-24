@@ -39,8 +39,8 @@ export interface SalesType {
   producto_estado: string
   producto_precio: string
   tipo_precio_aplicado: string
-  metodo_pago: string
-  referencia_pago: string
+  metodos_pago: string
+  comentario: string
 }
 
 export type SalesCreateRequest = {
@@ -52,7 +52,7 @@ export type SalesCreateRequest = {
   metodo_pago_id?: number
   moneda_id?: number
   moneda?: string
-  referencia_pago?: string
+  comentario?: string
   detalle: [
     {
       producto_id: number
@@ -242,7 +242,7 @@ export type SalesEditRequest = {
   metodo_pago_id?: number
   moneda_id?: number
   moneda?: string
-  referencia_pago?: string
+  comentario?: string
   detalle: [
     {
       producto_id: number

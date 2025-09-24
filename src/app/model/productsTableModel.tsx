@@ -1,6 +1,17 @@
 import { ColumnConfig } from '../components/DataTable'
-import { Badge, Button, Space } from 'antd'
-import { DollarOutlined } from '@ant-design/icons'
+import { Badge, Button, Space, Tag } from 'antd'
+import {
+  DollarOutlined,
+  ProductOutlined,
+  BarcodeOutlined,
+  FileTextOutlined,
+  TagOutlined,
+  InboxOutlined,
+  ShopOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CalendarOutlined,
+} from '@ant-design/icons'
 
 export interface FilterConfig {
   type: 'text' | 'select'
@@ -17,24 +28,48 @@ export const columns: ColumnConfig[] = [
     dataIndex: 'id',
     type: 'text',
     disabled: true,
+    render: value => (
+      <Space>
+        <ProductOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 'bold' }}>#{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'codigo',
     title: 'Código',
     dataIndex: 'codigo',
     type: 'text',
+    render: value => (
+      <Space>
+        <BarcodeOutlined style={{ color: '#722ed1' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'serie',
     title: 'Serie',
     dataIndex: 'serie',
     type: 'text',
+    render: value => (
+      <Space>
+        <FileTextOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'descripcion',
     title: 'Descripción',
     dataIndex: 'descripcion',
     type: 'text',
+    render: value => (
+      <Space>
+        <TagOutlined style={{ color: '#fa8c16' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
+      </Space>
+    ),
   },
   {
     key: 'categoria',
@@ -53,12 +88,22 @@ export const columns: ColumnConfig[] = [
         otros: '#95A5A6',
       }
       return (
-        <Badge
-          color={colors[categoria]}
-          text={(
-            categoria.charAt(0).toUpperCase() + categoria.slice(1)
-          ).replace(/_/g, ' ')}
-        />
+        <Space>
+          <TagOutlined style={{ color: colors[categoria] || '#95A5A6' }} />
+          <Tag
+            color={colors[categoria] || 'default'}
+            style={{
+              borderRadius: '6px',
+              fontWeight: 'bold',
+              fontSize: '12px',
+            }}
+          >
+            {(categoria.charAt(0).toUpperCase() + categoria.slice(1)).replace(
+              /_/g,
+              ' '
+            )}
+          </Tag>
+        </Space>
       )
     },
     options: [
@@ -78,8 +123,35 @@ export const columns: ColumnConfig[] = [
     dataIndex: 'stock',
     type: 'text',
     render: (stock: number) => {
-      const color = stock > 10 ? '#87d068' : stock > 5 ? '#f5a623' : '#f50'
-      return <Badge color={color} text={stock} />
+      const stockConfig = {
+        color: stock > 10 ? '#52c41a' : stock > 5 ? '#faad14' : '#ff4d4f',
+        icon:
+          stock > 10 ? (
+            <CheckCircleOutlined />
+          ) : stock > 5 ? (
+            <ExclamationCircleOutlined />
+          ) : (
+            <ExclamationCircleOutlined />
+          ),
+        text: stock > 10 ? 'Alto' : stock > 5 ? 'Medio' : 'Bajo',
+      }
+
+      return (
+        <Space>
+          <InboxOutlined style={{ color: stockConfig.color }} />
+          <span style={{ fontWeight: 'bold', color: stockConfig.color }}>
+            {stock}
+          </span>
+          {stock <= 5 && (
+            <Tag
+              color='warning'
+              style={{ borderRadius: '4px', fontSize: '11px' }}
+            >
+              {stockConfig.text}
+            </Tag>
+          )}
+        </Space>
+      )
     },
   },
   {
@@ -88,15 +160,26 @@ export const columns: ColumnConfig[] = [
     dataIndex: 'precio',
     type: 'text',
     disabled: true,
-    render: (precio: number) => `$.${precio}`,
+    render: (precio: number) => (
+      <Space>
+        <DollarOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 'bold', color: '#52c41a' }}>${precio}</span>
+      </Space>
+    ),
   },
   {
     key: 'proveedor_id',
     title: 'Proveedor',
     dataIndex: 'proveedor_id',
     type: 'supplier',
-    render: (value: any, record: any) =>
-      record.nombre_proveedor || 'Sin proveedor',
+    render: (value: any, record: any) => (
+      <Space>
+        <ShopOutlined style={{ color: '#722ed1' }} />
+        <span style={{ fontWeight: 500 }}>
+          {record.nombre_proveedor || 'Sin proveedor'}
+        </span>
+      </Space>
+    ),
   },
   {
     key: 'date',
@@ -110,12 +193,38 @@ export const columns: ColumnConfig[] = [
     title: 'Estado',
     dataIndex: 'estado',
     type: 'select',
-    render: (estado: string) => (
-      <Badge
-        status={estado === 'activo' ? 'success' : 'error'}
-        text={estado.charAt(0).toUpperCase() + estado.slice(1)}
-      />
-    ),
+    render: (estado: string) => {
+      const statusConfig = {
+        activo: {
+          color: 'success',
+          icon: <CheckCircleOutlined />,
+          text: 'Activo',
+        },
+        inactivo: {
+          color: 'error',
+          icon: <ExclamationCircleOutlined />,
+          text: 'Inactivo',
+        },
+      }
+
+      const config =
+        statusConfig[estado as keyof typeof statusConfig] || statusConfig.activo
+
+      return (
+        <Tag
+          color={config.color}
+          icon={config.icon}
+          style={{
+            borderRadius: '6px',
+            fontWeight: 'bold',
+            fontSize: '12px',
+            padding: '4px 8px',
+          }}
+        >
+          {config.text}
+        </Tag>
+      )
+    },
     options: [
       { value: 'activo', label: 'Activo' },
       { value: 'inactivo', label: 'Inactivo' },

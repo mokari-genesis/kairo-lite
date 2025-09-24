@@ -49,7 +49,6 @@ export const Salescolumns: ColumnConfig[] = [
     type: 'select',
     render: (estado_venta: string) => {
       const colors: Record<string, string> = {
-        generado: '#2db7f5',
         vendido: '#87d068',
         cancelado: '#f50',
       }
@@ -61,24 +60,14 @@ export const Salescolumns: ColumnConfig[] = [
       )
     },
     options: [
-      { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
       { value: 'cancelado', label: 'Cancelado' },
     ],
   },
   {
-    key: 'cantidad',
-    title: 'Cantidad',
-    dataIndex: 'cantidad',
-    type: 'text',
-    render: (stock: number) => {
-      return <Badge color={'#87d068'} text={stock} />
-    },
-  },
-  {
     key: 'metodo_pago',
     title: 'Metodo de pago',
-    dataIndex: 'metodo_pago',
+    dataIndex: 'metodos_pago',
     type: 'text',
     render: (metodo_pago: string) => metodo_pago,
   },
@@ -95,6 +84,15 @@ export const Salescolumns: ColumnConfig[] = [
     dataIndex: 'precio_unitario',
     type: 'text',
     render: (precio: number) => `$${precio}`,
+  },
+  {
+    key: 'cantidad',
+    title: 'Cantidad',
+    dataIndex: 'cantidad',
+    type: 'text',
+    render: (stock: number) => {
+      return <Badge color={'#87d068'} text={stock} />
+    },
   },
   {
     key: 'total_venta',
@@ -146,7 +144,6 @@ export const SalesfilterConfigs: FilterConfig[] = [
     placeholder: 'Estado venta',
     width: '20%',
     options: [
-      { value: 'generado', label: 'Generado' },
       { value: 'vendido', label: 'Vendido' },
       { value: 'cancelado', label: 'Cancelado' },
     ],

@@ -8,7 +8,7 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   getReporteInventarioConMetodo,
@@ -18,6 +18,8 @@ import {
   ReporteMovimientoInventario,
   ReporteStockActual,
 } from '@/app/api/reportes'
+import { getSalesFlat } from '@/app/api/sales'
+import { formatCurrency } from '@/app/utils/currency'
 import {
   Card,
   message,
@@ -29,6 +31,8 @@ import {
   Select,
   Typography,
   Divider,
+  Statistic,
+  Tag,
 } from 'antd'
 import { motion } from 'framer-motion'
 import {
@@ -36,6 +40,13 @@ import {
   FileTextOutlined,
   BarChartOutlined,
   DatabaseOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  InboxOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  UserOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons'
 import * as XLSX from 'xlsx'
 
@@ -55,6 +66,63 @@ function ReportesPage() {
 
   const router = useRouter()
 
+  // Configuración de filtros para el reporte de Stock Actual
+  const stockActualFilterConfigs = [
+    {
+      type: 'text' as const,
+      key: 'codigo',
+      placeholder: 'Código Producto',
+      width: '25%',
+    },
+    {
+      type: 'text' as const,
+      key: 'serie',
+      placeholder: 'Serie Producto',
+      width: '25%',
+    },
+    {
+      type: 'text' as const,
+      key: 'descripcion',
+      placeholder: 'Descripción',
+      width: '25%',
+    },
+    {
+      type: 'select' as const,
+      key: 'categoria',
+      placeholder: 'Categoría',
+      width: '25%',
+      options: [
+        { value: 'otros', label: 'Otro' },
+        { value: 'electronica', label: 'Electrónica' },
+        { value: 'ropa', label: 'Ropa' },
+        { value: 'hogar', label: 'Hogar' },
+        { value: 'deportes', label: 'Deportes' },
+        { value: 'libros', label: 'Libros' },
+        { value: 'juegos', label: 'Juegos' },
+        { value: 'herramientas', label: 'Herramientas' },
+        { value: 'alimentacion', label: 'Alimentación' },
+        { value: 'belleza', label: 'Belleza' },
+        { value: 'automotriz', label: 'Automotriz' },
+      ],
+    },
+    {
+      type: 'text' as const,
+      key: 'proveedor_nombre',
+      placeholder: 'Proveedor',
+      width: '25%',
+    },
+    {
+      type: 'select' as const,
+      key: 'proveedor_tipo',
+      placeholder: 'Tipo Proveedor',
+      width: '25%',
+      options: [
+        { value: 'nacional', label: 'Nacional' },
+        { value: 'internacional', label: 'Internacional' },
+      ],
+    },
+  ]
+
   const reportTypes = [
     {
       key: 'stock-actual',
@@ -62,6 +130,12 @@ function ReportesPage() {
       description: 'Muestra el inventario actual con valores totales',
       icon: <DatabaseOutlined />,
     },
+    // {
+    //   key: 'ventas-con-pagos',
+    //   title: 'Ventas con Pagos',
+    //   description: 'Reporte de ventas con información de pagos y saldos',
+    //   icon: <BarChartOutlined />,
+    // },
     // {
     //   key: 'inventario-con-metodo',
     //   title: 'Inventario con Métodos de Pago',
@@ -82,100 +156,435 @@ function ReportesPage() {
       title: 'Código',
       dataIndex: 'codigo',
       type: 'text',
+      render: (value: any) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'serie',
+      title: 'Serie',
+      dataIndex: 'serie',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 500 }}>{value || 'N/A'}</span>
+        </Space>
+      ),
     },
     {
       key: 'descripcion',
       title: 'Descripción',
       dataIndex: 'descripcion',
       type: 'text',
+      render: (value: any) => (
+        <Space>
+          <InboxOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 500 }}>{value}</span>
+        </Space>
+      ),
     },
     {
       key: 'categoria',
       title: 'Categoría',
       dataIndex: 'categoria',
       type: 'text',
+      render: (value: any) => (
+        <Space>
+          <BarChartOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 500 }}>{value}</span>
+        </Space>
+      ),
     },
     {
       key: 'proveedor_nombre',
       title: 'Proveedor',
       dataIndex: 'proveedor_nombre',
       type: 'text',
+      render: (value: any) => (
+        <Space>
+          <UserOutlined style={{ color: '#722ed1' }} />
+          <span style={{ fontWeight: 500 }}>{value || 'N/A'}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'proveedor_tipo',
+      title: 'Tipo Proveedor',
+      dataIndex: 'proveedor_tipo',
+      type: 'text',
+      render: (value: any) => {
+        const tipoConfig = {
+          nacional: { color: 'blue', text: 'Nacional' },
+          internacional: { color: 'green', text: 'Internacional' },
+        }
+        const config = tipoConfig[value as keyof typeof tipoConfig] || {
+          color: 'default',
+          text: value || 'N/A',
+        }
+
+        return (
+          <Tag
+            color={config.color}
+            style={{ borderRadius: '6px', fontWeight: 'bold' }}
+          >
+            {config.text}
+          </Tag>
+        )
+      },
     },
     {
       key: 'stock',
       title: 'Stock Actual',
       dataIndex: 'stock',
       type: 'text',
+      render: (stock: number) => {
+        const stockConfig = {
+          color: stock > 10 ? '#52c41a' : stock > 5 ? '#faad14' : '#ff4d4f',
+          text: stock > 10 ? 'Alto' : stock > 5 ? 'Medio' : 'Bajo',
+        }
+
+        return (
+          <Space>
+            <InboxOutlined style={{ color: stockConfig.color }} />
+            <span style={{ fontWeight: 'bold', color: stockConfig.color }}>
+              {stock}
+            </span>
+            <Tag
+              color={
+                stockConfig.color === '#52c41a'
+                  ? 'success'
+                  : stockConfig.color === '#faad14'
+                  ? 'warning'
+                  : 'error'
+              }
+              style={{ borderRadius: '4px', fontSize: '11px' }}
+            >
+              {stockConfig.text}
+            </Tag>
+          </Space>
+        )
+      },
     },
     {
       key: 'precio_sugerido',
       title: 'Precio Sugerido',
       dataIndex: 'precio_sugerido',
       type: 'text',
-      render: (value: number) => `$.${value}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+            {formatCurrency(undefined, value)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'precio_minorista',
       title: 'Precio Minorista',
       dataIndex: 'precio_minorista',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'precio_mayorista',
       title: 'Precio Mayorista',
       dataIndex: 'precio_mayorista',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#722ed1' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'precio_distribuidores',
       title: 'Precio Distribuidores',
       dataIndex: 'precio_distribuidores',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 'bold', color: '#faad14' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'precio_especial',
       title: 'Precio Especial',
       dataIndex: 'precio_especial',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#ff4d4f' }} />
+          <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'valor_stock_sugerido',
       title: 'Valor Total (Precio sugerido)',
       dataIndex: 'valor_stock_sugerido',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'valor_stock_minorista',
       title: 'Valor Total (Precio minorista)',
       dataIndex: 'valor_stock_minorista',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'valor_stock_mayorista',
       title: 'Valor Total (Precio mayorista)',
       dataIndex: 'valor_stock_mayorista',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#722ed1' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'valor_stock_distribuidores',
       title: 'Valor Total (Precio distribuidores)',
       dataIndex: 'valor_stock_distribuidores',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 'bold', color: '#faad14' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
     },
     {
       key: 'valor_stock_especial',
       title: 'Valor Total (Precio especial)',
       dataIndex: 'valor_stock_especial',
       type: 'text',
-      render: (value: number) => `$.${value || 0}`,
+      render: (value: number) => (
+        <Space>
+          <DollarOutlined style={{ color: '#ff4d4f' }} />
+          <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
+            {formatCurrency(undefined, value || 0)}
+          </span>
+        </Space>
+      ),
+    },
+  ]
+
+  const ventasConPagosColumns = [
+    {
+      key: 'id',
+      title: 'ID Venta',
+      dataIndex: 'id',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <ShoppingCartOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'fecha_venta',
+      title: 'Fecha de Venta',
+      dataIndex: 'fecha_venta',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <CalendarOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 500 }}>{value}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'cliente_nombre',
+      title: 'Cliente',
+      dataIndex: 'cliente_nombre',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <UserOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 500 }}>{value}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'cliente_nit',
+      title: 'NIT',
+      dataIndex: 'cliente_nit',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 500 }}>{value || 'No disponible'}</span>
+        </Space>
+      ),
+    },
+    {
+      key: 'estado_venta',
+      title: 'Estado',
+      dataIndex: 'estado_venta',
+      type: 'text',
+      render: (estado: string) => {
+        const estadoConfig = {
+          vendido: {
+            color: 'success',
+            icon: <CheckCircleOutlined />,
+            text: 'Vendido',
+          },
+          cancelado: {
+            color: 'error',
+            icon: <ExclamationCircleOutlined />,
+            text: 'Cancelado',
+          },
+        }
+        const config = estadoConfig[estado as keyof typeof estadoConfig] || {
+          color: 'default',
+          icon: <ExclamationCircleOutlined />,
+          text: estado,
+        }
+
+        return (
+          <Tag
+            color={config.color}
+            style={{ borderRadius: '6px', fontWeight: 'bold' }}
+          >
+            <Space>
+              {config.icon}
+              {config.text}
+            </Space>
+          </Tag>
+        )
+      },
+    },
+    {
+      key: 'total_venta',
+      title: 'Total de Venta',
+      dataIndex: 'total_venta',
+      type: 'text',
+      render: (total: string) => (
+        <Space>
+          <DollarOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+            {formatCurrency(undefined, parseFloat(total))}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'total_pagado',
+      title: 'Total Pagado',
+      dataIndex: 'total_pagado',
+      type: 'text',
+      render: (total: string | number, record: any) => {
+        // Calcular total pagado sumando todos los pagos de la venta
+        const totalPagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
+        return (
+          <Space>
+            <CheckCircleOutlined style={{ color: '#1890ff' }} />
+            <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+              {formatCurrency(undefined, Number(totalPagado))}
+            </span>
+          </Space>
+        )
+      },
+    },
+    {
+      key: 'saldo_pendiente',
+      title: 'Saldo Pendiente',
+      dataIndex: 'saldo_pendiente',
+      type: 'text',
+      render: (saldo: string | number, record: any) => {
+        const total = parseFloat(record.total_venta)
+        // Calcular total pagado sumando todos los pagos de la venta
+        const totalPagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
+        const saldoPendiente = total - Number(totalPagado)
+        const isPendiente = saldoPendiente > 0
+
+        return (
+          <Space>
+            <ExclamationCircleOutlined
+              style={{ color: isPendiente ? '#ff4d4f' : '#52c41a' }}
+            />
+            <span
+              style={{
+                fontWeight: 'bold',
+                color: isPendiente ? '#ff4d4f' : '#52c41a',
+              }}
+            >
+              {formatCurrency(undefined, saldoPendiente)}
+            </span>
+            {isPendiente && (
+              <Tag
+                color='warning'
+                style={{ borderRadius: '4px', fontSize: '11px' }}
+              >
+                Pendiente
+              </Tag>
+            )}
+          </Space>
+        )
+      },
+    },
+    {
+      key: 'usuario_nombre',
+      title: 'Vendedor',
+      dataIndex: 'usuario_nombre',
+      type: 'text',
+      render: (value: any) => (
+        <Space>
+          <UserOutlined style={{ color: '#722ed1' }} />
+          <span style={{ fontWeight: 500 }}>{value}</span>
+        </Space>
+      ),
     },
   ]
 
@@ -284,6 +693,9 @@ function ReportesPage() {
       case 'stock-actual':
         setColumns(stockActualColumns)
         break
+      case 'ventas-con-pagos':
+        setColumns(ventasConPagosColumns)
+        break
       case 'inventario-con-metodo':
         setColumns(inventarioConMetodoColumns)
         break
@@ -306,6 +718,9 @@ function ReportesPage() {
         case 'stock-actual':
           result = await getReporteStockActual(filters)
           break
+        case 'ventas-con-pagos':
+          result = await getSalesFlat(filters)
+          break
         case 'inventario-con-metodo':
           result = await getReporteInventarioConMetodo(filters)
           break
@@ -318,6 +733,7 @@ function ReportesPage() {
 
       setData(result)
     } catch (error) {
+      console.error('Error fetching report data:', error)
       message.error('Error al cargar el reporte')
     } finally {
       setLoading(false)
@@ -355,6 +771,143 @@ function ReportesPage() {
   const onFilterChange = (newFilters: Record<string, any>) => {
     setFilters(newFilters)
   }
+
+  // Calcular estadísticas de reportes
+  const reportStats = useMemo(() => {
+    if (!data || data.length === 0) {
+      return {
+        totalRegistros: 0,
+        totalVentas: 0,
+        totalPagado: 0,
+        totalPendiente: 0,
+        totalStock: 0,
+        valorInventario: 0,
+        valorInventarioMinorista: 0,
+        valorInventarioMayorista: 0,
+        valorInventarioDistribuidores: 0,
+        valorInventarioEspecial: 0,
+        promedioVenta: 0,
+        ventasCompletadas: 0,
+      }
+    }
+
+    const totalRegistros = data.length
+
+    if (selectedReport === 'ventas-con-pagos') {
+      const totalVentas = data.reduce(
+        (sum, record) => sum + parseFloat(record.total_venta || 0),
+        0
+      )
+      const totalPagado = data.reduce((sum, record) => {
+        const pagado =
+          record.pagos?.reduce(
+            (pSum: number, pago: any) => pSum + (pago.monto || 0),
+            0
+          ) || 0
+        return sum + pagado
+      }, 0)
+      const totalPendiente = totalVentas - totalPagado
+
+      const promedioVenta =
+        totalRegistros > 0 ? totalVentas / totalRegistros : 0
+      const ventasCompletadas = data.filter(record => {
+        const total = parseFloat(record.total_venta || 0)
+        const pagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) => sum + (pago.monto || 0),
+            0
+          ) || 0
+        return total > 0 && pagado >= total
+      }).length
+
+      return {
+        totalRegistros,
+        totalVentas,
+        totalPagado,
+        totalPendiente,
+        totalStock: 0,
+        valorInventario: 0,
+        valorInventarioMinorista: 0,
+        valorInventarioMayorista: 0,
+        valorInventarioDistribuidores: 0,
+        valorInventarioEspecial: 0,
+        promedioVenta,
+        ventasCompletadas,
+      }
+    } else if (selectedReport === 'stock-actual') {
+      const totalStock = data.reduce(
+        (sum, record) => sum + Number(record.stock || record.stock_actual || 0),
+        0
+      )
+      const valorInventario = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_sugerido || 0)
+        const valorPreCalculado = Number(record.valor_stock_sugerido || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioMinorista = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_minorista || 0)
+        const valorPreCalculado = Number(record.valor_stock_minorista || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioMayorista = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_mayorista || 0)
+        const valorPreCalculado = Number(record.valor_stock_mayorista || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioDistribuidores = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_distribuidores || 0)
+        const valorPreCalculado = Number(record.valor_stock_distribuidores || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+      const valorInventarioEspecial = data.reduce((sum, record) => {
+        const stock = Number(record.stock || record.stock_actual || 0)
+        const precio = Number(record.precio_especial || 0)
+        const valorPreCalculado = Number(record.valor_stock_especial || 0)
+        const valorCalculado = valorPreCalculado || stock * precio
+        return sum + valorCalculado
+      }, 0)
+
+      return {
+        totalRegistros,
+        totalVentas: 0,
+        totalPagado: 0,
+        totalPendiente: 0,
+        totalStock,
+        valorInventario,
+        valorInventarioMinorista,
+        valorInventarioMayorista,
+        valorInventarioDistribuidores,
+        valorInventarioEspecial,
+        promedioVenta: 0,
+        ventasCompletadas: 0,
+      }
+    }
+
+    return {
+      totalRegistros,
+      totalVentas: 0,
+      totalPagado: 0,
+      totalPendiente: 0,
+      totalStock: 0,
+      valorInventario: 0,
+      valorInventarioMinorista: 0,
+      valorInventarioMayorista: 0,
+      valorInventarioDistribuidores: 0,
+      valorInventarioEspecial: 0,
+      promedioVenta: 0,
+      ventasCompletadas: 0,
+      ventasParciales: 0,
+      porcentajeCobranza: 0,
+    }
+  }, [data, selectedReport])
 
   return (
     <motion.div
@@ -399,6 +952,328 @@ function ReportesPage() {
         </Row>
 
         <Divider />
+
+        {/* Tarjetas de Estadísticas */}
+        <Row
+          gutter={[16, 16]}
+          justify='center'
+          style={{ marginBottom: '24px' }}
+        >
+          <Col xs={24} sm={12} md={6}>
+            <Card
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                color: 'white',
+              }}
+            >
+              <Statistic
+                title={
+                  <span style={{ color: 'white', opacity: 0.9 }}>
+                    Total Registros
+                  </span>
+                }
+                value={reportStats.totalRegistros}
+                prefix={<DatabaseOutlined style={{ color: 'white' }} />}
+                valueStyle={{ color: 'white' }}
+              />
+            </Card>
+          </Col>
+
+          {selectedReport === 'ventas-con-pagos' && (
+            <>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Total Ventas
+                      </span>
+                    }
+                    value={reportStats.totalVentas}
+                    precision={2}
+                    prefix={<DollarOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Total Pagado
+                      </span>
+                    }
+                    value={reportStats.totalPagado}
+                    precision={2}
+                    prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Saldo Pendiente
+                      </span>
+                    }
+                    value={reportStats.totalPendiente}
+                    precision={2}
+                    prefix={
+                      <ExclamationCircleOutlined style={{ color: 'white' }} />
+                    }
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+            </>
+          )}
+
+          {selectedReport === 'stock-actual' && (
+            <>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Total Stock
+                      </span>
+                    }
+                    value={reportStats.totalStock}
+                    prefix={<InboxOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Valor Inventario (Precio Sugerido)
+                      </span>
+                    }
+                    value={reportStats.valorInventario}
+                    precision={2}
+                    prefix={<DollarOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+            </>
+          )}
+        </Row>
+
+        {/* Segunda fila de estadísticas para ventas con pagos */}
+        {selectedReport === 'ventas-con-pagos' && (
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Promedio por Venta
+                    </span>
+                  }
+                  value={reportStats.promedioVenta}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ventas Completadas
+                    </span>
+                  }
+                  value={reportStats.ventasCompletadas}
+                  prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
+
+        {/* Segunda fila de estadísticas para stock actual */}
+        {selectedReport === 'stock-actual' && (
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Valor Inventario (Minorista)
+                    </span>
+                  }
+                  value={reportStats.valorInventarioMinorista}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Valor Inventario (Mayorista)
+                    </span>
+                  }
+                  value={reportStats.valorInventarioMayorista}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Valor Inventario (Distribuidores)
+                    </span>
+                  }
+                  value={reportStats.valorInventarioDistribuidores}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Valor Inventario (Especial)
+                    </span>
+                  }
+                  value={reportStats.valorInventarioEspecial}
+                  precision={2}
+                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
+
+        {/* Filtros para el reporte de Stock Actual */}
+        {selectedReport === 'stock-actual' && (
+          <div style={{ marginBottom: '24px' }}>
+            <FilterSection
+              filters={stockActualFilterConfigs}
+              onFilterChange={onFilterChange}
+            />
+          </div>
+        )}
 
         <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
           <Col span={24}>

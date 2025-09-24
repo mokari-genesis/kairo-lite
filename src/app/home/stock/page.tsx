@@ -8,14 +8,21 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useStock } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import { queryClient, QueryKey } from '@/app/utils/query'
-import { Card, message, Space, Button } from 'antd'
+import { Card, message, Space, Button, Row, Col, Statistic } from 'antd'
 import { motion } from 'framer-motion'
 import { deleteStock, StockTypeUpdate, updateStock } from '@/app/api/stock'
 import { StockColumns, StockFilterConfigs } from '../../model/stockTableModel'
+import {
+  InboxOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  ShoppingCartOutlined,
+  ToolOutlined,
+} from '@ant-design/icons'
 import * as XLSX from 'xlsx'
 
 function Home() {
@@ -109,6 +116,36 @@ function Home() {
   }
 
   const { data: dataStock, isLoading: stockLoading } = useStock(filters)
+
+  // Calcular estadísticas de movimientos
+  const stockStats = useMemo(() => {
+    if (!dataStock || dataStock.length === 0) {
+      return {
+        totalMovimientos: 0,
+        movimientosEntrada: 0,
+        movimientosSalida: 0,
+        movimientosAjuste: 0,
+      }
+    }
+
+    const totalMovimientos = dataStock.length
+    const movimientosEntrada = dataStock.filter(
+      stock => stock.tipo_movimiento === 'entrada'
+    ).length
+    const movimientosSalida = dataStock.filter(
+      stock => stock.tipo_movimiento === 'salida'
+    ).length
+    const movimientosAjuste = dataStock.filter(
+      stock => stock.tipo_movimiento === 'ajuste'
+    ).length
+
+    return {
+      totalMovimientos,
+      movimientosEntrada,
+      movimientosSalida,
+      movimientosAjuste,
+    }
+  }, [dataStock])
 
   // Función para generar colores únicos basados en el ID de venta
   const generateColorForSalesId = (salesId: string | number): string => {
@@ -209,7 +246,7 @@ function Home() {
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               alignItems: 'center',
             }}
           >
@@ -217,22 +254,115 @@ function Home() {
               title='Historial de Movimientos'
               onNewClick={handleNewClick}
             />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginTop: -30,
-            }}
-          >
-            <Button
-              type='primary'
-              onClick={handleExportExcel}
-              icon={<span>📊</span>}
+            <div
+              style={{
+                margin: 10,
+                width: '100%',
+                textAlign: 'right',
+              }}
             >
-              Exportar a Excel
-            </Button>
+              <Button
+                type='primary'
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
+              >
+                Exportar a Excel
+              </Button>
+            </div>
           </div>
+
+          {/* Tarjetas de Estadísticas */}
+          <Row gutter={[16, 16]} justify='center'>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Total Movimientos
+                    </span>
+                  }
+                  value={stockStats.totalMovimientos}
+                  prefix={<InboxOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Entradas
+                    </span>
+                  }
+                  value={stockStats.movimientosEntrada}
+                  prefix={<ArrowUpOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Salidas
+                    </span>
+                  }
+                  value={stockStats.movimientosSalida}
+                  prefix={<ArrowDownOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card
+                style={{
+                  background:
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Ajustes
+                    </span>
+                  }
+                  value={stockStats.movimientosAjuste}
+                  prefix={<ToolOutlined style={{ color: 'white' }} />}
+                  valueStyle={{ color: 'white' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
           <div
             style={{
               backgroundColor: '#f8f9fa',
