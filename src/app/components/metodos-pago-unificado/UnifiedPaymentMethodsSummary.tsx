@@ -346,6 +346,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
           <Row gutter={16}>
             <Col xs={12} sm={8}>
               <Statistic
+                style={{ textAlign: 'center' }}
                 title='Total de Ventas'
                 value={safeSummaryData.total_general.total_ventas || 0}
                 prefix={<ShoppingCartOutlined />}
@@ -354,6 +355,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             </Col>
             <Col xs={12} sm={8}>
               <Statistic
+                style={{ textAlign: 'center' }}
                 title='Monto Total'
                 value={safeSummaryData.total_general.total_monto || 0}
                 precision={2}
@@ -363,6 +365,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             </Col>
             <Col xs={12} sm={8}>
               <Statistic
+                style={{ textAlign: 'center' }}
                 title='Total cancelado'
                 value={safeSummaryData.total_general.total_cancelado || 0}
                 precision={2}

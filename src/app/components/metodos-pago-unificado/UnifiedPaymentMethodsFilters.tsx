@@ -105,13 +105,6 @@ export const UnifiedPaymentMethodsFilters: React.FC<
         ]
       }
 
-      if (initialFilters.fecha_pago_inicio && initialFilters.fecha_pago_fin) {
-        formValues.fecha_pago = [
-          dayjs(initialFilters.fecha_pago_inicio),
-          dayjs(initialFilters.fecha_pago_fin),
-        ]
-      }
-
       form.setFieldsValue(formValues)
     }
   }, [initialFilters, form])
@@ -128,21 +121,14 @@ export const UnifiedPaymentMethodsFilters: React.FC<
       metodo_pago_id: values.metodo_pago_id,
       moneda_id: values.moneda_id,
       estado_venta: values.estado_venta,
-      estado_pago: values.estado_pago,
-      venta_es_vendida: values.venta_es_vendida,
-      limit: values.limit || 100,
-      offset: values.offset || 0,
+      limit: 100, // Fixed limit since we removed the limit filter
+      offset: 0,
     }
 
     // Handle date ranges
     if (values.fecha_venta && values.fecha_venta.length === 2) {
       filters.fecha_venta_inicio = values.fecha_venta[0].format('YYYY-MM-DD')
       filters.fecha_venta_fin = values.fecha_venta[1].format('YYYY-MM-DD')
-    }
-
-    if (values.fecha_pago && values.fecha_pago.length === 2) {
-      filters.fecha_pago_inicio = values.fecha_pago[0].format('YYYY-MM-DD')
-      filters.fecha_pago_fin = values.fecha_pago[1].format('YYYY-MM-DD')
     }
 
     // Remove undefined values
@@ -211,8 +197,6 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                 onValuesChange={handleFormChange}
                 initialValues={{
                   empresa_id: 1,
-                  limit: 100,
-                  offset: 0,
                 }}
               >
                 <Row gutter={[16, 16]}>
@@ -276,27 +260,6 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                   </Col>
 
                   <Col xs={24} sm={12} md={8} lg={6}>
-                    <Form.Item label='Estado de Pago' name='estado_pago'>
-                      <Select placeholder='Estado de pago' allowClear>
-                        <Option value='pendiente'>Pendiente</Option>
-                        <Option value='pagado'>Pagado</Option>
-                        <Option value='parcial'>Parcial</Option>
-                        <Option value='cancelado'>Cancelado</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} sm={12} md={8} lg={6}>
-                    <Form.Item
-                      label='Venta Completada'
-                      name='venta_es_vendida'
-                      valuePropName='checked'
-                    >
-                      <Switch checkedChildren='Sí' unCheckedChildren='No' />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} sm={12} md={8} lg={6}>
                     <Form.Item label='ID de Usuario' name='usuario_id'>
                       <InputNumber
                         placeholder='ID de usuario'
@@ -322,58 +285,10 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                       />
                     </Form.Item>
                   </Col>
-
-                  <Col xs={24} sm={12} md={12} lg={8}>
-                    <Form.Item label='Rango de Fecha de Pago' name='fecha_pago'>
-                      <RangePicker
-                        style={{ width: '100%' }}
-                        format='YYYY-MM-DD'
-                        placeholder={['Fecha inicio', 'Fecha fin']}
-                        disabledDate={disabledDate}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} sm={12} md={12} lg={8}>
-                    <Form.Item label='Límite de Registros' name='limit'>
-                      <Select placeholder='Registros por página'>
-                        <Option value={50}>50 registros</Option>
-                        <Option value={100}>100 registros</Option>
-                        <Option value={200}>200 registros</Option>
-                        <Option value={500}>500 registros</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
                 </Row>
 
                 {/* Quick Filter Buttons */}
                 <Row gutter={[8, 8]}>
-                  <Col>
-                    <Button
-                      size='small'
-                      onClick={() => {
-                        form.setFieldsValue({
-                          estado_pago: 'pendiente',
-                        })
-                        handleFormChange()
-                      }}
-                    >
-                      Solo Pendientes
-                    </Button>
-                  </Col>
-                  <Col>
-                    <Button
-                      size='small'
-                      onClick={() => {
-                        form.setFieldsValue({
-                          venta_es_vendida: true,
-                        })
-                        handleFormChange()
-                      }}
-                    >
-                      Solo Completadas
-                    </Button>
-                  </Col>
                   <Col>
                     <Button
                       size='small'

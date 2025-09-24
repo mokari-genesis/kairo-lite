@@ -582,8 +582,9 @@ export const UnifiedPaymentMethodsTable: React.FC<
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: 16 }}>
-            <Col xs={12} sm={6}>
+            <Col xs={24} sm={24}>
               <Statistic
+                style={{ textAlign: 'center' }}
                 title='Promedio por Venta'
                 value={summaryStats.promedioVenta}
                 precision={2}

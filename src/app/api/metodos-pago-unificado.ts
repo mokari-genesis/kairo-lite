@@ -64,16 +64,12 @@ export interface MetodosPagoUnificadoFilters {
   metodo_pago_id?: number
   moneda_id?: number
   estado_venta?: string
-  estado_pago?: string
 
   // Filtros de fecha
   fecha_venta_inicio?: string // YYYY-MM-DD
   fecha_venta_fin?: string // YYYY-MM-DD
-  fecha_pago_inicio?: string // YYYY-MM-DD
-  fecha_pago_fin?: string // YYYY-MM-DD
 
   // Filtros adicionales
-  venta_es_vendida?: boolean
   limit?: number
   offset?: number
 }
@@ -261,7 +257,6 @@ export const getMetodosPagoUnificadoPendingPayments = async (
 ): Promise<MetodosPagoUnificadoResponse> => {
   return getMetodosPagoUnificado({
     empresa_id,
-    estado_pago: 'pendiente',
     ...additionalFilters,
   })
 }

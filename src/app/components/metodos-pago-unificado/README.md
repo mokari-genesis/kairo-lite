@@ -109,10 +109,10 @@ const summaryFilters = {
 ### 3. Seguimiento de Saldos Pendientes
 
 ```typescript
-// Filtrar solo pagos pendientes
+// Filtrar por estado de venta
 const filters = {
   empresa_id: 1,
-  estado_pago: 'pendiente',
+  estado_venta: 'pendiente',
 }
 ```
 
@@ -139,18 +139,14 @@ const summaryFilters = {
 - `metodo_pago_id` - ID del método de pago
 - `moneda_id` - ID de la moneda
 - `estado_venta` - Estado de la venta
-- `estado_pago` - Estado del pago
 
 ### Filtros de Fecha
 
 - `fecha_venta_inicio` - Fecha de inicio de venta (YYYY-MM-DD)
 - `fecha_venta_fin` - Fecha de fin de venta (YYYY-MM-DD)
-- `fecha_pago_inicio` - Fecha de inicio de pago (YYYY-MM-DD)
-- `fecha_pago_fin` - Fecha de fin de pago (YYYY-MM-DD)
 
 ### Filtros Adicionales
 
-- `venta_es_vendida` - Filtrar ventas completadas (true/false)
 - `limit` - Límite de registros (default: 100)
 - `offset` - Offset para paginación (default: 0)
 
