@@ -63,27 +63,16 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   // Use groupBy from filters or default to 'metodo_pago'
   const groupBy = filters.agrupar_por ?? 'metodo_pago'
 
-  // Debug logging
-  console.log('UnifiedPaymentMethodsSummary - filters:', filters)
-  console.log('UnifiedPaymentMethodsSummary - groupBy:', groupBy)
-
   const [paymentMethods, setPaymentMethods] = useState<SelectOption[]>([])
   const [clients, setClients] = useState<SelectOption[]>([])
   const [currencies, setCurrencies] = useState<SelectOption[]>([])
   const [localGroupBy, setLocalGroupBy] =
     useState<MetodosPagoUnificadoResumenFilters['agrupar_por']>(groupBy)
 
-  // Effect to log when filters change
+  // Effect to sync local groupBy with filters
   useEffect(() => {
-    console.log('Filters changed in UnifiedPaymentMethodsSummary:', filters)
-    console.log('Current groupBy value:', groupBy)
     setLocalGroupBy(groupBy)
   }, [filters, groupBy])
-
-  // Effect to log when localGroupBy changes
-  useEffect(() => {
-    console.log('LocalGroupBy changed:', localGroupBy)
-  }, [localGroupBy])
 
   // Helper function to safely access summaryData
   const getSafeSummaryData = () => {
@@ -146,7 +135,6 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   // Handle groupBy change
   const handleGroupByChange = useCallback(
     (newGroupBy: MetodosPagoUnificadoResumenFilters['agrupar_por']) => {
-      console.log('Changing groupBy to:', newGroupBy)
       setLocalGroupBy(newGroupBy)
       // Notify parent component about the filter change
       if (onFiltersChange) {
@@ -155,7 +143,6 @@ export const UnifiedPaymentMethodsSummary: React.FC<
           empresa_id: 1,
           agrupar_por: newGroupBy,
         }
-        console.log('New filters:', newFilters)
         onFiltersChange(newFilters)
       }
     },
@@ -321,9 +308,6 @@ export const UnifiedPaymentMethodsSummary: React.FC<
                 onChange={handleGroupByChange}
                 style={{ width: 200 }}
                 placeholder='Seleccionar agrupación'
-                onFocus={() =>
-                  console.log('Select focused, current value:', localGroupBy)
-                }
               >
                 <Option value='metodo_pago'>Método de Pago</Option>
                 <Option value='cliente'>Cliente</Option>

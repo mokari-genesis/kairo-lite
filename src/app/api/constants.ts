@@ -37,10 +37,6 @@ export const fetchApi = async <T>({
   }
 
   const url = `${api}${service}`
-  console.log('Making request to:', url)
-  console.log('Request headers:', {
-    Authorization: idToken ? `${idToken.substring(0, 20)}...` : 'No token',
-  })
 
   const response = await fetch(url, {
     method,
@@ -50,11 +46,7 @@ export const fetchApi = async <T>({
     body: JSON.stringify(body),
   })
 
-  console.log('Response status:', response.status)
-  console.log('Response ok:', response.ok)
-
   const result = await response.json()
-  console.log('Response result:', result)
 
   if (!response.ok || result.status === 'FAILURE') {
     console.error('API Error:', {

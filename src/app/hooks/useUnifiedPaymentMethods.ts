@@ -57,11 +57,6 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       agrupar_por: 'metodo_pago',
     })
 
-  // Debug logging for summary filters
-  useEffect(() => {
-    console.log('Summary filters state changed:', summaryFilters)
-  }, [summaryFilters])
-
   // Load table data
   const loadTableData = useCallback(
     async (newFilters?: MetodosPagoUnificadoFilters) => {
@@ -70,9 +65,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
 
       try {
         const filtersToUse = newFilters || filters
-        console.log('Loading table data with filters:', filtersToUse)
         const response = await getMetodosPagoUnificado(filtersToUse)
-        console.log('Received response:', response)
         setTableData(response)
 
         if (newFilters) {
@@ -200,7 +193,6 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
   // Update summary filters
   const updateSummaryFilters = useCallback(
     (newFilters: MetodosPagoUnificadoResumenFilters) => {
-      console.log('Updating summary filters:', newFilters)
       setSummaryFilters(newFilters)
     },
     []
@@ -243,7 +235,6 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
 
   // Load initial data
   useEffect(() => {
-    console.log('Hook initialized, loading initial data...')
     loadTableData()
   }, []) // Only run once on mount
 

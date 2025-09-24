@@ -132,14 +132,6 @@ export const getMetodosPagoUnificado = async (
       method: 'GET',
     })
 
-    console.log('Raw API response:', response)
-    console.log('Response data structure:', {
-      data: response.data,
-      dataLength: Array.isArray(response.data)
-        ? response.data.length
-        : 'Not an array',
-    })
-
     // Map the response to the expected structure
     // The API returns data directly in response.data as an array
     const data = Array.isArray(response.data) ? response.data : []
@@ -147,8 +139,6 @@ export const getMetodosPagoUnificado = async (
     const page = Math.floor((filters.offset || 0) / (filters.limit || 100)) + 1
     const pageSize = filters.limit || 100
     const hasMore = (filters.offset || 0) + pageSize < total
-
-    console.log('Mapped data:', { data, total, page, pageSize, hasMore })
 
     return {
       data,
