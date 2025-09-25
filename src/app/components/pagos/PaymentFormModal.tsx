@@ -212,7 +212,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
               <strong>⚠️ Esta venta ya está vendida</strong>
               <br />
               No se pueden realizar cambios en los pagos, si asi lo deseas debes
-              cancelar la venta y editarla.
+              cancelar la venta.
             </div>
           </div>
         )}

@@ -6,11 +6,11 @@ export const formatCurrency = (
   monedaCodigo?: string,
   monto?: number
 ): string => {
-  const currencyCode = monedaCodigo || 'GTQ'
+  const currencyCode = monedaCodigo || 'USD'
   const amount = Number(monto) || 0
 
   try {
-    return new Intl.NumberFormat('es-GT', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -18,9 +18,9 @@ export const formatCurrency = (
     }).format(amount)
   } catch (error) {
     // Fallback si la moneda no es válida
-    return new Intl.NumberFormat('es-GT', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'GTQ',
+      currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
@@ -36,18 +36,18 @@ export const calculateSaldo = (total: number, totalPagado: number): number => {
 }
 
 export const getCurrencySymbol = (monedaCodigo?: string): string => {
-  const currencyCode = monedaCodigo || 'GTQ'
+  const currencyCode = monedaCodigo || 'USD'
 
   try {
-    const formatter = new Intl.NumberFormat('es-GT', {
+    const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode,
     })
     return (
       formatter.formatToParts(0).find(part => part.type === 'currency')
-        ?.value || 'Q'
+        ?.value || '$'
     )
   } catch (error) {
-    return 'Q'
+    return '$'
   }
 }
