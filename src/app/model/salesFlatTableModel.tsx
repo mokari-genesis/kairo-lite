@@ -4,7 +4,7 @@ import { formatCurrency } from '../utils/currency'
 import {
   UserOutlined,
   CalendarOutlined,
-  DollarOutlined,
+  BankOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ClockCircleOutlined,
@@ -112,7 +112,7 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     key: 'total_venta',
     render: (total: string) => (
       <Space>
-        <DollarOutlined style={{ color: '#52c41a' }} />
+        <BankOutlined style={{ color: '#52c41a' }} />
         <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
           {formatCurrency(undefined, parseFloat(total))}
         </span>

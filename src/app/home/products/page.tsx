@@ -40,7 +40,7 @@ import {
   ShoppingOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  DollarOutlined,
+  BankOutlined,
   InboxOutlined,
   TagOutlined,
   ShopOutlined,
@@ -429,7 +429,7 @@ function Home() {
                   }
                   value={productsStats.valorInventario}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: '#333' }} />}
+                  prefix={<BankOutlined style={{ color: '#333' }} />}
                   valueStyle={{ color: '#333' }}
                 />
               </Card>

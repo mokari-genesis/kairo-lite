@@ -14,7 +14,7 @@ import { Card, Col, Row, Space, Button, message, Statistic } from 'antd'
 import { motion } from 'framer-motion'
 import {
   ShoppingCartOutlined,
-  DollarOutlined,
+  BankOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   DatabaseOutlined,
@@ -364,7 +364,7 @@ function HomeSales() {
                   }
                   value={salesStats.totalVentasConfirmadas}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>

@@ -35,7 +35,7 @@ import {
 import { UpdateStateRequest } from '@/app/api/products'
 import { ticketTemplate } from '@/app/templates/ticket-template'
 import {
-  DollarOutlined,
+  BankOutlined,
   ShoppingCartOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
@@ -351,7 +351,7 @@ export default function SaleOrders() {
                   }
                   value={salesStats.totalMontoNoCanceladas}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>

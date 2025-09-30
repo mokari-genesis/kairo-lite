@@ -1,7 +1,7 @@
 import { ColumnConfig } from '../components/DataTable'
 import { Badge, Button, Space, Tag } from 'antd'
 import {
-  DollarOutlined,
+  BankOutlined,
   ProductOutlined,
   BarcodeOutlined,
   FileTextOutlined,
@@ -162,8 +162,10 @@ export const columns: ColumnConfig[] = [
     disabled: true,
     render: (precio: number) => (
       <Space>
-        <DollarOutlined style={{ color: '#52c41a' }} />
-        <span style={{ fontWeight: 'bold', color: '#52c41a' }}>${precio}</span>
+        <BankOutlined style={{ color: '#52c41a' }} />
+        <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+          Bs {precio}
+        </span>
       </Space>
     ),
   },
@@ -239,7 +241,7 @@ export const columns: ColumnConfig[] = [
       <Space>
         <Button
           type='text'
-          icon={<DollarOutlined />}
+          icon={<BankOutlined />}
           onClick={() => actions?.onManagePrecios?.(record)}
           title='Gestionar Precios'
         />

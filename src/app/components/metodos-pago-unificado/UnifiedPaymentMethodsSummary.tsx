@@ -17,7 +17,7 @@ import {
   Progress,
 } from 'antd'
 import {
-  DollarOutlined,
+  BankOutlined,
   ShoppingCartOutlined,
   UserOutlined,
   CalendarOutlined,
@@ -167,10 +167,10 @@ export const UnifiedPaymentMethodsSummary: React.FC<
     agrupar_por: MetodosPagoUnificadoResumenFilters['agrupar_por']
   ) => {
     const icons = {
-      metodo_pago: <DollarOutlined />,
+      metodo_pago: <BankOutlined />,
       cliente: <UserOutlined />,
       usuario: <UserOutlined />,
-      moneda: <DollarOutlined />,
+      moneda: <BankOutlined />,
       fecha_venta_dia: <CalendarOutlined />,
       fecha_pago_dia: <CalendarOutlined />,
     }
@@ -343,7 +343,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
                 title='Monto Total'
                 value={safeSummaryData.total_general.total_monto || 0}
                 precision={2}
-                prefix={<DollarOutlined />}
+                prefix={<BankOutlined />}
                 valueStyle={{ color: '#52c41a' }}
               />
             </Col>
@@ -353,7 +353,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
                 title='Total cancelado'
                 value={safeSummaryData.total_general.total_cancelado || 0}
                 precision={2}
-                prefix={<DollarOutlined />}
+                prefix={<BankOutlined />}
                 valueStyle={{ color: '#ff4d4f' }}
               />
             </Col>

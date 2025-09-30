@@ -81,7 +81,7 @@ export default function NewMoneda() {
             ]}
           >
             <Input
-              placeholder='Ej: GTQ, USD, EUR'
+              placeholder='Ej: VES, USD, EUR'
               maxLength={3}
               style={{ textTransform: 'uppercase' }}
             />

@@ -186,8 +186,8 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
         const numPrecio =
           typeof precio === 'string' ? parseFloat(precio) : precio
         return numPrecio && !isNaN(numPrecio)
-          ? `$.${numPrecio.toFixed(2)}`
-          : '$.0.00'
+          ? `Bs.${numPrecio.toFixed(2)}`
+          : 'Bs.0.00'
       },
     },
     {

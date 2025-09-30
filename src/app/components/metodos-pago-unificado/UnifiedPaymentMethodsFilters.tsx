@@ -21,7 +21,7 @@ import {
   SearchOutlined,
   CalendarOutlined,
   UserOutlined,
-  DollarOutlined,
+  BankOutlined,
 } from '@ant-design/icons'
 import { RangePickerProps } from 'antd/es/date-picker'
 import dayjs from 'dayjs'

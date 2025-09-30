@@ -65,7 +65,7 @@ export default function NewPurchase() {
       id: 0, // ID temporal para ventas nuevas
       total,
       estado: 'pendiente',
-      moneda_id: 1, // Por defecto GTQ
+      moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
       pagos: pagos,
       totalPagado: pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
       saldoPendiente:
@@ -394,8 +394,8 @@ export default function NewPurchase() {
         usuario_id: 1,
         total: totalVenta,
         estado: 'vendido',
-        moneda_id: 1,
-        moneda: '$',
+        moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
+        moneda: 'Bs',
         comentario: values.comentario || '',
         detalle: details,
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
@@ -506,7 +506,7 @@ export default function NewPurchase() {
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `$ ${value.toFixed(2)}`,
+      render: (value: number) => `Bs. ${value.toFixed(2)}`,
     },
     {
       title: 'Acciones',
@@ -641,7 +641,7 @@ export default function NewPurchase() {
 
             <div style={{ textAlign: 'right' }}>
               <h3>
-                Total: ${' '}
+                Total: Bs.{' '}
                 {details
                   .reduce((acc, curr) => acc + curr.subtotal, 0)
                   .toFixed(2)}

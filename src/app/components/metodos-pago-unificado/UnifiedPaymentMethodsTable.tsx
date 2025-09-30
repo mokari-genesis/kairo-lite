@@ -18,7 +18,7 @@ import type { ColumnsType, TableProps } from 'antd/es/table'
 import {
   EyeOutlined,
   PrinterOutlined,
-  DollarOutlined,
+  BankOutlined,
   UserOutlined,
   CalendarOutlined,
   CheckCircleOutlined,
@@ -566,7 +566,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
                 value={summaryStats.totalMonto}
                 valueStyle={{ color: '#52c41a' }}
                 precision={2}
-                prefix={<DollarOutlined />}
+                prefix={<BankOutlined />}
               />
             </Col>
 
@@ -577,7 +577,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
                 value={summaryStats.totalCancelado}
                 precision={2}
                 valueStyle={{ color: '#cf1322' }}
-                prefix={<DollarOutlined />}
+                prefix={<BankOutlined />}
               />
             </Col>
           </Row>
@@ -588,7 +588,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
                 title='Promedio por Venta'
                 value={summaryStats.promedioVenta}
                 precision={2}
-                prefix={<DollarOutlined />}
+                prefix={<BankOutlined />}
               />
             </Col>
           </Row>
