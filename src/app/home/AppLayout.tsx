@@ -159,15 +159,15 @@ export default function AppLayout({ children }: any) {
         router.push('/home/metodosPago')
       },
     },
-    // {
-    //   key: '9',
-    //   label: 'Monedas',
-    //   icon: React.createElement(GlobalOutlined),
-    //   onClick: () => {
-    //     setSelectedKey('9')
-    //     router.push('/home/monedas')
-    //   },
-    // },
+    {
+      key: '9',
+      label: 'Monedas',
+      icon: React.createElement(GlobalOutlined),
+      onClick: () => {
+        setSelectedKey('9')
+        router.push('/home/monedas')
+      },
+    },
   ]
 
   const [loading, setLoading] = useState(false)

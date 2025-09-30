@@ -49,12 +49,14 @@ function MonedasPage() {
         nombre: record.nombre,
         simbolo: record.simbolo,
         decimales: record.decimales,
-        activo: record.activo,
+        activo: record.activo === 'true' ? 1 : 0,
       }
       await updateMoneda(updateData)
+
       await queryClient.invalidateQueries({
         queryKey: [QueryKey.monedasInfo, filters],
       })
+      await fetchData()
       message.success('Moneda actualizada exitosamente')
     } catch (error: any) {
       message.error(error.message || 'Error al actualizar la moneda')

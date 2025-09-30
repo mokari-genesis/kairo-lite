@@ -26,7 +26,7 @@ export interface UpdateMonedaRequest {
   nombre: string
   simbolo?: string
   decimales: number
-  activo: boolean
+  activo: number
 }
 
 export const getMonedas = async (
