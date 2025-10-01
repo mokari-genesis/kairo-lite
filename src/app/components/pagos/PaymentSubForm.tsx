@@ -15,7 +15,14 @@ import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { MetodoPagoSelect } from '../MetodoPagoSelect'
 import { MonedaSelect } from '../MonedaSelect'
 import { VentaPago, PaymentCreateRequest } from '@/app/api/pagos'
-import { formatCurrency, sumPagos, calculateSaldo } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  sumPagos,
+  calculateSaldo,
+  sumPagosConConversion,
+  obtenerMonedaBase,
+} from '@/app/utils/currency'
+import { Moneda, getMonedas } from '@/app/api/monedas'
 
 interface PaymentSubFormProps {
   total: number
@@ -30,8 +37,28 @@ export const PaymentSubForm: React.FC<PaymentSubFormProps> = ({
 }) => {
   const [pagos, setPagos] = useState<VentaPago[]>([])
   const [form] = Form.useForm()
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
-  const totalPagado = sumPagos(pagos)
+  // Cargar monedas al montar el componente
+  React.useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
+
+  // Calcular total pagado con conversión si hay moneda base
+  const totalPagado = monedaBase
+    ? sumPagosConConversion(pagos, monedaBase, monedas)
+    : sumPagos(pagos)
   const saldoPendiente = calculateSaldo(total, totalPagado)
 
   const handleAddPayment = () => {

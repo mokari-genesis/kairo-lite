@@ -10,6 +10,9 @@ export interface Moneda {
   simbolo?: string
   decimales: number
   activo: boolean
+  es_base: number
+  tasa_vs_base: string
+  tasa_actualizada: string
 }
 
 export interface CreateMonedaRequest {

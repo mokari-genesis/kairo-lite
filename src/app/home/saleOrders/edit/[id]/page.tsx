@@ -31,6 +31,7 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
+import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
 
 interface PurchaseDetail {
   producto_id: number
@@ -68,6 +69,23 @@ export default function EditPurchase({
   const [saleData, setSaleData] = useState<any>(null)
   const [ventaData, setVentaData] = useState<Venta | null>(null)
   const [pagos, setPagos] = useState<VentaPago[]>([])
+  const [monedas, setMonedas] = useState<any[]>([])
+  const [monedaBase, setMonedaBase] = useState<any>(null)
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -164,9 +182,24 @@ export default function EditPurchase({
   useEffect(() => {
     if (ventaData && details.length > 0) {
       const newTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
-      setVentaData(prev => (prev ? { ...prev, total: newTotal } : null))
+
+      // Calcular total pagado con conversión si hay moneda base
+      const totalPagado = monedaBase
+        ? sumPagosConConversion(pagos, monedaBase, monedas)
+        : pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+
+      setVentaData(prev =>
+        prev
+          ? {
+              ...prev,
+              total: newTotal,
+              totalPagado,
+              saldoPendiente: newTotal - totalPagado,
+            }
+          : null
+      )
     }
-  }, [details])
+  }, [details, pagos, monedaBase, monedas, ventaData])
 
   // Función para sincronizar pagos desde PaymentsSection
   const syncPayments = async () => {
@@ -507,10 +540,9 @@ export default function EditPurchase({
         return isValid
       })
 
-      const totalPagos = pagosValidos.reduce(
-        (acc, pago) => acc + (pago.monto || 0),
-        0
-      )
+      const totalPagos = monedaBase
+        ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
+        : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
 
       if (pagosValidos.length > 0 && totalPagos > totalVenta) {
         message.error(

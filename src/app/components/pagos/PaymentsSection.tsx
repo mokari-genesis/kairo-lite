@@ -15,7 +15,14 @@ import { Venta, VentaPago } from '@/app/api/pagos'
 import { usePayments } from '@/app/hooks/usePayments'
 import { PaymentFormModal } from './PaymentFormModal'
 import { PaymentList } from './PaymentList'
-import { formatCurrency, sumPagos, calculateSaldo } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  sumPagos,
+  calculateSaldo,
+  sumPagosConConversion,
+  obtenerMonedaBase,
+} from '@/app/utils/currency'
+import { Moneda, getMonedas } from '@/app/api/monedas'
 
 interface PaymentsSectionProps {
   venta: Venta
@@ -38,6 +45,8 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
 }) => {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingPago, setEditingPago] = useState<VentaPago | undefined>()
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
   // Si se proporcionan pagos externos, usar solo esos (modo local)
   // Si no, usar el hook (modo API)
@@ -58,8 +67,26 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
   const loading = isLocalMode ? externalLoading || false : hookLoading
 
   const isVendido = venta.estado === 'vendido'
-  // Calcular total pagado basado en los pagos actuales
-  const totalPagado = sumPagos(pagos)
+
+  // Cargar monedas al montar el componente
+  React.useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
+
+  // Calcular total pagado con conversión si hay moneda base
+  const totalPagado = monedaBase
+    ? sumPagosConConversion(pagos, monedaBase, monedas)
+    : sumPagos(pagos)
   const saldoPendiente = calculateSaldo(venta.total, totalPagado)
   const progressPercentage =
     venta.total > 0 ? (totalPagado / venta.total) * 100 : 0
@@ -241,6 +268,7 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
           ventaTotal={venta.total}
           totalPagado={totalPagado}
           isVendido={isVendido}
+          key={editingPago?.id || 'new'} // Forzar re-render cuando cambie el pago a editar
         />
       </Space>
     </Card>

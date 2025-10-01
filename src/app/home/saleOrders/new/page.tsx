@@ -28,6 +28,7 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
+import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
 
 interface PurchaseDetail {
   producto_id: number
@@ -57,22 +58,44 @@ export default function NewPurchase() {
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [pagos, setPagos] = useState<VentaPago[]>([])
   const [ventaData, setVentaData] = useState<Venta | null>(null)
+  const [monedas, setMonedas] = useState<any[]>([])
+  const [monedaBase, setMonedaBase] = useState<any>(null)
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
 
   // Crear objeto Venta para la sección de pagos
   useEffect(() => {
     const total = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
+    // Calcular total pagado con conversión si hay moneda base
+    const totalPagado = monedaBase
+      ? sumPagosConConversion(pagos, monedaBase, monedas)
+      : pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+
     const venta: Venta = {
       id: 0, // ID temporal para ventas nuevas
       total,
       estado: 'pendiente',
       moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
       pagos: pagos,
-      totalPagado: pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
-      saldoPendiente:
-        total - pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+      totalPagado,
+      saldoPendiente: total - totalPagado,
     }
     setVentaData(venta)
-  }, [details, pagos])
+  }, [details, pagos, monedaBase, monedas])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -351,10 +374,9 @@ export default function NewPurchase() {
         return isValid
       })
 
-      const totalPagos = pagosValidos.reduce(
-        (acc, pago) => acc + (pago.monto || 0),
-        0
-      )
+      const totalPagos = monedaBase
+        ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
+        : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
 
       if (pagosValidos.length > 0 && totalPagos > totalVenta) {
         message.error(

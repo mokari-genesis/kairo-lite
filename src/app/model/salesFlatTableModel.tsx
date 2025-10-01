@@ -127,7 +127,7 @@ export const SalesFlatcolumns: ColumnConfig[] = [
       // Calcular total pagado sumando todos los pagos de la venta
       const totalPagado =
         record.pagos?.reduce(
-          (sum: number, pago: any) => sum + (pago.monto || 0),
+          (sum: number, pago: any) => sum + (pago.monto_convertido || 0),
           0
         ) || 0
       return (
@@ -149,7 +149,7 @@ export const SalesFlatcolumns: ColumnConfig[] = [
       // Calcular total pagado sumando todos los pagos de la venta
       const totalPagado =
         record.pagos?.reduce(
-          (sum: number, pago: any) => sum + (pago.monto || 0),
+          (sum: number, pago: any) => sum + (pago.monto_convertido || 0),
           0
         ) || 0
       const saldoPendiente = total - Number(totalPagado)
