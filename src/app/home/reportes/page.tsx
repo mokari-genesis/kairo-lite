@@ -1279,13 +1279,13 @@ function ReportesPage() {
           <Col span={24}>
             <Space style={{ marginBottom: '16px' }}>
               <Button
-                onClick={handleExportExcel}
                 type='primary'
-                icon={<DownloadOutlined />}
-                loading={loading}
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
               >
-                Exportar Excel
+                Exportar a Excel
               </Button>
+
               <Button
                 onClick={() => fetchData()}
                 icon={<FileTextOutlined />}

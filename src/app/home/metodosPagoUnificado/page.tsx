@@ -150,9 +150,7 @@ export default function MetodosPagoUnificadoPage() {
   }, [activeTab, loadTableData, loadSummaryData])
 
   // Handle export
-  const handleExport = useCallback(() => {
-    message.info('Función de exportación en desarrollo')
-  }, [])
+  const handleExport = useCallback(() => {}, [])
 
   // Función para obtener el ícono basado en el método de pago
   const getPaymentMethodIcon = (metodoPago: string): string => {
@@ -219,17 +217,6 @@ export default function MetodosPagoUnificadoPage() {
       open={detailModalVisible}
       onCancel={() => setDetailModalVisible(false)}
       footer={[
-        // <Button
-        //   key='print'
-        //   icon={<PrinterOutlined />}
-        //   onClick={() => {
-        //     if (selectedRecord) {
-        //       handlePrintTicket(selectedRecord)
-        //     }
-        //   }}
-        // >
-        //   Imprimir
-        // </Button>,
         <Button key='close' onClick={() => setDetailModalVisible(false)}>
           Cerrar
         </Button>,

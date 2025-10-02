@@ -122,7 +122,6 @@ export default function SaleOrders() {
   }
 
   const handleExportExcel = () => {
-    console.log('handleExportExcel', salesData)
     if (!salesData || salesData.length === 0) {
       message.warning('No hay datos para exportar')
       return
