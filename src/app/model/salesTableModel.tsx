@@ -1,5 +1,6 @@
 import { ColumnConfig } from '../components/DataTable'
 import { Badge } from 'antd'
+import { formatCurrency } from '../utils/currency'
 
 export interface FilterConfig {
   type: 'text' | 'select' | 'dateRange'
@@ -83,7 +84,7 @@ export const Salescolumns: ColumnConfig[] = [
     title: 'Precio',
     dataIndex: 'precio_unitario',
     type: 'text',
-    render: (precio: number) => `$${precio}`,
+    render: (precio: number) => formatCurrency('', precio),
   },
   {
     key: 'cantidad',
@@ -99,7 +100,7 @@ export const Salescolumns: ColumnConfig[] = [
     title: 'Total',
     dataIndex: 'total_venta',
     type: 'text',
-    render: (total: number) => `$${total}`,
+    render: (total: number) => formatCurrency('', total),
   },
 ]
 

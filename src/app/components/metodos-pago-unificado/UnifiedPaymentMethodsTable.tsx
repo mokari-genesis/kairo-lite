@@ -228,7 +228,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
 
     const totalVentas = data.data.length
     const totalMonto = nonCancelledData.reduce(
-      (sum, record) => sum + parseFloat(record.monto_pago || '0'),
+      (sum, record) => sum + parseFloat(record.monto_pago_convertido || '0'),
       0
     )
     const totalPagado = nonCancelledData.reduce(
@@ -240,7 +240,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
       0
     )
     const totalCancelado = cancelledData.reduce(
-      (sum, record) => sum + parseFloat(record.total_venta || '0'),
+      (sum, record) => sum + parseFloat(record.monto_pago_convertido || '0'),
       0
     )
     const promedioVenta = totalVentas > 0 ? totalMonto / totalVentas : 0
@@ -348,13 +348,13 @@ export const UnifiedPaymentMethodsTable: React.FC<
     },
     {
       title: 'Moneda',
-      key: 'moneda',
+      key: 'moneda_pago_nombre',
       width: 100,
       render: (_, record) => (
         <Space>
-          <Text>{record.moneda_simbolo}</Text>
+          <Text>{record.moneda_pago_simbolo}</Text>
           <Text type='secondary' style={{ fontSize: '12px' }}>
-            {record.moneda_nombre}
+            {record.moneda_pago_nombre}
           </Text>
         </Space>
       ),
@@ -367,67 +367,38 @@ export const UnifiedPaymentMethodsTable: React.FC<
       align: 'right',
       render: (value, record) => (
         <Text strong>
-          {formatCurrency(record.moneda_codigo, parseFloat(value))}
+          {formatCurrency(record.moneda_pago_codigo, parseFloat(value))}
         </Text>
       ),
       sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
     },
-    // {
-    //   title: 'Monto Pendiente',
-    //   dataIndex: 'saldo_pendiente_venta',
-    //   key: 'saldo_pendiente_venta',
-    //   width: 120,
-    //   align: 'right',
-    //   render: (value: any, record: any) => {
-    //     const numValue = parseFloat(value)
-    //     return (
-    //       <Text strong style={{ color: numValue > 0 ? '#ff4d4f' : '#52c41a' }}>
-    //         {formatCurrency(record.moneda_codigo, parseFloat(value))}
-    //       </Text>
-    //     )
-    //   },
-    //   sorter: (a, b) =>
-    //     parseFloat(a.saldo_pendiente_venta) -
-    //     parseFloat(b.saldo_pendiente_venta),
-    // },
-    // {
-    //   title: 'Progreso',
-    //   key: 'progreso',
-    //   width: 120,
-    //   render: (_, record) => {
-    //     const montoTotal = parseFloat(record.total_venta)
-    //     const montoPagado = parseFloat(record.total_pagado_venta)
-    //     const porcentaje =
-    //       montoTotal > 0 ? Math.round((montoPagado / montoTotal) * 100) : 0
+    {
+      title: 'Tasa de cambio',
+      dataIndex: 'tasa_cambio_aplicada',
+      key: 'tasa_cambio_aplicada',
+      width: 120,
+      align: 'right',
+      render: (value, record) => (
+        <Text strong>
+          {formatCurrency(record.monto_pago_convertido, parseFloat(value))}
+        </Text>
+      ),
+      sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
+    },
+    {
+      title: 'Tasa de cambio aplicada',
+      dataIndex: 'monto_pago_convertido',
+      key: 'monto_pago_convertido',
+      width: 120,
+      align: 'right',
+      render: (value, record) => (
+        <Text strong>
+          {formatCurrency(record.monto_pago_convertido, parseFloat(value))}
+        </Text>
+      ),
+      sorter: (a, b) => parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
+    },
 
-    //     return (
-    //       <div style={{ width: '100%' }}>
-    //         <div
-    //           style={{
-    //             width: '100%',
-    //             height: '8px',
-    //             backgroundColor: '#f0f0f0',
-    //             borderRadius: '4px',
-    //             overflow: 'hidden',
-    //           }}
-    //         >
-    //           <div
-    //             style={{
-    //               width: `${porcentaje}%`,
-    //               height: '100%',
-    //               backgroundColor: getPaymentProgressColor(
-    //                 montoPagado,
-    //                 montoTotal
-    //               ),
-    //               transition: 'width 0.3s ease',
-    //             }}
-    //           />
-    //         </div>
-    //         <Text style={{ fontSize: '12px' }}>{porcentaje}%</Text>
-    //       </div>
-    //     )
-    //   },
-    // },
     {
       title: 'Estado Venta',
       dataIndex: 'estado_venta',
@@ -554,7 +525,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
             <Col xs={12} sm={8}>
               <Statistic
                 style={{ textAlign: 'center' }}
-                title='Total Ventas'
+                title='Total Transacciones'
                 value={summaryStats.totalVentas}
                 prefix={<ShoppingCartOutlined />}
               />
@@ -563,7 +534,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
               <Statistic
                 style={{ textAlign: 'center' }}
                 title='Total Vendido'
-                value={summaryStats.totalMonto}
+                value={formatCurrency('', summaryStats.totalMonto)}
                 valueStyle={{ color: '#52c41a' }}
                 precision={2}
                 prefix={<BankOutlined />}
@@ -574,7 +545,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
               <Statistic
                 style={{ textAlign: 'center' }}
                 title='Total cancelado'
-                value={summaryStats.totalCancelado}
+                value={formatCurrency('', summaryStats.totalCancelado)}
                 precision={2}
                 valueStyle={{ color: '#cf1322' }}
                 prefix={<BankOutlined />}
@@ -586,7 +557,7 @@ export const UnifiedPaymentMethodsTable: React.FC<
               <Statistic
                 style={{ textAlign: 'center' }}
                 title='Promedio por Venta'
-                value={summaryStats.promedioVenta}
+                value={formatCurrency('', summaryStats.promedioVenta)}
                 precision={2}
                 prefix={<BankOutlined />}
               />

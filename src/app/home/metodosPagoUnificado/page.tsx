@@ -259,7 +259,8 @@ export default function MetodosPagoUnificadoPage() {
                 {selectedRecord.metodo_pago}
               </div>
               <div style={{ fontSize: '16px', opacity: 0.9 }}>
-                {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
+                {selectedRecord.moneda_pago_nombre} (
+                {selectedRecord.moneda_pago_simbolo})
               </div>
             </div>
           </Card>
@@ -295,7 +296,8 @@ export default function MetodosPagoUnificadoPage() {
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label='Moneda' span={1}>
-              {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
+              {selectedRecord.moneda_pago_nombre} (
+              {selectedRecord.moneda_pago_simbolo})
             </Descriptions.Item>
             <Descriptions.Item label='Fecha de Venta' span={1}>
               {new Date(selectedRecord.fecha_venta).toLocaleDateString('es-GT')}
@@ -322,21 +324,6 @@ export default function MetodosPagoUnificadoPage() {
                 {selectedRecord.estado_venta.toUpperCase()}
               </Tag>
             </Descriptions.Item>
-            {/* <Descriptions.Item label='Estado de Pago' span={1}>
-              <Tag
-                color={
-                  selectedRecord.estado_pago === 'pagado'
-                    ? 'success'
-                    : selectedRecord.estado_pago === 'pendiente'
-                    ? 'warning'
-                    : selectedRecord.estado_pago === 'parcial'
-                    ? 'processing'
-                    : 'error'
-                }
-              >
-                {selectedRecord.estado_pago.toUpperCase()}
-              </Tag>
-            </Descriptions.Item> */}
           </Descriptions>
 
           <Divider />
@@ -346,7 +333,7 @@ export default function MetodosPagoUnificadoPage() {
             <Descriptions.Item label='Monto Total'>
               <Text strong>
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
+                  selectedRecord.moneda_venta_simbolo,
                   parseFloat(selectedRecord.total_venta)
                 )}
               </Text>
@@ -354,12 +341,12 @@ export default function MetodosPagoUnificadoPage() {
             <Descriptions.Item label='Monto Pagado'>
               <Text style={{ color: '#52c41a' }}>
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
+                  selectedRecord.moneda_pago_codigo,
                   parseFloat(selectedRecord.monto_pago)
                 )}
               </Text>
             </Descriptions.Item>
-            <Descriptions.Item label='Monto Pendiente'>
+            <Descriptions.Item label='Tasa de cambio'>
               <Text
                 style={{
                   color:
@@ -369,8 +356,23 @@ export default function MetodosPagoUnificadoPage() {
                 }}
               >
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
-                  parseFloat(selectedRecord.saldo_pendiente_venta)
+                  selectedRecord.monto_pago_convertido,
+                  parseFloat(selectedRecord.tasa_cambio_aplicada)
+                )}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label='Tasa de cambio aplicada'>
+              <Text
+                style={{
+                  color:
+                    parseFloat(selectedRecord.saldo_pendiente_venta) > 0
+                      ? '#ff4d4f'
+                      : '#52c41a',
+                }}
+              >
+                {formatCurrency(
+                  selectedRecord.monto_pago_convertido,
+                  parseFloat(selectedRecord.monto_pago_convertido)
                 )}
               </Text>
             </Descriptions.Item>

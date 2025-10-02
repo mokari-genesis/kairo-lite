@@ -13,6 +13,7 @@ export interface VentaPago {
   moneda_id?: number
   monedaCodigo?: string
   moneda_codigo?: string
+  moneda_pago_codigo?: string
   monto: number
   referencia_pago?: string
   fecha?: string

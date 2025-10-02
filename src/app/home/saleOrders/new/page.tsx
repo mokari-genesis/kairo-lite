@@ -366,7 +366,9 @@ export default function NewPurchase() {
       }
 
       // Validar que si hay pagos, la suma no exceda el total
-      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const totalVenta = parseFloat(
+        details.reduce((acc, curr) => acc + curr.subtotal, 0).toFixed(2)
+      )
 
       const pagosValidos = pagos.filter(pago => {
         const isValid =
@@ -380,9 +382,12 @@ export default function NewPurchase() {
         return isValid
       })
 
-      const totalPagos = monedaBase
-        ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
-        : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+      const totalPagos = parseFloat(
+        (monedaBase
+          ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
+          : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+        ).toFixed(2)
+      )
 
       if (pagosValidos.length > 0 && totalPagos > totalVenta) {
         message.error(

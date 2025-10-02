@@ -100,7 +100,8 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         }
 
         return cancelledData.data.reduce(
-          (sum, record) => sum + parseFloat(record.total_venta || '0'),
+          (sum, record) =>
+            sum + parseFloat(record.monto_pago_convertido || '0'),
           0
         )
       } catch (error) {
@@ -150,7 +151,8 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
               0
             ),
             total_monto: nonCancelledData.reduce(
-              (sum, record) => sum + parseFloat(record.monto_pago || '0'),
+              (sum, record) =>
+                sum + parseFloat(record.monto_pago_convertido || '0'),
               0
             ),
             total_pagado: nonCancelledData.reduce(

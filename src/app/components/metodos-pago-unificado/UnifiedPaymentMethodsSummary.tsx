@@ -230,13 +230,38 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       ),
     },
     {
-      title: 'Ventas',
+      title: 'Transacciones',
       dataIndex: 'total_ventas',
       key: 'total_ventas',
       align: 'center' as const,
       sorter: (a: any, b: any) => a.total_ventas - b.total_ventas,
       render: (value: number) => <Tag color='blue'>{value}</Tag>,
     },
+    // Only show these columns when grouping by currency
+    ...(groupBy === 'moneda'
+      ? [
+          {
+            title: 'Monto',
+            dataIndex: 'total_monto_pagado',
+            key: 'total_monto_pagado',
+            align: 'right' as const,
+            render: (value: string, record: any) => (
+              <Text strong>
+                {formatCurrency(record.moneda_pago_codigo, parseFloat(value))}
+              </Text>
+            ),
+          },
+          {
+            title: 'Tasa de cambio',
+            dataIndex: 'tasa_cambio_aplicada',
+            key: 'tasa_cambio_aplicada',
+            align: 'right' as const,
+            render: (value: string, record: any) => (
+              <Text strong>{formatCurrency('', parseFloat(value))}</Text>
+            ),
+          },
+        ]
+      : []),
     {
       title: 'Monto Total',
       dataIndex: 'total_ventas_monto',
@@ -245,28 +270,9 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       sorter: (a: any, b: any) =>
         parseFloat(a.monto_pago) - parseFloat(b.monto_pago),
       render: (value: string, record: any) => (
-        <Text strong>
-          {formatCurrency(record.moneda_codigo, parseFloat(value))}
-        </Text>
+        <Text strong>{formatCurrency('', parseFloat(value))}</Text>
       ),
     },
-    // {
-    //   title: 'Estado',
-    //   dataIndex: 'estado_venta',
-    //   key: 'estado_venta',
-    //   align: 'right' as const,
-    //   sorter: (a: any, b: any) =>
-    //     parseFloat(a.estado_venta) - parseFloat(b.estado_venta),
-    //   render: (value: string) => {
-    //     return (
-    //       <Text
-    //         style={{ color: value === 'cancelado' ? '#ff4d4f' : '#52c41a' }}
-    //       >
-    //         {value}
-    //       </Text>
-    //     )
-    //   },
-    // },
   ]
 
   if (loading) {
@@ -313,8 +319,6 @@ export const UnifiedPaymentMethodsSummary: React.FC<
                 <Option value='cliente'>Cliente</Option>
                 <Option value='usuario'>Usuario</Option>
                 <Option value='moneda'>Moneda</Option>
-                {/* <Option value='fecha_venta_dia'>Fecha de Venta (Día)</Option>
-                <Option value='fecha_pago_dia'>Fecha de Pago (Día)</Option> */}
               </Select>
             </Space>
           </Col>
@@ -331,7 +335,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
             <Col xs={12} sm={8}>
               <Statistic
                 style={{ textAlign: 'center' }}
-                title='Total de Ventas'
+                title='Total Transacciones'
                 value={safeSummaryData.total_general.total_ventas || 0}
                 prefix={<ShoppingCartOutlined />}
                 valueStyle={{ color: '#1890ff' }}

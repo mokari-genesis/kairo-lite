@@ -12,7 +12,7 @@ export const formatCurrency = (
   const amount = Number(monto) || 0
 
   try {
-    return new Intl.NumberFormat('es-VE', {
+    return new Intl.NumberFormat(currencyCode === 'VES' ? 'es-VE' : 'es-US', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
