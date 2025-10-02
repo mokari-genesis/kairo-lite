@@ -269,10 +269,8 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                   <Col xs={24} sm={12} md={8} lg={6}>
                     <Form.Item label='Estado de Venta' name='estado_venta'>
                       <Select placeholder='Estado de venta' allowClear>
-                        <Option value='pendiente'>Pendiente</Option>
-                        <Option value='completada'>Completada</Option>
-                        <Option value='cancelada'>Cancelada</Option>
-                        <Option value='en_proceso'>En Proceso</Option>
+                        <Option value='vendido'>Vendido</Option>
+                        <Option value='cancelado'>Cancelado</Option>
                       </Select>
                     </Form.Item>
                   </Col>
