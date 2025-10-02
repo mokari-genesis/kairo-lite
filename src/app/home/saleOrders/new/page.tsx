@@ -1,6 +1,6 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -96,6 +96,12 @@ export default function NewPurchase() {
     }
     setVentaData(venta)
   }, [details, pagos, monedaBase, monedas])
+
+  // Memoizar el objeto venta para evitar re-renders
+  const ventaMemoizada = useMemo(() => {
+    if (!ventaData) return null
+    return ventaData
+  }, [ventaData])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -671,9 +677,9 @@ export default function NewPurchase() {
             </div>
 
             {/* Sección de Pagos */}
-            {ventaData && (
+            {ventaMemoizada && (
               <PaymentsSection
-                venta={ventaData}
+                venta={ventaMemoizada}
                 pagos={pagos}
                 onAddPayment={handleAddPayment}
                 onEditPayment={handleEditPayment}
