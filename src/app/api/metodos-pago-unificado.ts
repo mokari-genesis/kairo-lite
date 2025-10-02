@@ -141,6 +141,9 @@ export const getMetodosPagoUnificado = async (
     // Map the response to the expected structure
     // The API returns data directly in response.data as an array
     const data = Array.isArray(response.data) ? response.data : []
+
+    // For now, we'll use the length of the returned data as total
+    // TODO: The API should return a proper total count for pagination
     const total = data.length
     const page = Math.floor((filters.offset || 0) / (filters.limit || 100)) + 1
     const pageSize = filters.limit || 100

@@ -56,6 +56,11 @@ export const UnifiedPaymentMethodsTable: React.FC<
 }) => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
 
+  // Clear selection when data changes to prevent issues
+  useEffect(() => {
+    setSelectedRowKeys([])
+  }, [data])
+
   // Función para generar colores únicos basados en el ID de venta
   const generateColorForSalesId = (salesId: string | number): string => {
     const colors = [
@@ -588,7 +593,9 @@ export const UnifiedPaymentMethodsTable: React.FC<
           columns={columns}
           dataSource={data.data}
           loading={loading}
-          rowKey={record => `${record.venta_id}-${record.metodo_pago_id}`}
+          rowKey={record =>
+            `${record.venta_id}-${record.metodo_pago_id}-${record.pago_id}`
+          }
           rowSelection={rowSelection}
           pagination={pagination}
           scroll={{ x: 1500 }}

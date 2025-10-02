@@ -68,10 +68,14 @@ export default function MetodosPagoUnificadoPage() {
   // Handle filters change
   const handleFiltersChange = useCallback(
     (newFilters: any) => {
-      updateFilters(newFilters)
+      // Reset pagination first
       resetPagination()
+      // Update filters and load data in one operation
       if (activeTab === 'table') {
         loadTableData(newFilters)
+      } else {
+        // Just update filters without loading data if not on table tab
+        updateFilters(newFilters)
       }
     },
     [activeTab, loadTableData, updateFilters, resetPagination]
@@ -95,10 +99,10 @@ export default function MetodosPagoUnificadoPage() {
         limit: newPageSize,
         offset: (page - 1) * newPageSize,
       }
-      updateFilters(newFilters)
+      // Only load data, don't update filters separately to avoid duplication
       loadTableData(newFilters)
     },
-    [filters, loadTableData, updateFilters, handlePageChange]
+    [filters, loadTableData, handlePageChange]
   )
 
   // Load summary data when summary tab is active
