@@ -12,6 +12,7 @@ import {
   ExclamationCircleOutlined,
   CalendarOutlined,
 } from '@ant-design/icons'
+import { formatCurrency } from '../utils/currency'
 
 export interface FilterConfig {
   type: 'text' | 'select'
@@ -164,7 +165,7 @@ export const columns: ColumnConfig[] = [
       <Space>
         <BankOutlined style={{ color: '#52c41a' }} />
         <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
-          Bs {precio}
+          {formatCurrency('VES', precio)}
         </span>
       </Space>
     ),

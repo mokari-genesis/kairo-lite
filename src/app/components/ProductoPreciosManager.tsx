@@ -24,6 +24,7 @@ import {
   UpdateProductoPrecioRequest,
 } from '@/app/api/productos-precios'
 import { updateProduct } from '@/app/api/products'
+import { formatCurrency } from '../utils/currency'
 
 const { Title } = Typography
 
@@ -186,7 +187,7 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
         const numPrecio =
           typeof precio === 'string' ? parseFloat(precio) : precio
         return numPrecio && !isNaN(numPrecio)
-          ? `Bs.${numPrecio.toFixed(2)}`
+          ? formatCurrency('VES', numPrecio)
           : 'Bs.0.00'
       },
     },
@@ -286,10 +287,10 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
               step={0.01}
               style={{ width: '100%' }}
               formatter={value =>
-                `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                `Bs. ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
               }
               parser={value =>
-                (parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0) as any
+                (parseFloat(value!.replace(/Bs\.?\s?|(,*)/g, '')) || 0) as any
               }
             />
           </Form.Item>
