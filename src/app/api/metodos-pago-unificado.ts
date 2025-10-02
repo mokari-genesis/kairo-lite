@@ -59,6 +59,10 @@ export interface MetodoPagoUnificadoResumen {
   total_saldo_pendiente: string
   ventas_completadas: number
   ventas_pendientes: number
+  moneda_pago_id: number
+  moneda_pago_codigo: string
+  moneda_pago_nombre: string
+  moneda_pago_simbolo: string
 }
 
 export interface MetodosPagoUnificadoFilters {
