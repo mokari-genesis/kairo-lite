@@ -30,6 +30,9 @@ export interface UpdateMonedaRequest {
   simbolo?: string
   decimales: number
   activo: number
+  tasa_vs_base: number
+  tasa_actualizada: string
+  es_base: number
 }
 
 export const getMonedas = async (

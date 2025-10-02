@@ -29,8 +29,11 @@ export default function NewMoneda() {
         codigo: values.codigo,
         nombre: values.nombre,
         simbolo: values.simbolo,
-        decimales: values.decimales || 2,
+        decimales: 2, // values.decimales || 2,
+        tasa_vs_base: values.tasa || 1,
+        es_base: 0,
         activo: values.activo ?? true,
+        tasa_actualizada: new Date().toISOString(),
       }
       await createMoneda(monedaData)
 
@@ -105,7 +108,7 @@ export default function NewMoneda() {
             <Input placeholder='Ej: Q, $, €' maxLength={5} />
           </Form.Item>
 
-          <Form.Item
+          {/* <Form.Item
             name='decimales'
             label='Número de Decimales'
             rules={[
@@ -115,6 +118,19 @@ export default function NewMoneda() {
               },
             ]}
             initialValue={2}
+          >
+            <InputNumber min={0} max={4} style={{ width: '100%' }} />
+          </Form.Item> */}
+
+          <Form.Item
+            name='tasa'
+            label='Tasa de conversión'
+            rules={[
+              {
+                required: true,
+                message: 'Por favor ingrese la tasa de conversión',
+              },
+            ]}
           >
             <InputNumber min={0} max={4} style={{ width: '100%' }} />
           </Form.Item>
