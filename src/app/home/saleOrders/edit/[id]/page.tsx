@@ -91,6 +91,7 @@ export default function EditPurchase({
     const fetchSaleData = async () => {
       try {
         const sales = await getSalesFlat({ id: resolvedParams.id })
+
         if (sales && sales.length > 0) {
           const sale = sales[0]
           setSaleData(sale)

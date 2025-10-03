@@ -335,7 +335,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             }}
           >
             <div style={{ color: '#d46b08' }}>
-              <strong>⚠️ Esta venta ya está vendida</strong>
+              <strong>⚠️ Esta Orden ya está vendida</strong>
               <br />
               No se pueden realizar cambios en los pagos, si asi lo deseas debes
               cancelar la venta.

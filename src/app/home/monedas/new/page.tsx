@@ -108,20 +108,6 @@ export default function NewMoneda() {
             <Input placeholder='Ej: Q, $, €' maxLength={5} />
           </Form.Item>
 
-          {/* <Form.Item
-            name='decimales'
-            label='Número de Decimales'
-            rules={[
-              {
-                required: true,
-                message: 'Por favor ingrese el número de decimales',
-              },
-            ]}
-            initialValue={2}
-          >
-            <InputNumber min={0} max={4} style={{ width: '100%' }} />
-          </Form.Item> */}
-
           <Form.Item
             name='tasa'
             label='Tasa de conversión'
@@ -132,7 +118,7 @@ export default function NewMoneda() {
               },
             ]}
           >
-            <InputNumber min={0} max={4} style={{ width: '100%' }} />
+            <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item

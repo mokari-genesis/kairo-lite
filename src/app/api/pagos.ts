@@ -17,6 +17,8 @@ export interface VentaPago {
   monto: number
   referencia_pago?: string
   fecha?: string
+  tasa_cambio?: string
+  monto_en_moneda_venta?: string
 }
 
 export interface Venta {

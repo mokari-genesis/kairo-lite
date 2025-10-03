@@ -28,7 +28,12 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
-import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
+import {
+  sumPagosConConversion,
+  obtenerMonedaBase,
+  convertirAMonedaBase,
+  convertirDesdeMonedaBase,
+} from '@/app/utils/currency'
 
 interface PurchaseDetail {
   producto_id: number
@@ -281,6 +286,35 @@ export default function NewPurchase() {
     }
   }
 
+  // Función para calcular monto_en_moneda_venta
+  const calcularMontoEnMonedaVenta = (
+    monto: number,
+    monedaPagoId: number,
+    monedaVentaId: number = 1 // Por defecto VES (Bolívares Fuertes)
+  ): string => {
+    if (monedaPagoId === monedaVentaId) {
+      return monto.toFixed(2)
+    }
+
+    // Buscar las monedas del pago y de la venta
+    const monedaPago = monedas.find(m => m.id === monedaPagoId)
+    const monedaVenta = monedas.find(m => m.id === monedaVentaId)
+
+    if (!monedaPago || !monedaVenta || !monedaBase) {
+      return monto.toFixed(2)
+    }
+
+    // Convertir de la moneda del pago a la moneda base, luego a la moneda de la venta
+    const montoEnBase = convertirAMonedaBase(monto, monedaPago, monedaBase)
+    const montoEnMonedaVenta = convertirDesdeMonedaBase(
+      montoEnBase,
+      monedaVenta,
+      monedaBase
+    )
+
+    return montoEnMonedaVenta.toFixed(2)
+  }
+
   // Handlers para gestión de pagos
   const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
     try {
@@ -292,12 +326,21 @@ export default function NewPurchase() {
         getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
       ])
 
+      // Calcular monto_en_moneda_venta
+      const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
+      const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
+        payment.monto,
+        payment.moneda_id || payment.monedaId || 0,
+        monedaVentaId
+      )
+
       const newPayment: VentaPago = {
         ...payment,
         id: Date.now(), // ID temporal para pagos nuevos
         metodoPagoNombre,
         monedaCodigo,
         fecha: new Date().toISOString(), // Fecha actual
+        monto_en_moneda_venta: montoEnMonedaVenta,
       }
 
       setPagos(prev => [...prev, newPayment])
@@ -328,6 +371,31 @@ export default function NewPurchase() {
           payment.moneda_id || payment.monedaId || 0
         )
         updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      // Recalcular monto_en_moneda_venta si cambió el monto o la moneda
+      if (
+        payment.monto !== undefined ||
+        payment.moneda_id !== undefined ||
+        payment.monedaId !== undefined
+      ) {
+        const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
+        const montoFinal =
+          payment.monto !== undefined
+            ? payment.monto
+            : pagos.find(p => p.id === paymentId)?.monto || 0
+        const monedaPagoId =
+          payment.moneda_id ||
+          payment.monedaId ||
+          pagos.find(p => p.id === paymentId)?.moneda_id ||
+          0
+
+        const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
+          montoFinal,
+          monedaPagoId,
+          monedaVentaId
+        )
+        updatedPayment.monto_en_moneda_venta = montoEnMonedaVenta
       }
 
       setPagos(prev =>
