@@ -12,7 +12,9 @@ import {
   Statistic,
   Badge,
   Tag,
+  Button,
 } from 'antd'
+import * as XLSX from 'xlsx'
 import { motion } from 'framer-motion'
 import { FilterSection } from '../../components/FilterSection'
 import { DataTable } from '../../components/DataTable'
@@ -35,14 +37,16 @@ import {
 import { UpdateStateRequest } from '@/app/api/products'
 import { ticketTemplate } from '@/app/templates/ticket-template'
 import {
-  DollarOutlined,
+  BankOutlined,
   ShoppingCartOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ClockCircleOutlined,
   UserOutlined,
   CalendarOutlined,
+  ExportOutlined,
 } from '@ant-design/icons'
+import { formatCurrency } from '@/app/utils/currency'
 const pageSize = 10
 
 export default function SaleOrders() {
@@ -115,6 +119,31 @@ export default function SaleOrders() {
 
   const handleNewClick = () => {
     router.push('/home/saleOrders/new')
+  }
+
+  const handleExportExcel = () => {
+    if (!salesData || salesData.length === 0) {
+      message.warning('No hay datos para exportar')
+      return
+    }
+
+    // Preparar los datos para Excel
+    const excelData = salesData.map(product => ({
+      fecha_venta: product.fecha_venta,
+      cliente_nombre: product.cliente_nombre,
+      cliente_nit: product.cliente_nit,
+      cliente_email: product.cliente_email,
+      estado_venta: product.estado_venta,
+      total_venta: formatCurrency('VES', parseFloat(product.total_venta)),
+    }))
+
+    // Crear libro de Excel
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(excelData)
+    XLSX.utils.book_append_sheet(wb, ws, 'Ordenes de Venta')
+    // Generar archivo
+    XLSX.writeFile(wb, 'ordenes_de_venta.xlsx')
+    message.success('Archivo exportado exitosamente')
   }
 
   const handleEdit = (record: any) => {
@@ -259,7 +288,30 @@ export default function SaleOrders() {
         }}
       >
         <Space direction='vertical' size='large' style={{ width: '100%' }}>
-          <PageHeader title='Órdenes de Venta' onNewClick={handleNewClick} />
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <PageHeader title='Órdenes de Venta' onNewClick={handleNewClick} />
+            <div
+              style={{
+                margin: 10,
+                width: '100%',
+                textAlign: 'right',
+              }}
+            >
+              <Button
+                type='primary'
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
+              >
+                Exportar a Excel
+              </Button>
+            </div>
+          </div>
 
           {/* Tarjetas de Estadísticas */}
           <Row gutter={[16, 16]} justify='center'>
@@ -351,7 +403,7 @@ export default function SaleOrders() {
                   }
                   value={salesStats.totalMontoNoCanceladas}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>

@@ -8,7 +8,13 @@ import {
   PaymentCreateRequest,
   PaymentUpdateRequest,
 } from '@/app/api/pagos'
-import { formatCurrency } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  convertirAMonedaBase,
+  obtenerMonedaBase,
+  formatearTasa,
+} from '@/app/utils/currency'
+import { Moneda, getMonedas } from '@/app/api/monedas'
 
 interface PaymentFormModalProps {
   open: boolean
@@ -34,37 +40,97 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [monto, setMonto] = useState<number | undefined>()
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState<Moneda | null>(
+    null
+  )
+  const [montoConvertido, setMontoConvertido] = useState<number | undefined>()
 
   const isEdit = !!initialValues
-  const saldoPendiente = ventaTotal - totalPagado
+  const saldoPendiente = Number((ventaTotal - totalPagado).toFixed(2))
   const montoMaximo = isEdit
-    ? saldoPendiente + (initialValues?.monto || 0)
+    ? Number((saldoPendiente + (initialValues?.monto || 0)).toFixed(2))
     : saldoPendiente
+
+  // Cargar monedas al abrir el modal
+  useEffect(() => {
+    if (open) {
+      const cargarMonedas = async () => {
+        try {
+          const monedasData = await getMonedas({ activo: 1 })
+          setMonedas(monedasData)
+          const base = obtenerMonedaBase(monedasData)
+          setMonedaBase(base)
+        } catch (error) {
+          console.error('Error cargando monedas:', error)
+          message.error('Error al cargar las monedas')
+        }
+      }
+      cargarMonedas()
+    }
+  }, [open])
 
   useEffect(() => {
     if (open) {
+      // Resetear todos los estados primero
+      setMonto(undefined)
+      setMontoConvertido(undefined)
+      setMonedaSeleccionada(null)
+
       if (initialValues) {
+        // Buscar la moneda seleccionada en la lista de monedas
+        const monedaEncontrada = monedas.find(
+          m => m.id === (initialValues.monedaId || initialValues.moneda_id)
+        )
+
         form.setFieldsValue({
           metodo_pago_id:
             initialValues.metodoPagoId || initialValues.metodo_pago_id,
           moneda_id: initialValues.monedaId || initialValues.moneda_id,
-          monto: initialValues.monto,
-          referencia_pago: initialValues.referencia_pago,
+          monto: Number(initialValues.monto?.toFixed(2) || 0),
+          referencia_pago: initialValues.referencia_pago || '',
         })
-        setMonto(initialValues.monto)
+
+        setMonto(Number(initialValues.monto?.toFixed(2) || 0))
+        setMonedaSeleccionada(monedaEncontrada || null)
       } else {
+        // Para nuevos pagos, no auto-popular el monto
         form.resetFields()
-        setMonto(undefined)
       }
     }
-  }, [open, initialValues, form])
+  }, [open, initialValues, form, monedas])
+
+  // Calcular conversión cuando cambia el monto o la moneda
+  useEffect(() => {
+    if (monto && monedaSeleccionada && monedaBase) {
+      const convertido = convertirAMonedaBase(
+        monto,
+        monedaSeleccionada,
+        monedaBase
+      )
+      setMontoConvertido(convertido)
+    } else {
+      setMontoConvertido(undefined)
+    }
+  }, [monto, monedaSeleccionada, monedaBase])
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
       setLoading(true)
-      await onSave(values)
+
+      // Asegurar que el monto tenga 2 decimales
+      const payload = {
+        ...values,
+        monto: Number(values.monto.toFixed(2)),
+      }
+
+      await onSave(payload)
       form.resetFields()
+      setMonto(undefined)
+      setMontoConvertido(undefined)
+      setMonedaSeleccionada(null)
       onCancel()
     } catch (error: any) {
       if (error.errorFields) {
@@ -78,7 +144,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   }
 
   const handleMontoChange = (value: number | null) => {
-    setMonto(value || 0)
+    const montoValor = value ? Number(value.toFixed(2)) : 0
+    setMonto(montoValor)
+  }
+
+  const handleMonedaChange = (value: number, moneda: Moneda) => {
+    setMonedaSeleccionada(moneda)
   }
 
   return (
@@ -116,7 +187,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           name='moneda_id'
           rules={[{ required: true, message: 'Seleccione una moneda' }]}
         >
-          <MonedaSelect disabled={isVendido} />
+          <MonedaSelect disabled={isVendido} onChange={handleMonedaChange} />
         </Form.Item>
 
         <Form.Item
@@ -140,6 +211,31 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                       )}`
                     )
                   )
+                }
+                return Promise.resolve()
+              },
+            },
+            {
+              validator: (_, value) => {
+                // Validar que el monto convertido no exceda el saldo pendiente
+                if (
+                  value &&
+                  montoConvertido &&
+                  monedaBase &&
+                  monedaSeleccionada
+                ) {
+                  if (montoConvertido > montoMaximo) {
+                    return Promise.reject(
+                      new Error(
+                        `El monto convertido a ${
+                          monedaBase.codigo
+                        } (${formatCurrency(
+                          monedaBase.codigo,
+                          montoConvertido
+                        )}) excede el saldo pendiente`
+                      )
+                    )
+                  }
                 }
                 return Promise.resolve()
               },
@@ -194,6 +290,36 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                 <strong>Monto Máximo:</strong>{' '}
                 {formatCurrency(undefined, montoMaximo)}
               </div>
+              {montoConvertido &&
+                monedaSeleccionada &&
+                monedaBase &&
+                monedaSeleccionada.id !== monedaBase.id && (
+                  <div
+                    style={{
+                      padding: '8px',
+                      backgroundColor: '#e6f7ff',
+                      borderRadius: '4px',
+                      border: '1px solid #91d5ff',
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', color: '#1890ff' }}>
+                      <strong>Conversión:</strong>{' '}
+                      {formatCurrency(monedaSeleccionada.codigo, monto)} ={' '}
+                      {formatCurrency(monedaBase.codigo, montoConvertido)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: '#8c8c8c',
+                        marginTop: '2px',
+                      }}
+                    >
+                      Tasa: 1 {monedaSeleccionada.codigo} ={' '}
+                      {formatearTasa(monedaSeleccionada.tasa_vs_base)}{' '}
+                      {monedaBase.codigo}
+                    </div>
+                  </div>
+                )}
             </Space>
           </div>
         )}
@@ -209,7 +335,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             }}
           >
             <div style={{ color: '#d46b08' }}>
-              <strong>⚠️ Esta venta ya está vendida</strong>
+              <strong>⚠️ Esta Orden ya está vendida</strong>
               <br />
               No se pueden realizar cambios en los pagos, si asi lo deseas debes
               cancelar la venta.

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Card,
   Form,
@@ -21,7 +21,7 @@ import {
   SearchOutlined,
   CalendarOutlined,
   UserOutlined,
-  DollarOutlined,
+  BankOutlined,
 } from '@ant-design/icons'
 import { RangePickerProps } from 'antd/es/date-picker'
 import dayjs from 'dayjs'
@@ -52,6 +52,7 @@ export const UnifiedPaymentMethodsFilters: React.FC<
   const [paymentMethods, setPaymentMethods] = useState<SelectOption[]>([])
   const [currencies, setCurrencies] = useState<SelectOption[]>([])
   const [filtersVisible, setFiltersVisible] = useState(false)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load initial data for select options
   useEffect(() => {
@@ -92,6 +93,15 @@ export const UnifiedPaymentMethodsFilters: React.FC<
     loadSelectOptions()
   }, [])
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [])
+
   // Set initial form values
   useEffect(() => {
     if (initialFilters && Object.keys(initialFilters).length > 0) {
@@ -110,35 +120,43 @@ export const UnifiedPaymentMethodsFilters: React.FC<
   }, [initialFilters, form])
 
   const handleFormChange = useCallback(() => {
-    const values = form.getFieldsValue()
-
-    // Convert dayjs objects back to date strings
-    const filters: MetodosPagoUnificadoFilters = {
-      empresa_id: 1, // Default empresa_id
-      venta_id: values.venta_id,
-      cliente_id: values.cliente_id,
-      usuario_id: values.usuario_id,
-      metodo_pago_id: values.metodo_pago_id,
-      moneda_id: values.moneda_id,
-      estado_venta: values.estado_venta,
-      limit: 100, // Fixed limit since we removed the limit filter
-      offset: 0,
+    // Clear previous debounce timer
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
     }
 
-    // Handle date ranges
-    if (values.fecha_venta && values.fecha_venta.length === 2) {
-      filters.fecha_venta_inicio = values.fecha_venta[0].format('YYYY-MM-DD')
-      filters.fecha_venta_fin = values.fecha_venta[1].format('YYYY-MM-DD')
-    }
+    // Set new debounce timer
+    debounceRef.current = setTimeout(() => {
+      const values = form.getFieldsValue()
 
-    // Remove undefined values
-    Object.keys(filters).forEach(key => {
-      if (filters[key as keyof MetodosPagoUnificadoFilters] === undefined) {
-        delete filters[key as keyof MetodosPagoUnificadoFilters]
+      // Convert dayjs objects back to date strings
+      const filters: MetodosPagoUnificadoFilters = {
+        empresa_id: 1, // Default empresa_id
+        venta_id: values.venta_id,
+        cliente_id: values.cliente_id,
+        usuario_id: values.usuario_id,
+        metodo_pago_id: values.metodo_pago_id,
+        moneda_id: values.moneda_id,
+        estado_venta: values.estado_venta,
+        limit: 100, // Fixed limit since we removed the limit filter
+        offset: 0,
       }
-    })
 
-    onFiltersChange(filters)
+      // Handle date ranges
+      if (values.fecha_venta && values.fecha_venta.length === 2) {
+        filters.fecha_venta_inicio = values.fecha_venta[0].format('YYYY-MM-DD')
+        filters.fecha_venta_fin = values.fecha_venta[1].format('YYYY-MM-DD')
+      }
+
+      // Remove undefined values
+      Object.keys(filters).forEach(key => {
+        if (filters[key as keyof MetodosPagoUnificadoFilters] === undefined) {
+          delete filters[key as keyof MetodosPagoUnificadoFilters]
+        }
+      })
+
+      onFiltersChange(filters)
+    }, 500) // 500ms debounce
   }, [form, onFiltersChange])
 
   const handleClearFilters = () => {
@@ -251,10 +269,8 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                   <Col xs={24} sm={12} md={8} lg={6}>
                     <Form.Item label='Estado de Venta' name='estado_venta'>
                       <Select placeholder='Estado de venta' allowClear>
-                        <Option value='pendiente'>Pendiente</Option>
-                        <Option value='completada'>Completada</Option>
-                        <Option value='cancelada'>Cancelada</Option>
-                        <Option value='en_proceso'>En Proceso</Option>
+                        <Option value='vendido'>Vendido</Option>
+                        <Option value='cancelado'>Cancelado</Option>
                       </Select>
                     </Form.Item>
                   </Col>

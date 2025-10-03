@@ -13,9 +13,12 @@ export interface VentaPago {
   moneda_id?: number
   monedaCodigo?: string
   moneda_codigo?: string
+  moneda_pago_codigo?: string
   monto: number
   referencia_pago?: string
   fecha?: string
+  tasa_cambio?: string
+  monto_en_moneda_venta?: string
 }
 
 export interface Venta {

@@ -1,5 +1,5 @@
 import { ColumnConfig } from '../components/DataTable'
-import { Badge } from 'antd'
+import { Badge, Tag } from 'antd'
 
 export interface FilterConfig {
   type: 'text' | 'select'
@@ -40,7 +40,15 @@ export const columns: ColumnConfig[] = [
     key: 'decimales',
     title: 'Decimales',
     dataIndex: 'decimales',
-    type: 'text',
+    type: 'number',
+    render: (decimales: number) => decimales.toFixed(2),
+  },
+  {
+    key: 'tasa_vs_base',
+    title: 'Tasa base',
+    dataIndex: 'tasa_vs_base',
+    type: 'number',
+    render: (tasa_vs_base: number) => parseFloat(tasa_vs_base.toString()),
   },
   {
     key: 'estado',
@@ -57,6 +65,21 @@ export const columns: ColumnConfig[] = [
       { value: 'true', label: 'Activo' },
       { value: 'false', label: 'Inactivo' },
     ],
+  },
+  {
+    key: 'es_base',
+    title: 'Moneda base',
+    dataIndex: 'es_base',
+    type: 'text',
+    disabled: true,
+    render: (es_base: boolean) => (
+      <Tag
+        color={es_base ? 'gold' : 'default'}
+        style={{ fontWeight: es_base ? 'bold' : 'normal' }}
+      >
+        {es_base ? 'Moneda Base' : 'No'}
+      </Tag>
+    ),
   },
 ]
 

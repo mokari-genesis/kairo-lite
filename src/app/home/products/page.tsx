@@ -40,11 +40,12 @@ import {
   ShoppingOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  DollarOutlined,
+  BankOutlined,
   InboxOutlined,
   TagOutlined,
   ShopOutlined,
 } from '@ant-design/icons'
+import { formatCurrency } from '@/app/utils/currency'
 
 function Home() {
   const [api, contextHolder] = notification.useNotification()
@@ -190,6 +191,7 @@ function Home() {
       Proveedor: product.nombre_proveedor || 'Sin proveedor',
       Estado: product.estado,
       Stock: product.stock,
+      Precio_sugerido: formatCurrency('VES', product.precio),
     }))
 
     // Crear libro de Excel
@@ -427,9 +429,9 @@ function Home() {
                       Valor Inventario (precio sugerido)
                     </span>
                   }
-                  value={productsStats.valorInventario}
+                  value={formatCurrency('VES', productsStats.valorInventario)}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: '#333' }} />}
+                  prefix={<BankOutlined style={{ color: '#333' }} />}
                   valueStyle={{ color: '#333' }}
                 />
               </Card>

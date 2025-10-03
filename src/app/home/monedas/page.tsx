@@ -41,6 +41,12 @@ function MonedasPage() {
   }
 
   const handleEdit = async (record: any) => {
+    // No permitir editar la moneda base
+    if (record.es_base === 1 || record.es_base === true) {
+      message.warning('No se puede editar la moneda base del sistema')
+      return
+    }
+
     try {
       setIsLoading(true)
       const updateData: UpdateMonedaRequest = {
@@ -49,12 +55,17 @@ function MonedasPage() {
         nombre: record.nombre,
         simbolo: record.simbolo,
         decimales: record.decimales,
-        activo: record.activo,
+        activo: record.activo === 'true' ? 1 : 0,
+        tasa_vs_base: record.tasa_vs_base,
+        tasa_actualizada: new Date().toISOString(),
+        es_base: 0,
       }
       await updateMoneda(updateData)
+
       await queryClient.invalidateQueries({
         queryKey: [QueryKey.monedasInfo, filters],
       })
+      await fetchData()
       message.success('Moneda actualizada exitosamente')
     } catch (error: any) {
       message.error(error.message || 'Error al actualizar la moneda')
@@ -73,6 +84,13 @@ function MonedasPage() {
       message.error('No se puede eliminar la moneda')
       return
     }
+
+    // No permitir eliminar la moneda base
+    if (record.es_base === 1 || record.es_base === true) {
+      message.warning('No se puede eliminar la moneda base del sistema')
+      return
+    }
+
     setIsLoading(true)
     await deleteMoneda(record.id)
     await queryClient.invalidateQueries({ queryKey: [QueryKey.monedasInfo] })

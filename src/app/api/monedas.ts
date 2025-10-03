@@ -10,6 +10,9 @@ export interface Moneda {
   simbolo?: string
   decimales: number
   activo: boolean
+  es_base: number
+  tasa_vs_base: string
+  tasa_actualizada: string
 }
 
 export interface CreateMonedaRequest {
@@ -26,7 +29,10 @@ export interface UpdateMonedaRequest {
   nombre: string
   simbolo?: string
   decimales: number
-  activo: boolean
+  activo: number
+  tasa_vs_base: number
+  tasa_actualizada: string
+  es_base: number
 }
 
 export const getMonedas = async (

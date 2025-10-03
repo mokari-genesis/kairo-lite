@@ -13,7 +13,7 @@ import {
   TeamOutlined,
   StockOutlined,
   ShopOutlined,
-  DollarOutlined,
+  BankOutlined,
   GlobalOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
@@ -142,7 +142,7 @@ export default function AppLayout({ children }: any) {
         {
           key: '6-3',
           label: 'Métodos de Pago Unificados',
-          icon: React.createElement(DollarOutlined),
+          icon: React.createElement(BankOutlined),
           onClick: () => {
             setSelectedKey('6-3')
             router.push('/home/metodosPagoUnificado')
@@ -153,21 +153,21 @@ export default function AppLayout({ children }: any) {
     {
       key: '7',
       label: 'Métodos de Pago',
-      icon: React.createElement(DollarOutlined),
+      icon: React.createElement(BankOutlined),
       onClick: () => {
         setSelectedKey('7')
         router.push('/home/metodosPago')
       },
     },
-    // {
-    //   key: '9',
-    //   label: 'Monedas',
-    //   icon: React.createElement(GlobalOutlined),
-    //   onClick: () => {
-    //     setSelectedKey('9')
-    //     router.push('/home/monedas')
-    //   },
-    // },
+    {
+      key: '9',
+      label: 'Monedas',
+      icon: React.createElement(GlobalOutlined),
+      onClick: () => {
+        setSelectedKey('9')
+        router.push('/home/monedas')
+      },
+    },
   ]
 
   const [loading, setLoading] = useState(false)

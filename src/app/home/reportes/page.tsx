@@ -41,7 +41,7 @@ import {
   BarChartOutlined,
   DatabaseOutlined,
   ShoppingCartOutlined,
-  DollarOutlined,
+  BankOutlined,
   InboxOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
@@ -276,7 +276,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#52c41a' }} />
+          <BankOutlined style={{ color: '#52c41a' }} />
           <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
             {formatCurrency(undefined, value)}
           </span>
@@ -290,7 +290,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#1890ff' }} />
+          <BankOutlined style={{ color: '#1890ff' }} />
           <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -304,7 +304,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#722ed1' }} />
+          <BankOutlined style={{ color: '#722ed1' }} />
           <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -318,7 +318,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#faad14' }} />
+          <BankOutlined style={{ color: '#faad14' }} />
           <span style={{ fontWeight: 'bold', color: '#faad14' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -332,7 +332,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#ff4d4f' }} />
+          <BankOutlined style={{ color: '#ff4d4f' }} />
           <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -346,7 +346,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#52c41a' }} />
+          <BankOutlined style={{ color: '#52c41a' }} />
           <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -360,7 +360,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#1890ff' }} />
+          <BankOutlined style={{ color: '#1890ff' }} />
           <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -374,7 +374,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#722ed1' }} />
+          <BankOutlined style={{ color: '#722ed1' }} />
           <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -388,7 +388,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#faad14' }} />
+          <BankOutlined style={{ color: '#faad14' }} />
           <span style={{ fontWeight: 'bold', color: '#faad14' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -402,7 +402,7 @@ function ReportesPage() {
       type: 'text',
       render: (value: number) => (
         <Space>
-          <DollarOutlined style={{ color: '#ff4d4f' }} />
+          <BankOutlined style={{ color: '#ff4d4f' }} />
           <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
             {formatCurrency(undefined, value || 0)}
           </span>
@@ -504,7 +504,7 @@ function ReportesPage() {
       type: 'text',
       render: (total: string) => (
         <Space>
-          <DollarOutlined style={{ color: '#52c41a' }} />
+          <BankOutlined style={{ color: '#52c41a' }} />
           <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
             {formatCurrency(undefined, parseFloat(total))}
           </span>
@@ -1001,7 +1001,7 @@ function ReportesPage() {
                     }
                     value={reportStats.totalVentas}
                     precision={2}
-                    prefix={<DollarOutlined style={{ color: 'white' }} />}
+                    prefix={<BankOutlined style={{ color: 'white' }} />}
                     valueStyle={{ color: 'white' }}
                   />
                 </Card>
@@ -1099,7 +1099,7 @@ function ReportesPage() {
                     }
                     value={reportStats.valorInventario}
                     precision={2}
-                    prefix={<DollarOutlined style={{ color: 'white' }} />}
+                    prefix={<BankOutlined style={{ color: 'white' }} />}
                     valueStyle={{ color: 'white' }}
                   />
                 </Card>
@@ -1133,7 +1133,7 @@ function ReportesPage() {
                   }
                   value={reportStats.promedioVenta}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -1188,7 +1188,7 @@ function ReportesPage() {
                   }
                   value={reportStats.valorInventarioMinorista}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -1211,7 +1211,7 @@ function ReportesPage() {
                   }
                   value={reportStats.valorInventarioMayorista}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -1234,7 +1234,7 @@ function ReportesPage() {
                   }
                   value={reportStats.valorInventarioDistribuidores}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -1257,7 +1257,7 @@ function ReportesPage() {
                   }
                   value={reportStats.valorInventarioEspecial}
                   precision={2}
-                  prefix={<DollarOutlined style={{ color: 'white' }} />}
+                  prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -1279,13 +1279,13 @@ function ReportesPage() {
           <Col span={24}>
             <Space style={{ marginBottom: '16px' }}>
               <Button
-                onClick={handleExportExcel}
                 type='primary'
-                icon={<DownloadOutlined />}
-                loading={loading}
+                onClick={handleExportExcel}
+                icon={<span>📊</span>}
               >
-                Exportar Excel
+                Exportar a Excel
               </Button>
+
               <Button
                 onClick={() => fetchData()}
                 icon={<FileTextOutlined />}

@@ -13,22 +13,28 @@ export interface MetodoPagoUnificado {
   estado_venta: string
   estado_pago: string
   total_venta: string
-  moneda_id: number
-  moneda_codigo: string
-  moneda_nombre: string
-  moneda_simbolo: string
-  comentario_venta?: string
+  moneda_venta_id: number
+  moneda_venta_codigo: string
+  moneda_venta_nombre: string
+  moneda_venta_simbolo: string
+  comentario_venta: string | null
   cliente_id: number
   cliente_nombre: string
-  cliente_telefono?: string
-  cliente_email?: string
+  cliente_email: string
+  cliente_telefono: string
   usuario_id: number
   usuario_nombre: string
   pago_id: number
   metodo_pago_id: number
   metodo_pago: string
   monto_pago: string
-  referencia_pago?: string
+  monto_pago_convertido: string
+  tasa_cambio_aplicada: string
+  moneda_pago_id: number
+  moneda_pago_codigo: string
+  moneda_pago_nombre: string
+  moneda_pago_simbolo: string
+  referencia_pago: string
   fecha_pago: string
   fecha_pago_dia: string
   total_pagado_venta: string
@@ -53,6 +59,10 @@ export interface MetodoPagoUnificadoResumen {
   total_saldo_pendiente: string
   ventas_completadas: number
   ventas_pendientes: number
+  moneda_pago_id: number
+  moneda_pago_codigo: string
+  moneda_pago_nombre: string
+  moneda_pago_simbolo: string
 }
 
 export interface MetodosPagoUnificadoFilters {
@@ -135,6 +145,9 @@ export const getMetodosPagoUnificado = async (
     // Map the response to the expected structure
     // The API returns data directly in response.data as an array
     const data = Array.isArray(response.data) ? response.data : []
+
+    // For now, we'll use the length of the returned data as total
+    // TODO: The API should return a proper total count for pagination
     const total = data.length
     const page = Math.floor((filters.offset || 0) / (filters.limit || 100)) + 1
     const pageSize = filters.limit || 100

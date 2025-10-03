@@ -25,6 +25,7 @@ import {
   ExportOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons'
+import * as XLSX from 'xlsx'
 import { MetodoPagoUnificado } from '../../api/metodos-pago-unificado'
 import { UnifiedPaymentMethodsFilters } from '../../components/metodos-pago-unificado/UnifiedPaymentMethodsFilters'
 import { UnifiedPaymentMethodsTable } from '../../components/metodos-pago-unificado/UnifiedPaymentMethodsTable'
@@ -68,10 +69,14 @@ export default function MetodosPagoUnificadoPage() {
   // Handle filters change
   const handleFiltersChange = useCallback(
     (newFilters: any) => {
-      updateFilters(newFilters)
+      // Reset pagination first
       resetPagination()
+      // Update filters and load data in one operation
       if (activeTab === 'table') {
         loadTableData(newFilters)
+      } else {
+        // Just update filters without loading data if not on table tab
+        updateFilters(newFilters)
       }
     },
     [activeTab, loadTableData, updateFilters, resetPagination]
@@ -95,10 +100,10 @@ export default function MetodosPagoUnificadoPage() {
         limit: newPageSize,
         offset: (page - 1) * newPageSize,
       }
-      updateFilters(newFilters)
+      // Only load data, don't update filters separately to avoid duplication
       loadTableData(newFilters)
     },
-    [filters, loadTableData, updateFilters, handlePageChange]
+    [filters, loadTableData, handlePageChange]
   )
 
   // Load summary data when summary tab is active
@@ -147,8 +152,202 @@ export default function MetodosPagoUnificadoPage() {
 
   // Handle export
   const handleExport = useCallback(() => {
-    message.info('Función de exportación en desarrollo')
-  }, [])
+    if (activeTab === 'table') {
+      handleExportTable()
+    } else if (activeTab === 'summary') {
+      handleExportSummary()
+    }
+  }, [activeTab, tableData, summaryData, summaryFilters])
+
+  // Export table data to Excel
+  const handleExportTable = useCallback(() => {
+    if (!tableData.data || tableData.data.length === 0) {
+      message.warning('No hay datos para exportar')
+      return
+    }
+
+    // Prepare data for Excel with all visible columns
+    const excelData = tableData.data.map(record => ({
+      'ID Venta': record.venta_id,
+      Cliente: record.cliente_nombre,
+      'Teléfono Cliente': record.cliente_telefono || 'No disponible',
+      'Email Cliente': record.cliente_email || 'No disponible',
+      Usuario: record.usuario_nombre,
+      'Método de Pago': record.metodo_pago,
+      Moneda: `${record.moneda_pago_simbolo} - ${record.moneda_pago_nombre}`,
+      'Monto Transacción': formatCurrency(
+        record.moneda_pago_codigo,
+        parseFloat(record.monto_pago)
+      ),
+      'Tasa de Cambio': formatCurrency(
+        'VES',
+        parseFloat(record.tasa_cambio_aplicada)
+      ),
+      'Monto Convertido': formatCurrency(
+        'VES',
+        parseFloat(record.monto_pago_convertido)
+      ),
+      'Estado Venta': record.estado_venta,
+      'Fecha Venta': new Date(record.fecha_venta).toLocaleDateString('es-GT'),
+      'Fecha Pago': record.fecha_pago
+        ? new Date(record.fecha_pago).toLocaleDateString('es-GT')
+        : 'No pagado',
+      Comentario: record.comentario_venta || '',
+    }))
+
+    // Create Excel workbook
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(excelData)
+
+    // Set column widths
+    const colWidths = [
+      { wch: 10 }, // ID Venta
+      { wch: 25 }, // Cliente
+      { wch: 15 }, // Teléfono
+      { wch: 25 }, // Email
+      { wch: 15 }, // Usuario
+      { wch: 20 }, // Método de Pago
+      { wch: 15 }, // Moneda
+      { wch: 15 }, // Monto Transacción
+      { wch: 15 }, // Tasa de Cambio
+      { wch: 15 }, // Monto Convertido
+      { wch: 15 }, // Estado Venta
+      { wch: 15 }, // Fecha Venta
+      { wch: 15 }, // Fecha Pago
+      { wch: 15 }, // Total Venta
+      { wch: 15 }, // Total Pagado
+      { wch: 15 }, // Saldo Pendiente
+      { wch: 30 }, // Comentario
+    ]
+    ws['!cols'] = colWidths
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Métodos de Pago')
+
+    // Generate file
+    const fileName = `Metodos_Pago_Unificados_${
+      new Date().toISOString().split('T')[0]
+    }.xlsx`
+    XLSX.writeFile(wb, fileName)
+    message.success('Archivo exportado exitosamente')
+  }, [tableData])
+
+  // Export summary data to Excel
+  const handleExportSummary = useCallback(() => {
+    if (!summaryData || !summaryData.data || summaryData.data.length === 0) {
+      message.warning('No hay datos de resumen para exportar')
+      return
+    }
+
+    const groupBy = summaryFilters.agrupar_por || 'metodo_pago'
+
+    // Get group by label
+    const getGroupByLabel = (agrupar_por: string) => {
+      const labels: Record<string, string> = {
+        metodo_pago: 'Método de Pago',
+        cliente: 'Cliente',
+        usuario: 'Usuario',
+        moneda: 'Moneda',
+        fecha_venta_dia: 'Fecha de Venta (Día)',
+        fecha_pago_dia: 'Fecha de Pago (Día)',
+      }
+      return labels[agrupar_por] || 'Grupo'
+    }
+
+    // Get group by key
+    const getGroupByKey = (agrupar_por: string) => {
+      const keyMap: Record<string, string> = {
+        metodo_pago: 'metodo_pago',
+        cliente: 'grupo_nombre',
+        usuario: 'grupo_nombre',
+        moneda: 'grupo_nombre',
+        fecha_venta_dia: 'fecha_venta_dia',
+        fecha_pago_dia: 'fecha_pago_dia',
+      }
+      return keyMap[agrupar_por] || 'metodo_pago'
+    }
+
+    const groupKey = getGroupByKey(groupBy)
+    const groupLabel = getGroupByLabel(groupBy)
+
+    // Prepare data for Excel
+    const excelData = summaryData.data.map(record => {
+      let baseData = {}
+
+      if (groupLabel === 'moneda') {
+        baseData = {
+          [groupLabel]: (record as any)[groupKey] || 'Sin datos',
+          Transacciones: record.total_ventas,
+          'Monto Pagado (Moneda de Pago)': formatCurrency(
+            record.moneda_pago_codigo,
+            parseFloat(record.total_monto_pagado || '0')
+          ),
+          'Monto Total (en Moneda Base VES)': formatCurrency(
+            'VES',
+            parseFloat(record.total_ventas_monto || '0')
+          ),
+          'Promedio Monto Pago': formatCurrency(
+            record.moneda_pago_codigo,
+            parseFloat(record.promedio_monto_pago || '0')
+          ),
+          'Monto Mínimo': parseFloat(record.monto_minimo || '0'),
+          'Monto Máximo': parseFloat(record.monto_maximo || '0'),
+          'Promedio Venta': parseFloat(record.promedio_venta || '0'),
+          'Saldo Pendiente': parseFloat(record.total_saldo_pendiente || '0'),
+          'Ventas Completadas': record.ventas_completadas,
+          'Ventas Pendientes': record.ventas_pendientes,
+        }
+      } else if (groupLabel === 'Usuario' || groupLabel === 'Cliente') {
+        baseData = {
+          [groupLabel]: (record as any)[groupKey] || 'Sin datos',
+          Transacciones: record.total_ventas,
+          'Monto total': formatCurrency(
+            'VES',
+            parseFloat(record.total_ventas_monto || '0')
+          ),
+        }
+      } else if (groupLabel === 'Método de Pago') {
+        baseData = {
+          [groupLabel]: (record as any)[groupKey] || 'Sin datos',
+          Transacciones: record.total_ventas,
+          'Monto total': formatCurrency(
+            'VES',
+            parseFloat(record.total_ventas_monto || '0')
+          ),
+        }
+      }
+
+      return baseData
+    })
+
+    // Create Excel workbook
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(excelData)
+
+    // Set column widths
+    const colWidths = [
+      { wch: 25 }, // Group column
+      { wch: 15 }, // Transacciones
+      { wch: 15 }, // Monto Total
+      { wch: 15 }, // Monto Pagado
+      { wch: 18 }, // Promedio Monto Pago
+      { wch: 15 }, // Monto Mínimo
+      { wch: 15 }, // Monto Máximo
+      { wch: 15 }, // Promedio Venta
+      { wch: 15 }, // Saldo Pendiente
+      { wch: 18 }, // Ventas Completadas
+      { wch: 18 }, // Ventas Pendientes
+    ]
+    ws['!cols'] = colWidths
+
+    XLSX.utils.book_append_sheet(wb, ws, `Resumen_${groupLabel}`)
+
+    // Generate file
+    const fileName = `Resumen_Metodos_Pago_${groupLabel}_${
+      new Date().toISOString().split('T')[0]
+    }.xlsx`
+    XLSX.writeFile(wb, fileName)
+    message.success('Resumen exportado exitosamente')
+  }, [summaryData, summaryFilters])
 
   // Función para obtener el ícono basado en el método de pago
   const getPaymentMethodIcon = (metodoPago: string): string => {
@@ -215,17 +414,6 @@ export default function MetodosPagoUnificadoPage() {
       open={detailModalVisible}
       onCancel={() => setDetailModalVisible(false)}
       footer={[
-        // <Button
-        //   key='print'
-        //   icon={<PrinterOutlined />}
-        //   onClick={() => {
-        //     if (selectedRecord) {
-        //       handlePrintTicket(selectedRecord)
-        //     }
-        //   }}
-        // >
-        //   Imprimir
-        // </Button>,
         <Button key='close' onClick={() => setDetailModalVisible(false)}>
           Cerrar
         </Button>,
@@ -259,7 +447,8 @@ export default function MetodosPagoUnificadoPage() {
                 {selectedRecord.metodo_pago}
               </div>
               <div style={{ fontSize: '16px', opacity: 0.9 }}>
-                {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
+                {selectedRecord.moneda_pago_nombre} (
+                {selectedRecord.moneda_pago_simbolo})
               </div>
             </div>
           </Card>
@@ -295,7 +484,8 @@ export default function MetodosPagoUnificadoPage() {
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label='Moneda' span={1}>
-              {selectedRecord.moneda_nombre} ({selectedRecord.moneda_simbolo})
+              {selectedRecord.moneda_pago_nombre} (
+              {selectedRecord.moneda_pago_simbolo})
             </Descriptions.Item>
             <Descriptions.Item label='Fecha de Venta' span={1}>
               {new Date(selectedRecord.fecha_venta).toLocaleDateString('es-GT')}
@@ -322,21 +512,6 @@ export default function MetodosPagoUnificadoPage() {
                 {selectedRecord.estado_venta.toUpperCase()}
               </Tag>
             </Descriptions.Item>
-            {/* <Descriptions.Item label='Estado de Pago' span={1}>
-              <Tag
-                color={
-                  selectedRecord.estado_pago === 'pagado'
-                    ? 'success'
-                    : selectedRecord.estado_pago === 'pendiente'
-                    ? 'warning'
-                    : selectedRecord.estado_pago === 'parcial'
-                    ? 'processing'
-                    : 'error'
-                }
-              >
-                {selectedRecord.estado_pago.toUpperCase()}
-              </Tag>
-            </Descriptions.Item> */}
           </Descriptions>
 
           <Divider />
@@ -346,7 +521,7 @@ export default function MetodosPagoUnificadoPage() {
             <Descriptions.Item label='Monto Total'>
               <Text strong>
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
+                  selectedRecord.moneda_venta_simbolo,
                   parseFloat(selectedRecord.total_venta)
                 )}
               </Text>
@@ -354,12 +529,12 @@ export default function MetodosPagoUnificadoPage() {
             <Descriptions.Item label='Monto Pagado'>
               <Text style={{ color: '#52c41a' }}>
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
+                  selectedRecord.moneda_pago_codigo,
                   parseFloat(selectedRecord.monto_pago)
                 )}
               </Text>
             </Descriptions.Item>
-            <Descriptions.Item label='Monto Pendiente'>
+            <Descriptions.Item label='Tasa de cambio'>
               <Text
                 style={{
                   color:
@@ -369,8 +544,23 @@ export default function MetodosPagoUnificadoPage() {
                 }}
               >
                 {formatCurrency(
-                  selectedRecord.moneda_simbolo,
-                  parseFloat(selectedRecord.saldo_pendiente_venta)
+                  selectedRecord.monto_pago_convertido,
+                  parseFloat(selectedRecord.tasa_cambio_aplicada)
+                )}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label='Tasa de cambio aplicada'>
+              <Text
+                style={{
+                  color:
+                    parseFloat(selectedRecord.saldo_pendiente_venta) > 0
+                      ? '#ff4d4f'
+                      : '#52c41a',
+                }}
+              >
+                {formatCurrency(
+                  selectedRecord.monto_pago_convertido,
+                  parseFloat(selectedRecord.monto_pago_convertido)
                 )}
               </Text>
             </Descriptions.Item>

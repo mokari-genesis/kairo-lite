@@ -1,6 +1,6 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -28,6 +28,12 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
+import {
+  sumPagosConConversion,
+  obtenerMonedaBase,
+  convertirAMonedaBase,
+  convertirDesdeMonedaBase,
+} from '@/app/utils/currency'
 
 interface PurchaseDetail {
   producto_id: number
@@ -57,22 +63,50 @@ export default function NewPurchase() {
   const [client, setClient] = useState<ClientsTypeResponse>()
   const [pagos, setPagos] = useState<VentaPago[]>([])
   const [ventaData, setVentaData] = useState<Venta | null>(null)
+  const [monedas, setMonedas] = useState<any[]>([])
+  const [monedaBase, setMonedaBase] = useState<any>(null)
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
 
   // Crear objeto Venta para la sección de pagos
   useEffect(() => {
     const total = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+
+    // Calcular total pagado con conversión si hay moneda base
+    const totalPagado = monedaBase
+      ? sumPagosConConversion(pagos, monedaBase, monedas)
+      : pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+
     const venta: Venta = {
       id: 0, // ID temporal para ventas nuevas
       total,
       estado: 'pendiente',
-      moneda_id: 1, // Por defecto GTQ
+      moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
       pagos: pagos,
-      totalPagado: pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
-      saldoPendiente:
-        total - pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0),
+      totalPagado,
+      saldoPendiente: total - totalPagado,
     }
     setVentaData(venta)
-  }, [details, pagos])
+  }, [details, pagos, monedaBase, monedas])
+
+  // Memoizar el objeto venta para evitar re-renders
+  const ventaMemoizada = useMemo(() => {
+    if (!ventaData) return null
+    return ventaData
+  }, [ventaData])
 
   const handleProductChange = (value: number, product: any, index: number) => {
     // Check if the product is already in the details array
@@ -252,6 +286,35 @@ export default function NewPurchase() {
     }
   }
 
+  // Función para calcular monto_en_moneda_venta
+  const calcularMontoEnMonedaVenta = (
+    monto: number,
+    monedaPagoId: number,
+    monedaVentaId: number = 1 // Por defecto VES (Bolívares Fuertes)
+  ): string => {
+    if (monedaPagoId === monedaVentaId) {
+      return monto.toFixed(2)
+    }
+
+    // Buscar las monedas del pago y de la venta
+    const monedaPago = monedas.find(m => m.id === monedaPagoId)
+    const monedaVenta = monedas.find(m => m.id === monedaVentaId)
+
+    if (!monedaPago || !monedaVenta || !monedaBase) {
+      return monto.toFixed(2)
+    }
+
+    // Convertir de la moneda del pago a la moneda base, luego a la moneda de la venta
+    const montoEnBase = convertirAMonedaBase(monto, monedaPago, monedaBase)
+    const montoEnMonedaVenta = convertirDesdeMonedaBase(
+      montoEnBase,
+      monedaVenta,
+      monedaBase
+    )
+
+    return montoEnMonedaVenta.toFixed(2)
+  }
+
   // Handlers para gestión de pagos
   const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
     try {
@@ -263,12 +326,21 @@ export default function NewPurchase() {
         getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
       ])
 
+      // Calcular monto_en_moneda_venta
+      const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
+      const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
+        payment.monto,
+        payment.moneda_id || payment.monedaId || 0,
+        monedaVentaId
+      )
+
       const newPayment: VentaPago = {
         ...payment,
         id: Date.now(), // ID temporal para pagos nuevos
         metodoPagoNombre,
         monedaCodigo,
         fecha: new Date().toISOString(), // Fecha actual
+        monto_en_moneda_venta: montoEnMonedaVenta,
       }
 
       setPagos(prev => [...prev, newPayment])
@@ -299,6 +371,31 @@ export default function NewPurchase() {
           payment.moneda_id || payment.monedaId || 0
         )
         updatedPayment.monedaCodigo = monedaCodigo
+      }
+
+      // Recalcular monto_en_moneda_venta si cambió el monto o la moneda
+      if (
+        payment.monto !== undefined ||
+        payment.moneda_id !== undefined ||
+        payment.monedaId !== undefined
+      ) {
+        const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
+        const montoFinal =
+          payment.monto !== undefined
+            ? payment.monto
+            : pagos.find(p => p.id === paymentId)?.monto || 0
+        const monedaPagoId =
+          payment.moneda_id ||
+          payment.monedaId ||
+          pagos.find(p => p.id === paymentId)?.moneda_id ||
+          0
+
+        const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
+          montoFinal,
+          monedaPagoId,
+          monedaVentaId
+        )
+        updatedPayment.monto_en_moneda_venta = montoEnMonedaVenta
       }
 
       setPagos(prev =>
@@ -337,7 +434,9 @@ export default function NewPurchase() {
       }
 
       // Validar que si hay pagos, la suma no exceda el total
-      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const totalVenta = parseFloat(
+        details.reduce((acc, curr) => acc + curr.subtotal, 0).toFixed(2)
+      )
 
       const pagosValidos = pagos.filter(pago => {
         const isValid =
@@ -351,9 +450,11 @@ export default function NewPurchase() {
         return isValid
       })
 
-      const totalPagos = pagosValidos.reduce(
-        (acc, pago) => acc + (pago.monto || 0),
-        0
+      const totalPagos = parseFloat(
+        (monedaBase
+          ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
+          : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+        ).toFixed(2)
       )
 
       if (pagosValidos.length > 0 && totalPagos > totalVenta) {
@@ -394,8 +495,8 @@ export default function NewPurchase() {
         usuario_id: 1,
         total: totalVenta,
         estado: 'vendido',
-        moneda_id: 1,
-        moneda: '$',
+        moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
+        moneda: 'Bs',
         comentario: values.comentario || '',
         detalle: details,
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
@@ -506,7 +607,7 @@ export default function NewPurchase() {
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `$ ${value.toFixed(2)}`,
+      render: (value: number) => `Bs. ${value.toFixed(2)}`,
     },
     {
       title: 'Acciones',
@@ -641,7 +742,7 @@ export default function NewPurchase() {
 
             <div style={{ textAlign: 'right' }}>
               <h3>
-                Total: ${' '}
+                Total: Bs.{' '}
                 {details
                   .reduce((acc, curr) => acc + curr.subtotal, 0)
                   .toFixed(2)}
@@ -649,9 +750,9 @@ export default function NewPurchase() {
             </div>
 
             {/* Sección de Pagos */}
-            {ventaData && (
+            {ventaMemoizada && (
               <PaymentsSection
-                venta={ventaData}
+                venta={ventaMemoizada}
                 pagos={pagos}
                 onAddPayment={handleAddPayment}
                 onEditPayment={handleEditPayment}

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import {
   Card,
   Button,
@@ -15,7 +15,14 @@ import { Venta, VentaPago } from '@/app/api/pagos'
 import { usePayments } from '@/app/hooks/usePayments'
 import { PaymentFormModal } from './PaymentFormModal'
 import { PaymentList } from './PaymentList'
-import { formatCurrency, sumPagos, calculateSaldo } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  sumPagos,
+  calculateSaldo,
+  sumPagosConConversion,
+  obtenerMonedaBase,
+} from '@/app/utils/currency'
+import { Moneda, getMonedas } from '@/app/api/monedas'
 
 interface PaymentsSectionProps {
   venta: Venta
@@ -38,13 +45,28 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
 }) => {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingPago, setEditingPago] = useState<VentaPago | undefined>()
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+
+  // Usar refs para evitar re-renders innecesarios
+  const onPaymentsChangeRef = useRef(onPaymentsChange)
+  onPaymentsChangeRef.current = onPaymentsChange
+
+  const externalDeletePaymentRef = useRef(externalDeletePayment)
+  externalDeletePaymentRef.current = externalDeletePayment
+
+  const externalAddPaymentRef = useRef(externalAddPayment)
+  externalAddPaymentRef.current = externalAddPayment
+
+  const externalEditPaymentRef = useRef(externalEditPayment)
+  externalEditPaymentRef.current = externalEditPayment
 
   // Si se proporcionan pagos externos, usar solo esos (modo local)
   // Si no, usar el hook (modo API)
   const isLocalMode = !!externalPagos
 
   // Solo usar el hook si NO estamos en modo local
-  const hookResult = isLocalMode ? null : usePayments(venta.id)
+  const hookResult = usePayments(venta.id)
 
   // Extraer valores del hook solo si no estamos en modo local
   const hookPagos = hookResult?.pagos || []
@@ -53,66 +75,99 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
   const editPayment = hookResult?.editPayment || (async () => {})
   const removePayment = hookResult?.removePayment || (async () => {})
 
-  // Usar pagos externos si estamos en modo local, sino usar los del hook
-  const pagos = isLocalMode ? externalPagos : hookPagos
-  const loading = isLocalMode ? externalLoading || false : hookLoading
+  // Usar pagos externos si están disponibles, sino usar los del hook (memoizado)
+  const pagos = useMemo(() => {
+    return externalPagos || hookPagos
+  }, [externalPagos, hookPagos])
 
-  const isVendido = venta.estado === 'vendido'
-  // Calcular total pagado basado en los pagos actuales
-  const totalPagado = sumPagos(pagos)
-  const saldoPendiente = calculateSaldo(venta.total, totalPagado)
-  const progressPercentage =
-    venta.total > 0 ? (totalPagado / venta.total) * 100 : 0
+  const loading = useMemo(() => {
+    return externalLoading !== undefined ? externalLoading : hookLoading
+  }, [externalLoading, hookLoading])
 
-  const handleAddPayment = () => {
+  const isVendido = useMemo(() => venta.estado === 'vendido', [venta.estado])
+
+  // Cargar monedas al montar el componente
+  React.useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
+
+  // Calcular total pagado con conversión si hay moneda base (memoizado)
+  const totalPagado = useMemo(() => {
+    return monedaBase
+      ? sumPagosConConversion(pagos, monedaBase, monedas)
+      : sumPagos(pagos)
+  }, [pagos, monedaBase, monedas])
+
+  const saldoPendiente = useMemo(() => {
+    return calculateSaldo(venta.total, totalPagado)
+  }, [venta.total, totalPagado])
+
+  const progressPercentage = useMemo(() => {
+    return venta.total > 0 ? (totalPagado / venta.total) * 100 : 0
+  }, [venta.total, totalPagado])
+
+  const handleAddPayment = useCallback(() => {
     setEditingPago(undefined)
     setModalOpen(true)
-  }
+  }, [])
 
-  const handleEditPayment = (pago: VentaPago) => {
+  const handleEditPayment = useCallback((pago: VentaPago) => {
     setEditingPago(pago)
     setModalOpen(true)
-  }
+  }, [])
 
-  const handleDeletePayment = async (pagoId: number) => {
-    try {
-      // En modo local usar función externa, sino usar hook
-      if (isLocalMode && externalDeletePayment) {
-        externalDeletePayment(pagoId)
-      } else {
-        await removePayment(pagoId)
+  const handleDeletePayment = useCallback(
+    async (pagoId: number) => {
+      try {
+        // En modo local usar función externa, sino usar hook
+        if (isLocalMode && externalDeletePaymentRef.current) {
+          externalDeletePaymentRef.current(pagoId)
+        } else {
+          await removePayment(pagoId)
+        }
+        // Notificar cambio de pagos usando ref
+        if (onPaymentsChangeRef.current) {
+          onPaymentsChangeRef.current()
+        }
+      } catch (error) {
+        // Error ya manejado en el hook
       }
-      // Notificar cambio de pagos solo si NO estamos en modo local
-      if (onPaymentsChange && !isLocalMode) {
-        onPaymentsChange()
-      }
-    } catch (error) {
-      // Error ya manejado en el hook
-    }
-  }
+    },
+    [isLocalMode]
+  )
 
   const handleSavePayment = async (payload: any) => {
     try {
       if (editingPago) {
         // En modo local usar función externa, sino usar hook
-        if (isLocalMode && externalEditPayment) {
-          externalEditPayment(editingPago.id, payload)
+        if (isLocalMode && externalEditPaymentRef.current) {
+          externalEditPaymentRef.current(editingPago.id, payload)
         } else {
           await editPayment(editingPago.id, payload)
         }
       } else {
         // En modo local usar función externa, sino usar hook
-        if (isLocalMode && externalAddPayment) {
-          externalAddPayment(payload)
+        if (isLocalMode && externalAddPaymentRef.current) {
+          externalAddPaymentRef.current(payload)
         } else {
           await addPayment(payload)
         }
       }
       setModalOpen(false)
       setEditingPago(undefined)
-      // Notificar cambio de pagos solo si NO estamos en modo local
-      if (onPaymentsChange && !isLocalMode) {
-        onPaymentsChange()
+      // Notificar cambio de pagos usando ref
+      if (onPaymentsChangeRef.current) {
+        onPaymentsChangeRef.current()
       }
     } catch (error) {
       // Error ya manejado en el hook
@@ -241,6 +296,7 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
           ventaTotal={venta.total}
           totalPagado={totalPagado}
           isVendido={isVendido}
+          key={editingPago?.id || 'new'} // Forzar re-render cuando cambie el pago a editar
         />
       </Space>
     </Card>

@@ -66,7 +66,16 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       try {
         const filtersToUse = newFilters || filters
         const response = await getMetodosPagoUnificado(filtersToUse)
-        setTableData(response)
+
+        // Always set new data, don't accumulate
+        // Create a new object to ensure React detects the change
+        setTableData({
+          data: [...response.data],
+          total: response.total,
+          page: response.page,
+          pageSize: response.pageSize,
+          hasMore: response.hasMore,
+        })
 
         if (newFilters) {
           setFilters(filtersToUse)
@@ -74,11 +83,19 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       } catch (err: any) {
         setError(err.message || 'Error al cargar los datos de la tabla')
         console.error('Error loading table data:', err)
+        // Clear data on error to prevent showing stale data
+        setTableData({
+          data: [],
+          total: 0,
+          page: 1,
+          pageSize: 100,
+          hasMore: false,
+        })
       } finally {
         setLoading(false)
       }
     },
-    [] // Remove filters dependency to avoid infinite loops
+    [filters] // Add filters dependency back but handle it properly
   )
 
   // Calculate total cancelled sales from API
@@ -100,7 +117,8 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         }
 
         return cancelledData.data.reduce(
-          (sum, record) => sum + parseFloat(record.total_venta || '0'),
+          (sum, record) =>
+            sum + parseFloat(record.monto_pago_convertido || '0'),
           0
         )
       } catch (error) {
@@ -150,7 +168,8 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
               0
             ),
             total_monto: nonCancelledData.reduce(
-              (sum, record) => sum + parseFloat(record.monto_pago || '0'),
+              (sum, record) =>
+                sum + parseFloat(record.monto_pago_convertido || '0'),
               0
             ),
             total_pagado: nonCancelledData.reduce(
@@ -179,7 +198,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         setLoading(false)
       }
     },
-    [calculateTotalCancelled, tableData] // Add dependencies
+    [calculateTotalCancelled, summaryFilters] // Remove tableData dependency to prevent infinite loops
   )
 
   // Update filters
@@ -208,30 +227,8 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
     await Promise.all([loadTableData(), loadSummaryData()])
   }, [loadTableData, loadSummaryData])
 
-  // Update summary data when table data changes
-  useEffect(() => {
-    const updateTotalCancelled = async () => {
-      if (summaryData) {
-        const totalCancelled = await calculateTotalCancelled(filters)
-        setSummaryData(prevSummary => {
-          if (!prevSummary) return prevSummary
-          // Only update if the value has actually changed to prevent infinite loops
-          if (prevSummary.total_general.total_cancelado === totalCancelled) {
-            return prevSummary
-          }
-          return {
-            ...prevSummary,
-            total_general: {
-              ...prevSummary.total_general,
-              total_cancelado: totalCancelled,
-            },
-          }
-        })
-      }
-    }
-
-    updateTotalCancelled()
-  }, [filters, calculateTotalCancelled]) // Use filters instead of tableData
+  // Remove the problematic useEffect that was causing infinite loops
+  // The total_cancelado calculation is now handled directly in loadSummaryData
 
   // Load initial data
   useEffect(() => {

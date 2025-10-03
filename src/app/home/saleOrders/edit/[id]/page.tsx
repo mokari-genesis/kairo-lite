@@ -1,6 +1,6 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -31,6 +31,7 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
+import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
 
 interface PurchaseDetail {
   producto_id: number
@@ -68,11 +69,29 @@ export default function EditPurchase({
   const [saleData, setSaleData] = useState<any>(null)
   const [ventaData, setVentaData] = useState<Venta | null>(null)
   const [pagos, setPagos] = useState<VentaPago[]>([])
+  const [monedas, setMonedas] = useState<any[]>([])
+  const [monedaBase, setMonedaBase] = useState<any>(null)
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const cargarMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error cargando monedas:', error)
+      }
+    }
+    cargarMonedas()
+  }, [])
 
   useEffect(() => {
     const fetchSaleData = async () => {
       try {
         const sales = await getSalesFlat({ id: resolvedParams.id })
+
         if (sales && sales.length > 0) {
           const sale = sales[0]
           setSaleData(sale)
@@ -82,7 +101,7 @@ export default function EditPurchase({
             id: sale.id,
             total: parseFloat(sale.total_venta),
             estado: sale.estado_venta as 'vendido' | 'cancelado',
-            moneda_id: 1, // Por defecto GTQ
+            moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
             pagos: [], // Se cargará dinámicamente
             totalPagado: 0,
             saldoPendiente: parseFloat(sale.total_venta),
@@ -160,23 +179,52 @@ export default function EditPurchase({
     fetchSaleData()
   }, [resolvedParams.id, form, router])
 
+  // Memoizar el total calculado para evitar re-renders
+  const totalCalculado = useMemo(() => {
+    return details.reduce((acc, curr) => acc + curr.subtotal, 0)
+  }, [details])
+
   // Actualizar el total de la venta cuando cambien los productos
   useEffect(() => {
     if (ventaData && details.length > 0) {
-      const newTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
-      setVentaData(prev => (prev ? { ...prev, total: newTotal } : null))
+      const newTotal = totalCalculado
+
+      // Calcular total pagado con conversión si hay moneda base
+      const totalPagado = monedaBase
+        ? sumPagosConConversion(pagos, monedaBase, monedas)
+        : pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+
+      setVentaData(prev =>
+        prev
+          ? {
+              ...prev,
+              total: newTotal,
+              totalPagado,
+              saldoPendiente: newTotal - totalPagado,
+            }
+          : null
+      )
     }
-  }, [details])
+  }, [totalCalculado, pagos, monedaBase, monedas])
+
+  // Memoizar el objeto venta para evitar re-renders
+  const ventaMemoizada = useMemo(() => {
+    if (!ventaData) return null
+    return {
+      ...ventaData,
+      total: totalCalculado,
+    }
+  }, [ventaData?.id, ventaData?.estado, ventaData?.moneda_id, totalCalculado])
 
   // Función para sincronizar pagos desde PaymentsSection
-  const syncPayments = async () => {
+  const syncPayments = useCallback(async () => {
     try {
       const updatedPagos = await listPayments(parseInt(resolvedParams.id))
       setPagos(updatedPagos)
     } catch (error) {
       console.error('Error syncing payments:', error)
     }
-  }
+  }, [resolvedParams.id])
 
   // Funciones auxiliares para obtener nombres de métodos de pago y monedas
   const getMetodoPagoNombre = async (metodoPagoId: number): Promise<string> => {
@@ -201,211 +249,226 @@ export default function EditPurchase({
     }
   }
 
-  // Funciones para manejar pagos localmente
-  const handleAddPayment = async (payment: Omit<VentaPago, 'id'>) => {
-    try {
-      // Obtener nombres de método de pago y moneda
-      const [metodoPagoNombre, monedaCodigo] = await Promise.all([
-        getMetodoPagoNombre(
-          payment.metodo_pago_id || payment.metodoPagoId || 0
-        ),
-        getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
-      ])
-
-      const newPayment: VentaPago = {
-        ...payment,
-        id: Date.now(), // ID temporal para pagos nuevos
-        metodoPagoNombre,
-        monedaCodigo,
-        fecha: new Date().toISOString(), // Fecha actual
-      }
-
-      setPagos(prev => [...prev, newPayment])
-    } catch (error) {
-      console.error('Error adding payment:', error)
-      message.error('Error al agregar el pago')
-    }
-  }
-
-  const handleEditPayment = async (
-    paymentId: number,
-    payment: Partial<VentaPago>
-  ) => {
-    try {
-      let updatedPayment = { ...payment }
-
-      // Si se cambió el método de pago, obtener el nombre
-      if (payment.metodo_pago_id || payment.metodoPagoId) {
-        const metodoPagoNombre = await getMetodoPagoNombre(
-          payment.metodo_pago_id || payment.metodoPagoId || 0
-        )
-        updatedPayment.metodoPagoNombre = metodoPagoNombre
-      }
-
-      // Si se cambió la moneda, obtener el código
-      if (payment.moneda_id || payment.monedaId) {
-        const monedaCodigo = await getMonedaCodigo(
-          payment.moneda_id || payment.monedaId || 0
-        )
-        updatedPayment.monedaCodigo = monedaCodigo
-      }
-
-      setPagos(prev =>
-        prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
-      )
-    } catch (error) {
-      console.error('Error editing payment:', error)
-      message.error('Error al editar el pago')
-    }
-  }
-
-  const handleDeletePayment = (paymentId: number) => {
-    setPagos(prev => prev.filter(p => p.id !== paymentId))
-  }
-
-  const handleProductChange = async (
-    value: number,
-    product: any,
-    index: number
-  ) => {
-    const isProductAlreadyAdded = details.some(
-      (detail, i) => detail.producto_id === value && i !== index
-    )
-
-    if (isProductAlreadyAdded) {
-      message.error('Este producto ya ha sido agregado a la venta')
-      return
-    }
-
-    const newDetails = [...details]
-    if (product) {
-      // Load current stock for the selected product
-      let currentStock = 0
+  // Funciones para manejar pagos localmente (memoizadas)
+  const handleAddPayment = useCallback(
+    async (payment: Omit<VentaPago, 'id'>) => {
       try {
-        const stockData = await getReporteStockActual()
-        const productStock = stockData.find(
-          stock => stock.producto_id === value
-        )
-        currentStock =
-          (productStock as any)?.stock || productStock?.stock_actual || 0
+        // Obtener nombres de método de pago y moneda
+        const [metodoPagoNombre, monedaCodigo] = await Promise.all([
+          getMetodoPagoNombre(
+            payment.metodo_pago_id || payment.metodoPagoId || 0
+          ),
+          getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
+        ])
+
+        const newPayment: VentaPago = {
+          ...payment,
+          id: Date.now(), // ID temporal para pagos nuevos
+          metodoPagoNombre,
+          monedaCodigo,
+          fecha: new Date().toISOString(), // Fecha actual
+        }
+
+        setPagos(prev => [...prev, newPayment])
       } catch (error) {
-        console.error('Error loading stock:', error)
-        message.error('Error al cargar el stock del producto')
+        console.error('Error adding payment:', error)
+        message.error('Error al agregar el pago')
+      }
+    },
+    []
+  )
+
+  const handleEditPayment = useCallback(
+    async (paymentId: number, payment: Partial<VentaPago>) => {
+      try {
+        let updatedPayment = { ...payment }
+
+        // Si se cambió el método de pago, obtener el nombre
+        if (payment.metodo_pago_id || payment.metodoPagoId) {
+          const metodoPagoNombre = await getMetodoPagoNombre(
+            payment.metodo_pago_id || payment.metodoPagoId || 0
+          )
+          updatedPayment.metodoPagoNombre = metodoPagoNombre
+        }
+
+        // Si se cambió la moneda, obtener el código
+        if (payment.moneda_id || payment.monedaId) {
+          const monedaCodigo = await getMonedaCodigo(
+            payment.moneda_id || payment.monedaId || 0
+          )
+          updatedPayment.monedaCodigo = monedaCodigo
+        }
+
+        setPagos(prev =>
+          prev.map(p => (p.id === paymentId ? { ...p, ...updatedPayment } : p))
+        )
+      } catch (error) {
+        console.error('Error editing payment:', error)
+        message.error('Error al editar el pago')
+      }
+    },
+    []
+  )
+
+  const handleDeletePayment = useCallback((paymentId: number) => {
+    setPagos(prev => prev.filter(p => p.id !== paymentId))
+  }, [])
+
+  const handleProductChange = useCallback(
+    async (value: number, product: any, index: number) => {
+      const isProductAlreadyAdded = details.some(
+        (detail, i) => detail.producto_id === value && i !== index
+      )
+
+      if (isProductAlreadyAdded) {
+        message.error('Este producto ya ha sido agregado a la venta')
+        return
       }
 
-      // For new products, available stock is just the current stock
-      // For existing products, it's current stock + original quantity
-      const originalQuantity = newDetails[index].cantidad_original || 0
-      const availableStock = currentStock + originalQuantity
+      const newDetails = [...details]
+      if (product) {
+        // Load current stock for the selected product
+        let currentStock = 0
+        try {
+          const stockData = await getReporteStockActual()
+          const productStock = stockData.find(
+            stock => stock.producto_id === value
+          )
+          currentStock =
+            (productStock as any)?.stock || productStock?.stock_actual || 0
+        } catch (error) {
+          console.error('Error loading stock:', error)
+          message.error('Error al cargar el stock del producto')
+        }
+
+        // For new products, available stock is just the current stock
+        // For existing products, it's current stock + original quantity
+        const originalQuantity = newDetails[index].cantidad_original || 0
+        const availableStock = currentStock + originalQuantity
+
+        newDetails[index] = {
+          ...newDetails[index],
+          producto_id: value,
+          producto_descripcion: product.descripcion,
+          precio_unitario: product.precio || 0,
+          cantidad: newDetails[index].cantidad || 1,
+          subtotal: (product.precio || 0) * (newDetails[index].cantidad || 1),
+          codigo: product.codigo,
+          stock: availableStock, // Stock disponible
+          stock_actual: currentStock, // Stock actual del WS
+          cantidad_original: originalQuantity, // Cantidad original (0 para productos nuevos)
+          tipo_precio_aplicado: 'sugerido', // Auto-seleccionar tipo "sugerido" cuando se auto-popula el precio
+        }
+        setDetails(newDetails)
+      }
+    },
+    [details]
+  )
+
+  const handleQuantityChange = useCallback(
+    (value: number | null, index: number) => {
+      if (value === null) return
+      const newDetails = [...details]
+      const currentDetail = newDetails[index]
+
+      // Check if quantity exceeds available stock
+      if (value > (currentDetail.stock || 0)) {
+        message.error(
+          `Stock insuficiente. Disponible: ${currentDetail.stock || 0}`
+        )
+      }
 
       newDetails[index] = {
         ...newDetails[index],
-        producto_id: value,
-        producto_descripcion: product.descripcion,
-        precio_unitario: product.precio || 0,
-        cantidad: newDetails[index].cantidad || 1,
-        subtotal: (product.precio || 0) * (newDetails[index].cantidad || 1),
-        codigo: product.codigo,
-        stock: availableStock, // Stock disponible
-        stock_actual: currentStock, // Stock actual del WS
-        cantidad_original: originalQuantity, // Cantidad original (0 para productos nuevos)
-        tipo_precio_aplicado: 'sugerido', // Auto-seleccionar tipo "sugerido" cuando se auto-popula el precio
+        cantidad: value,
+        subtotal: newDetails[index].precio_unitario * value,
       }
       setDetails(newDetails)
-    }
-  }
+    },
+    [details]
+  )
 
-  const handleQuantityChange = (value: number | null, index: number) => {
-    if (value === null) return
-    const newDetails = [...details]
-    const currentDetail = newDetails[index]
-
-    // Check if quantity exceeds available stock
-    if (value > (currentDetail.stock || 0)) {
-      message.error(
-        `Stock insuficiente. Disponible: ${currentDetail.stock || 0}`
-      )
-    }
-
-    newDetails[index] = {
-      ...newDetails[index],
-      cantidad: value,
-      subtotal: newDetails[index].precio_unitario * value,
-    }
-    setDetails(newDetails)
-  }
-
-  const handlePriceChange = (value: number | null, index: number) => {
-    if (value === null) return
-    const newDetails = [...details]
-    newDetails[index] = {
-      ...newDetails[index],
-      precio_unitario: value,
-      subtotal: value * newDetails[index].cantidad,
-    }
-    setDetails(newDetails)
-  }
-
-  const handlePriceTypeChange = async (value: string, index: number) => {
-    const newDetails = [...details]
-    const currentDetail = newDetails[index]
-
-    // Actualizar el tipo de precio
-    newDetails[index] = {
-      ...currentDetail,
-      tipo_precio_aplicado: value as
-        | 'sugerido'
-        | 'mayorista'
-        | 'minorista'
-        | 'distribuidores'
-        | 'especial',
-      key: currentDetail.key,
-    }
-
-    // Si hay un producto seleccionado, buscar el precio correspondiente
-    if (currentDetail.producto_id > 0 && value) {
-      try {
-        const precios = await getProductosPreciosByProduct(
-          currentDetail.producto_id
-        )
-        const precioEncontrado = precios.find(p => p.tipo === value)
-
-        if (precioEncontrado) {
-          // Convertir el precio a número para asegurar compatibilidad
-          const precioNumerico = parseFloat(precioEncontrado.precio.toString())
-
-          // Actualizar el precio unitario con el precio encontrado
-          newDetails[index] = {
-            ...newDetails[index],
-            precio_unitario: precioNumerico,
-            subtotal: precioNumerico * currentDetail.cantidad,
-            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
-            precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
-          }
-          message.success(`Precio actualizado a $.${precioNumerico.toFixed(2)}`)
-        } else {
-          // Establecer precio en 0 cuando no se encuentra el precio
-          newDetails[index] = {
-            ...newDetails[index],
-            precio_unitario: 0,
-            subtotal: 0,
-            precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
-            precio_realmente_no_encontrado: true, // Mostrar mensaje de "no encontrado"
-          }
-
-          // Solo mostrar mensaje de "no encontrado" cuando realmente no se encuentra
-          message.warning(
-            `No se encontró precio para el tipo "${value}" de este producto. Precio establecido en 0.`
-          )
-        }
-      } catch (error) {
-        message.error('Error al obtener los precios del producto')
-        console.error('Error fetching product prices:', error)
+  const handlePriceChange = useCallback(
+    (value: number | null, index: number) => {
+      if (value === null) return
+      const newDetails = [...details]
+      newDetails[index] = {
+        ...newDetails[index],
+        precio_unitario: value,
+        subtotal: value * newDetails[index].cantidad,
       }
-    }
+      setDetails(newDetails)
+    },
+    [details]
+  )
 
-    setDetails(newDetails)
-  }
+  const handlePriceTypeChange = useCallback(
+    async (value: string, index: number) => {
+      const newDetails = [...details]
+      const currentDetail = newDetails[index]
+
+      // Actualizar el tipo de precio
+      newDetails[index] = {
+        ...currentDetail,
+        tipo_precio_aplicado: value as
+          | 'sugerido'
+          | 'mayorista'
+          | 'minorista'
+          | 'distribuidores'
+          | 'especial',
+        key: currentDetail.key,
+      }
+
+      // Si hay un producto seleccionado, buscar el precio correspondiente
+      if (currentDetail.producto_id > 0 && value) {
+        try {
+          const precios = await getProductosPreciosByProduct(
+            currentDetail.producto_id
+          )
+          const precioEncontrado = precios.find(p => p.tipo === value)
+
+          if (precioEncontrado) {
+            // Convertir el precio a número para asegurar compatibilidad
+            const precioNumerico = parseFloat(
+              precioEncontrado.precio.toString()
+            )
+
+            // Actualizar el precio unitario con el precio encontrado
+            newDetails[index] = {
+              ...newDetails[index],
+              precio_unitario: precioNumerico,
+              subtotal: precioNumerico * currentDetail.cantidad,
+              precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+              precio_realmente_no_encontrado: false, // No mostrar mensaje de "no encontrado"
+            }
+            message.success(
+              `Precio actualizado a $.${precioNumerico.toFixed(2)}`
+            )
+          } else {
+            // Establecer precio en 0 cuando no se encuentra el precio
+            newDetails[index] = {
+              ...newDetails[index],
+              precio_unitario: 0,
+              subtotal: 0,
+              precio_no_encontrado: value !== 'sugerido', // Solo habilitar si es sugerido
+              precio_realmente_no_encontrado: true, // Mostrar mensaje de "no encontrado"
+            }
+
+            // Solo mostrar mensaje de "no encontrado" cuando realmente no se encuentra
+            message.warning(
+              `No se encontró precio para el tipo "${value}" de este producto. Precio establecido en 0.`
+            )
+          }
+        } catch (error) {
+          message.error('Error al obtener los precios del producto')
+          console.error('Error fetching product prices:', error)
+        }
+      }
+
+      setDetails(newDetails)
+    },
+    [details]
+  )
 
   const canAddNewProduct = () => {
     if (details.length === 0) return true
@@ -443,11 +506,14 @@ export default function EditPurchase({
     ])
   }
 
-  const handleRemoveDetail = (index: number) => {
-    const newDetails = [...details]
-    newDetails.splice(index, 1)
-    setDetails(newDetails)
-  }
+  const handleRemoveDetail = useCallback(
+    (index: number) => {
+      const newDetails = [...details]
+      newDetails.splice(index, 1)
+      setDetails(newDetails)
+    },
+    [details]
+  )
 
   const onFinish = async (values: any) => {
     try {
@@ -478,7 +544,7 @@ export default function EditPurchase({
       }
 
       // Calcular el total actualizado
-      const updatedTotal = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const updatedTotal = totalCalculado
 
       // Check for insufficient stock
       const insufficientStock = details.some(
@@ -507,10 +573,9 @@ export default function EditPurchase({
         return isValid
       })
 
-      const totalPagos = pagosValidos.reduce(
-        (acc, pago) => acc + (pago.monto || 0),
-        0
-      )
+      const totalPagos = monedaBase
+        ? sumPagosConConversion(pagosValidos, monedaBase, monedas)
+        : pagosValidos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
 
       if (pagosValidos.length > 0 && totalPagos > totalVenta) {
         message.error(
@@ -555,8 +620,8 @@ export default function EditPurchase({
         total: updatedTotal,
         estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,
-        moneda_id: 1,
-        moneda: '$',
+        moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
+        moneda: 'Bs',
         comentario: values.comentario || '',
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
       }
@@ -584,117 +649,134 @@ export default function EditPurchase({
     }
   }
 
-  const columns = [
-    {
-      title: 'Producto',
-      dataIndex: 'producto_id',
-      width: 250,
-      render: (_: any, record: PurchaseDetail, index: number) => (
-        <ProductSelect
-          value={record.producto_id}
-          labelValue={`${record.producto_descripcion} - ${record.codigo}`}
-          onChange={(value, product) =>
-            handleProductChange(value, product, index)
-          }
-        />
-      ),
-    },
-    {
-      title: 'Stock Disponible',
-      dataIndex: 'stock',
-      width: 200,
-      render: (_: any, record: PurchaseDetail) => (
-        <div>
-          <Input
-            value={`${record.stock?.toString() || '0'} (Disponible)`}
-            disabled
-            style={{ marginBottom: '4px' }}
+  const columns = useMemo(
+    () => [
+      {
+        title: 'Producto',
+        dataIndex: 'producto_id',
+        width: 250,
+        render: (_: any, record: PurchaseDetail, index: number) => (
+          <ProductSelect
+            value={record.producto_id}
+            labelValue={`${record.producto_descripcion} - ${record.codigo}`}
+            onChange={(value, product) =>
+              handleProductChange(value, product, index)
+            }
           />
-        </div>
-      ),
-    },
-    {
-      title: 'Cantidad',
-      dataIndex: 'cantidad',
-      width: 150,
-      render: (_: any, record: PurchaseDetail, index: number) => (
-        <div>
-          <InputNumber
-            min={1}
-            value={record.cantidad}
-            onChange={value => handleQuantityChange(value, index)}
-            status={record.cantidad > (record.stock || 0) ? 'error' : undefined}
-          />
-          {record.cantidad > (record.stock || 0) && (
-            <div
-              style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
-            >
-              Stock insuficiente. Disponible: {record.stock || 0}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: 'Tipo Precio',
-      dataIndex: 'tipo_precio_aplicado',
-      width: 150,
-      render: (_: any, record: PurchaseDetail, index: number) => (
-        <TipoPrecioSelector
-          value={record.tipo_precio_aplicado}
-          onChange={value => handlePriceTypeChange(value, index)}
-        />
-      ),
-    },
-    {
-      title: 'Precio Unitario',
-      dataIndex: 'precio_unitario',
-      width: 200,
-      render: (_: any, record: PurchaseDetail, index: number) => (
-        <div>
-          <InputNumber
-            min={0}
-            value={record.precio_unitario}
-            onChange={value => handlePriceChange(value, index)}
-            disabled={record.precio_no_encontrado}
-            status={record.precio_realmente_no_encontrado ? 'error' : undefined}
-          />
-          {record.precio_realmente_no_encontrado && (
-            <div
-              style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
-            >
-              Precio no encontrado para este tipo
-            </div>
-          )}
-          {record.tipo_precio_aplicado === 'sugerido' &&
-            !record.precio_no_encontrado &&
-            record.precio_unitario === 0 && (
+        ),
+      },
+      {
+        title: 'Stock Disponible',
+        dataIndex: 'stock',
+        width: 200,
+        render: (_: any, record: PurchaseDetail) => (
+          <div>
+            <Input
+              value={`${record.stock?.toString() || '0'} (Disponible)`}
+              disabled
+              style={{ marginBottom: '4px' }}
+            />
+          </div>
+        ),
+      },
+      {
+        title: 'Cantidad',
+        dataIndex: 'cantidad',
+        width: 150,
+        render: (_: any, record: PurchaseDetail, index: number) => (
+          <div>
+            <InputNumber
+              min={1}
+              value={record.cantidad}
+              onChange={value => handleQuantityChange(value, index)}
+              status={
+                record.cantidad > (record.stock || 0) ? 'error' : undefined
+              }
+            />
+            {record.cantidad > (record.stock || 0) && (
               <div
-                style={{ color: '#1890ff', fontSize: '12px', marginTop: '4px' }}
+                style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
               >
-                Puede editar el precio manualmente
+                Stock insuficiente. Disponible: {record.stock || 0}
               </div>
             )}
-        </div>
-      ),
-    },
-    {
-      title: 'Subtotal',
-      dataIndex: 'subtotal',
-      render: (value: number) => `$ ${value.toFixed(2)}`,
-    },
-    {
-      title: 'Acciones',
-      render: (_: any, __: any, index: number) => (
-        <Button
-          type='text'
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => handleRemoveDetail(index)}
-        />
-      ),
-    },
-  ]
+          </div>
+        ),
+      },
+      {
+        title: 'Tipo Precio',
+        dataIndex: 'tipo_precio_aplicado',
+        width: 150,
+        render: (_: any, record: PurchaseDetail, index: number) => (
+          <TipoPrecioSelector
+            value={record.tipo_precio_aplicado}
+            onChange={value => handlePriceTypeChange(value, index)}
+          />
+        ),
+      },
+      {
+        title: 'Precio Unitario',
+        dataIndex: 'precio_unitario',
+        width: 200,
+        render: (_: any, record: PurchaseDetail, index: number) => (
+          <div>
+            <InputNumber
+              min={0}
+              value={record.precio_unitario}
+              onChange={value => handlePriceChange(value, index)}
+              disabled={record.precio_no_encontrado}
+              status={
+                record.precio_realmente_no_encontrado ? 'error' : undefined
+              }
+            />
+            {record.precio_realmente_no_encontrado && (
+              <div
+                style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
+              >
+                Precio no encontrado para este tipo
+              </div>
+            )}
+            {record.tipo_precio_aplicado === 'sugerido' &&
+              !record.precio_no_encontrado &&
+              record.precio_unitario === 0 && (
+                <div
+                  style={{
+                    color: '#1890ff',
+                    fontSize: '12px',
+                    marginTop: '4px',
+                  }}
+                >
+                  Puede editar el precio manualmente
+                </div>
+              )}
+          </div>
+        ),
+      },
+      {
+        title: 'Subtotal',
+        dataIndex: 'subtotal',
+        render: (value: number) => `Bs. ${value.toFixed(2)}`,
+      },
+      {
+        title: 'Acciones',
+        render: (_: any, __: any, index: number) => (
+          <Button
+            type='text'
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleRemoveDetail(index)}
+          />
+        ),
+      },
+    ],
+    [
+      handleProductChange,
+      handleQuantityChange,
+      handlePriceTypeChange,
+      handlePriceChange,
+      handleRemoveDetail,
+    ]
+  )
 
   const fetchClients = async (search: string) => {
     const hasNumbers = /\d/.test(search)
@@ -851,21 +933,13 @@ export default function EditPurchase({
             </div>
 
             <div style={{ textAlign: 'right' }}>
-              <h3>
-                Total: ${' '}
-                {details
-                  .reduce((acc, curr) => acc + curr.subtotal, 0)
-                  .toFixed(2)}
-              </h3>
+              <h3>Total: Bs. {totalCalculado.toFixed(2)}</h3>
             </div>
 
             {/* Sección de Pagos */}
-            {ventaData && (
+            {ventaMemoizada && (
               <PaymentsSection
-                venta={{
-                  ...ventaData,
-                  total: details.reduce((acc, curr) => acc + curr.subtotal, 0),
-                }}
+                venta={ventaMemoizada}
                 pagos={pagos}
                 onAddPayment={handleAddPayment}
                 onEditPayment={handleEditPayment}
