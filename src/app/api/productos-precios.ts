@@ -1,7 +1,8 @@
 import { fetchApi, LambdaResponse } from './constants'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
+import { API_URL } from '../utils/commons'
 
-const API_URL = 'https://3cymz3vn0f.execute-api.us-east-1.amazonaws.com/prod'
+//const API_URL = 'https://3cymz3vn0f.execute-api.us-east-1.amazonaws.com/prod'
 
 export interface ProductoPrecio {
   id: number

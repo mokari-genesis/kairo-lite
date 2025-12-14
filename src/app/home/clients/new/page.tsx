@@ -134,7 +134,7 @@ function NewClient() {
             <Form.Item>
               <Space>
                 <Button type='primary' htmlType='submit' loading={isLoading}>
-                  Crear CLiente
+                  Crear Cliente
                 </Button>
               </Space>
             </Form.Item>

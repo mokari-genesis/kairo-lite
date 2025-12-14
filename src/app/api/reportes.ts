@@ -2,11 +2,12 @@ import { fetchApi, LambdaResponse } from './constants'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import { API_URL } from '../utils/commons'
 
 dayjs.extend(utc)
 const DATE_FORMAT = 'DD/MM/YYYY hh:mm:ss A'
 
-const API_URL = 'https://3112nzl9fi.execute-api.us-east-1.amazonaws.com/prod'
+//const API_URL = 'https://3112nzl9fi.execute-api.us-east-1.amazonaws.com/prod'
 
 export interface ReporteInventarioConMetodo {
   id: number
@@ -79,7 +80,7 @@ export const getReporteInventarioConMetodo = async (
       LambdaResponse<ReporteInventarioConMetodo[]>
     >({
       api: API_URL,
-      service: `/reportes/inventario-con-metodo?${queryParams.toString()}`,
+      service: `/inventario-con-metodo?${queryParams.toString()}`,
       method: 'GET',
     })
 
@@ -117,7 +118,7 @@ export const getReporteMovimientosInventario = async (
       LambdaResponse<ReporteMovimientoInventario[]>
     >({
       api: API_URL,
-      service: `/reportes/movimientos-inventario?${queryParams.toString()}`,
+      service: `/movimientos-inventario?${queryParams.toString()}`,
       method: 'GET',
     })
 
@@ -150,7 +151,7 @@ export const getReporteStockActual = async (
 
     const response = await fetchApi<LambdaResponse<ReporteStockActual[]>>({
       api: API_URL,
-      service: `/reportes/stock-actual?${queryParams.toString()}`,
+      service: `/stock-actual?${queryParams.toString()}`,
       method: 'GET',
     })
 

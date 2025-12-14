@@ -2,10 +2,11 @@ import { fetchApi, LambdaResponse } from './constants'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import { API_URL } from '../utils/commons'
 dayjs.extend(utc)
 const DATE_FORMAT = 'DD/MM/YYYY hh:mm:ss A'
 
-const API_URL = 'https://jhpsb1dcdi.execute-api.us-east-1.amazonaws.com/prod'
+// const API_URL = 'https://jhpsb1dcdi.execute-api.us-east-1.amazonaws.com/prod'
 
 export type SupplierTypeResponse = {
   id: number
