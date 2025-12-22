@@ -29,6 +29,7 @@ import { MetodosPagoUnificadoFilters } from '../../api/metodos-pago-unificado'
 import { getClients } from '../../api/clients'
 import { getMetodosPago } from '../../api/metodos-pago'
 import { getMonedas } from '../../api/monedas'
+import { useEmpresa } from '../../empresaContext'
 
 const { RangePicker } = DatePicker
 const { Option } = Select
@@ -53,6 +54,7 @@ export const UnifiedPaymentMethodsFilters: React.FC<
   const [currencies, setCurrencies] = useState<SelectOption[]>([])
   const [filtersVisible, setFiltersVisible] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const { empresaId } = useEmpresa()
 
   // Load initial data for select options
   useEffect(() => {
@@ -131,7 +133,7 @@ export const UnifiedPaymentMethodsFilters: React.FC<
 
       // Convert dayjs objects back to date strings
       const filters: MetodosPagoUnificadoFilters = {
-        empresa_id: 1, // Default empresa_id
+        empresa_id: empresaId ?? 1,
         venta_id: values.venta_id,
         cliente_id: values.cliente_id,
         usuario_id: values.usuario_id,
@@ -156,12 +158,12 @@ export const UnifiedPaymentMethodsFilters: React.FC<
       })
 
       onFiltersChange(filters)
-    }, 500) // 500ms debounce
-  }, [form, onFiltersChange])
+    }, 500)
+  }, [form, onFiltersChange, empresaId])
 
   const handleClearFilters = () => {
     form.resetFields()
-    onFiltersChange({ empresa_id: 1 })
+    onFiltersChange({ empresa_id: empresaId ?? 1 })
   }
 
   const disabledDate: RangePickerProps['disabledDate'] = current => {
@@ -214,7 +216,7 @@ export const UnifiedPaymentMethodsFilters: React.FC<
                 layout='vertical'
                 onValuesChange={handleFormChange}
                 initialValues={{
-                  empresa_id: 1,
+                  empresa_id: empresaId ?? 1,
                 }}
               >
                 <Row gutter={[16, 16]}>

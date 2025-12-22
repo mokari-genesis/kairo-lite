@@ -16,22 +16,22 @@ import {
   Modal,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
-import { editSale } from '@/app/api/sales'
+import { editSale, getSalesFlat } from '@/app/api/sales'
 import { ProductSelect } from '@/app/components/ProductSelect'
 import { TipoPrecioSelector } from '@/app/components/TipoPrecioSelector'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/app/components/PageHeader'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { ClientsTypeResponse, getClients } from '@/app/api/clients'
-import { getSalesFlat } from '@/app/api/sales'
 import { getProductosPreciosByProduct } from '@/app/api/productos-precios'
-import { getReporteStockActual } from '@/app/api/reportes'
+import { getProducts } from '@/app/api/products'
 import { use } from 'react'
 import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
 import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
+import { useEmpresa } from '@/app/empresaContext'
 
 interface PurchaseDetail {
   producto_id: number
@@ -60,6 +60,7 @@ export default function EditPurchase({
   params: Promise<{ id: string }>
 }) {
   const resolvedParams = use(params)
+  const { empresaId } = useEmpresa()
   const [isLoading, setIsLoading] = useState(false)
   const [modal, contextHolder] = Modal.useModal()
   const [form] = Form.useForm()
@@ -90,7 +91,10 @@ export default function EditPurchase({
   useEffect(() => {
     const fetchSaleData = async () => {
       try {
-        const sales = await getSalesFlat({ id: resolvedParams.id })
+        const sales = await getSalesFlat(
+          { id: resolvedParams.id },
+          empresaId ?? 1
+        )
 
         if (sales && sales.length > 0) {
           const sale = sales[0]
@@ -123,19 +127,19 @@ export default function EditPurchase({
             })
           }
 
-          // Load stock information for all products
-          const stockData = await getReporteStockActual()
+          // Load stock information for all products usando empresa seleccionada
+          const productsData = await getProducts(undefined, empresaId ?? 1)
 
           setDetails(
             sale.productos.map((producto: any, index: number) => {
               // Find stock for this product
 
-              const productStock = stockData.find(
-                stock => stock.producto_id === producto.producto_id
+              const productStock = productsData.find(
+                stock => Number(stock.id) === producto.producto_id
               )
 
               // Calculate available stock: current stock + original quantity in sale
-              const currentStock = productStock?.stock_actual || 0
+              const currentStock = productStock?.stock || 0
               const originalQuantity = producto.cantidad || 0
               const availableStock = currentStock + originalQuantity
 
@@ -177,7 +181,7 @@ export default function EditPurchase({
     }
 
     fetchSaleData()
-  }, [resolvedParams.id, form, router])
+  }, [resolvedParams.id, form, router, empresaId])
 
   // Memoizar el total calculado para evitar re-renders
   const totalCalculado = useMemo(() => {
@@ -327,15 +331,14 @@ export default function EditPurchase({
 
       const newDetails = [...details]
       if (product) {
-        // Load current stock for the selected product
+        // Load current stock for the selected product (empresa_id = 1 por defecto)
         let currentStock = 0
         try {
-          const stockData = await getReporteStockActual()
-          const productStock = stockData.find(
-            stock => stock.producto_id === value
+          const productsData = await getProducts(undefined, 1)
+          const productStock = productsData.find(
+            stock => Number(stock.id) === value
           )
-          currentStock =
-            (productStock as any)?.stock || productStock?.stock_actual || 0
+          currentStock = productStock?.stock || 0
         } catch (error) {
           console.error('Error loading stock:', error)
           message.error('Error al cargar el stock del producto')
@@ -374,7 +377,9 @@ export default function EditPurchase({
       // Check if quantity exceeds available stock
       if (value > (currentDetail.stock || 0)) {
         message.error(
-          `Stock insuficiente. Disponible: ${currentDetail.stock || 0}`
+          `Stock insuficiente en esta sucursal. Disponible: ${
+            currentDetail.stock || 0
+          }`
         )
       }
 
@@ -552,7 +557,7 @@ export default function EditPurchase({
       )
       if (insufficientStock) {
         message.error(
-          'No se puede actualizar la venta: hay productos con stock insuficiente. El stock disponible incluye el stock actual + la cantidad original de la venta.'
+          'No se puede actualizar la venta: hay productos con stock insuficiente en esta sucursal. El stock disponible incluye el stock actual + la cantidad original de la venta.'
         )
         return
       }
@@ -614,7 +619,7 @@ export default function EditPurchase({
 
       const data = {
         venta_id: parseInt(resolvedParams.id),
-        empresa_id: 1,
+        empresa_id: empresaId ?? 1,
         cliente_id: values.cliente_id.value || values.cliente_id,
         usuario_id: 1,
         total: updatedTotal,
@@ -662,17 +667,18 @@ export default function EditPurchase({
             onChange={(value, product) =>
               handleProductChange(value, product, index)
             }
+            disabled={true}
           />
         ),
       },
       {
-        title: 'Stock Disponible',
+        title: 'Stock Disponible (Sucursal)',
         dataIndex: 'stock',
         width: 200,
         render: (_: any, record: PurchaseDetail) => (
           <div>
             <Input
-              value={`${record.stock?.toString() || '0'} (Disponible)`}
+              value={`${record.stock?.toString() || '0'} (Disponible Sucursal)`}
               disabled
               style={{ marginBottom: '4px' }}
             />
@@ -692,12 +698,14 @@ export default function EditPurchase({
               status={
                 record.cantidad > (record.stock || 0) ? 'error' : undefined
               }
+              disabled={true}
             />
             {record.cantidad > (record.stock || 0) && (
               <div
                 style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}
               >
-                Stock insuficiente. Disponible: {record.stock || 0}
+                Stock insuficiente en esta sucursal. Disponible:{' '}
+                {record.stock || 0}
               </div>
             )}
           </div>
@@ -711,6 +719,7 @@ export default function EditPurchase({
           <TipoPrecioSelector
             value={record.tipo_precio_aplicado}
             onChange={value => handlePriceTypeChange(value, index)}
+            disabled={true}
           />
         ),
       },
@@ -724,7 +733,7 @@ export default function EditPurchase({
               min={0}
               value={record.precio_unitario}
               onChange={value => handlePriceChange(value, index)}
-              disabled={record.precio_no_encontrado}
+              disabled={true}
               status={
                 record.precio_realmente_no_encontrado ? 'error' : undefined
               }
@@ -765,6 +774,7 @@ export default function EditPurchase({
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleRemoveDetail(index)}
+            disabled={true}
           />
         ),
       },
@@ -810,7 +820,7 @@ export default function EditPurchase({
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}
       >
-        <PageHeader title='Editar Venta' showNewButton={false} />
+        <PageHeader title='Ver Venta' showNewButton={false} />
 
         {/* Mensaje de advertencia para ventas canceladas */}
         {saleData?.estado_venta === 'cancelado' && (
@@ -868,6 +878,7 @@ export default function EditPurchase({
                           setClient(option.details)
                         }
                       }}
+                      disabled={true}
                     />
                   </Form.Item>
                   <label>Nit</label>
@@ -893,7 +904,10 @@ export default function EditPurchase({
                 <Space direction='vertical' style={{ width: '100%' }}>
                   <label>Comentario (Opcional)</label>
                   <Form.Item style={{ marginBottom: 0 }} name='comentario'>
-                    <Input placeholder='Número de transacción, cheque, etc.' />
+                    <Input
+                      placeholder='Número de transacción, cheque, etc.'
+                      disabled={true}
+                    />
                   </Form.Item>
                 </Space>
               </Col>
@@ -906,6 +920,7 @@ export default function EditPurchase({
                 icon={<PlusOutlined />}
                 style={{ marginBottom: '16px' }}
                 loading={isLoading}
+                disabled={true}
               >
                 Agregar Producto
               </Button>
@@ -945,6 +960,7 @@ export default function EditPurchase({
                 onEditPayment={handleEditPayment}
                 onDeletePayment={handleDeletePayment}
                 onPaymentsChange={syncPayments}
+                readOnly={true}
               />
             )}
 
@@ -960,12 +976,8 @@ export default function EditPurchase({
                   loading={isLoading}
                   type='primary'
                   htmlType='submit'
-                  disabled={saleData?.estado_venta === 'cancelado'}
-                  title={
-                    saleData?.estado_venta === 'cancelado'
-                      ? 'No se puede actualizar una venta cancelada'
-                      : ''
-                  }
+                  disabled={true}
+                  title='Esta venta es de solo lectura'
                 >
                   Actualizar
                 </Button>

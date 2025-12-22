@@ -36,6 +36,7 @@ interface DataTableProps<T> {
   onCancel?: (record: T) => void
   onPrintTicket?: (record: T) => void
   onManagePrecios?: (record: T) => void
+  onOpenAbonos?: (record: T) => void
   loading?: boolean
   pagination?: {
     total: number
@@ -77,6 +78,7 @@ export const DataTable = <T extends { id?: string | number }>({
   onCancel,
   onPrintTicket,
   onManagePrecios,
+  onOpenAbonos,
   loading = false,
   pagination,
   showActions = true,
@@ -115,6 +117,7 @@ export const DataTable = <T extends { id?: string | number }>({
     if (column.render) {
       const actions = {
         onManagePrecios,
+        onOpenAbonos,
       }
       return column.render(record[column.dataIndex as keyof T], record, actions)
     }
@@ -209,6 +212,7 @@ export const DataTable = <T extends { id?: string | number }>({
         ? (value: any, record: T) => {
             const actions = {
               onManagePrecios,
+              onOpenAbonos,
             }
             return column.render!(value, record, actions)
           }

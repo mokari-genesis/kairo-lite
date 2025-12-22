@@ -107,6 +107,62 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     ],
   },
   {
+    key: 'estado_pago',
+    title: 'Estado pago',
+    dataIndex: 'estado_pago',
+    type: 'select',
+    render: (estado_pago: string, record: any) => {
+      // Si no hay estado_pago en el record, calcularlo basado en pagos
+      let estadoCalculado = estado_pago
+      if (!estadoCalculado && record.pagos) {
+        const total = parseFloat(record.total_venta)
+        const totalPagado =
+          record.pagos?.reduce(
+            (sum: number, pago: any) =>
+              sum + (pago.monto_en_moneda_venta || pago.monto_convertido || 0),
+            0
+          ) || 0
+        estadoCalculado = totalPagado >= total - 0.01 ? 'completa' : 'pendiente'
+      }
+
+      const statusConfig = {
+        completa: {
+          color: 'success',
+          icon: <CheckCircleOutlined />,
+          text: 'Completa',
+        },
+        pendiente: {
+          color: 'warning',
+          icon: <ClockCircleOutlined />,
+          text: 'Pendiente',
+        },
+      }
+
+      const config =
+        statusConfig[estadoCalculado as keyof typeof statusConfig] ||
+        statusConfig.pendiente
+
+      return (
+        <Tag
+          color={config.color}
+          icon={config.icon}
+          style={{
+            borderRadius: '6px',
+            fontWeight: 'bold',
+            fontSize: '12px',
+            padding: '4px 8px',
+          }}
+        >
+          {config.text}
+        </Tag>
+      )
+    },
+    options: [
+      { value: 'completa', label: 'Completa' },
+      { value: 'pendiente', label: 'Pendiente' },
+    ],
+  },
+  {
     title: 'Total',
     dataIndex: 'total_venta',
     key: 'total_venta',
@@ -125,9 +181,15 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     key: 'total_pagado',
     render: (total: string | number, record: any) => {
       // Calcular total pagado sumando todos los pagos de la venta
+      // Usar monto_en_moneda_venta si está disponible, sino monto_convertido, sino monto
       const totalPagado =
         record.pagos?.reduce(
-          (sum: number, pago: any) => sum + (pago.monto_convertido || 0),
+          (sum: number, pago: any) =>
+            sum +
+            (pago.monto_en_moneda_venta ||
+              pago.monto_convertido ||
+              pago.monto ||
+              0),
           0
         ) || 0
       return (
@@ -147,13 +209,19 @@ export const SalesFlatcolumns: ColumnConfig[] = [
     render: (saldo: string | number, record: any) => {
       const total = parseFloat(record.total_venta)
       // Calcular total pagado sumando todos los pagos de la venta
+      // Usar monto_en_moneda_venta si está disponible, sino monto_convertido, sino monto
       const totalPagado =
         record.pagos?.reduce(
-          (sum: number, pago: any) => sum + (pago.monto_convertido || 0),
+          (sum: number, pago: any) =>
+            sum +
+            (pago.monto_en_moneda_venta ||
+              pago.monto_convertido ||
+              pago.monto ||
+              0),
           0
         ) || 0
-      const saldoPendiente = total - Number(totalPagado)
-      const isPendiente = saldoPendiente > 0
+      const saldoPendiente = Math.max(0, total - Number(totalPagado))
+      const isPendiente = saldoPendiente > 0.01
 
       return (
         <Space>

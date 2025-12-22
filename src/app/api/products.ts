@@ -30,17 +30,18 @@ export interface UpdateProductRequest {
   descripcion: string
   categoria: string
   estado: string
-  stock: number
+  stock?: number // Opcional: el backend ya no procesa este campo
   precio: number
   proveedor_id?: number
 }
 
 export const getProducts = async (
-  filters?: Record<string, any>
+  filters?: Record<string, any>,
+  empresa_id: number = 1
 ): Promise<ProductType[]> => {
   try {
     const queryParams = new URLSearchParams()
-    queryParams.append('empresa_id', '1')
+    queryParams.append('empresa_id', String(empresa_id))
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -69,14 +70,19 @@ export const getProducts = async (
 }
 
 export const createProduct = async (
-  product: Omit<ProductType, 'id' | 'fecha_creacion'>
+  product: Omit<ProductType, 'id' | 'fecha_creacion'> & { usuario_id: number },
+  empresa_id: number = 1
 ) => {
   try {
+    const productWithEmpresa = {
+      ...product,
+      empresa_id,
+    }
     const response = await fetchApi<LambdaResponse<ProductType>>({
       api: API_URL,
       service: '/products',
       method: 'POST',
-      body: product,
+      body: productWithEmpresa,
     })
     return response
   } catch (error: any) {
@@ -88,13 +94,20 @@ export const createProduct = async (
 }
 
 export const deleteProduct = async (id: string) => {
-  const response = await fetchApi<LambdaResponse<ProductType>>({
-    api: API_URL,
-    service: `/products`,
-    method: 'DELETE',
-    body: { product_ids: [id] },
-  })
-  return response
+  try {
+    const response = await fetchApi<LambdaResponse<ProductType>>({
+      api: API_URL,
+      service: `/products`,
+      method: 'DELETE',
+      body: { product_ids: [id] },
+    })
+    return response
+  } catch (error: any) {
+    if (error.message) {
+      console.log('error.message', error.message)
+      throw new Error(getFriendlyErrorMessage(error.message))
+    }
+  }
 }
 
 export type UpdateStateRequest = {
@@ -102,12 +115,19 @@ export type UpdateStateRequest = {
   estado: string
 }
 
-export const updateProduct = async (product: UpdateProductRequest) => {
+export const updateProduct = async (
+  product: UpdateProductRequest,
+  empresa_id: number = 1
+) => {
+  const productWithEmpresa = {
+    ...product,
+    empresa_id: product.empresa_id || empresa_id,
+  }
   const response = await fetchApi<LambdaResponse<ProductType>>({
     api: API_URL,
     service: `/products`,
     method: 'PUT',
-    body: product,
+    body: productWithEmpresa,
   })
   return response
 }

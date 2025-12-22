@@ -1,21 +1,33 @@
 import React from 'react'
 import { Select } from 'antd'
 import { getProducts } from '@/app/api/products'
+import { useEmpresa } from '@/app/empresaContext'
 
 interface ProductSelectProps {
   value?: number
   onChange?: (value: number, product: any) => void
   labelValue?: string
+  /**
+   * Empresa a usar para buscar productos.
+   * Si no se envía, se usa la del contexto (`useEmpresa`).
+   */
+  empresaId?: number
+  disabled?: boolean
 }
 
 export const ProductSelect: React.FC<ProductSelectProps> = ({
   value,
   onChange,
   labelValue,
+  empresaId,
+  disabled = false,
 }) => {
   const [options, setOptions] = React.useState<
     { label: string; value: number; product: any }[]
   >([])
+
+  const { empresaId: ctxEmpresaId } = useEmpresa()
+  const effectiveEmpresaId = empresaId ?? ctxEmpresaId ?? 1
 
   const fetchProducts = async (search: string) => {
     try {
@@ -29,7 +41,7 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
         filters.descripcion = search
       }
 
-      const products = await getProducts(filters)
+      const products = await getProducts(filters, effectiveEmpresaId)
 
       const formattedOptions = products.map(product => ({
         label: `${product.codigo} - ${product.descripcion}`,
@@ -72,6 +84,7 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
       optionLabelProp='label'
       //labelInValue={true}
       labelRender={label => labelValue}
+      disabled={disabled}
     />
   )
 }

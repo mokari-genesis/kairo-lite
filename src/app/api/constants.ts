@@ -1,5 +1,6 @@
 import { CognitoUserSession } from 'amazon-cognito-identity-js'
 import { Auth } from 'aws-amplify'
+import { message } from 'antd'
 
 export type LambdaResponse<T> = {
   data: T
@@ -38,23 +39,62 @@ export const fetchApi = async <T>({
 
   const url = `${api}${service}`
 
-  const response = await fetch(url, {
-    method,
-    headers: {
-      Authorization: idToken,
-    },
-    body: JSON.stringify(body),
-  })
+  let response: Response
+  let result: any
 
-  const result = await response.json()
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Authorization: idToken,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (error: any) {
+    // Error de conexión de red (WebSocket, fetch, etc.)
+    const errorMessage =
+      error.message ||
+      'Error de conexión. Por favor verifique su conexión a internet.'
+    // console.error('Network/WebSocket Error:', {
+    //   url,
+    //   method,
+    //   error: errorMessage,
+    //   errorObject: error,
+    // })
+
+    // // Mostrar mensaje de error al usuario
+    // message.error(errorMessage)
+
+    throw new Error(errorMessage)
+  }
+
+  try {
+    result = await response.json()
+  } catch (error: any) {
+    // Error al parsear la respuesta JSON
+    const errorMessage =
+      error.message || 'Error al procesar la respuesta del servidor.'
+    console.error('JSON Parse Error:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorMessage,
+    })
+    throw new Error(errorMessage)
+  }
 
   if (!response.ok || result.status === 'FAILURE') {
+    const errorMessage =
+      result.message ||
+      result.data?.message ||
+      result.msg ||
+      'Error en la solicitud'
     console.error('API Error:', {
       status: response.status,
-      message: result.message || result.data?.message || result.msg,
+      message: errorMessage,
       result,
     })
-    throw Error(result.message || result.data?.message || result.msg)
+
+    throw new Error(errorMessage)
   }
 
   return result

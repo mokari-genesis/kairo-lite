@@ -1,6 +1,6 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -34,6 +34,7 @@ import {
   convertirAMonedaBase,
   convertirDesdeMonedaBase,
 } from '@/app/utils/currency'
+import { useEmpresa } from '@/app/empresaContext'
 
 interface PurchaseDetail {
   producto_id: number
@@ -65,6 +66,32 @@ export default function NewPurchase() {
   const [ventaData, setVentaData] = useState<Venta | null>(null)
   const [monedas, setMonedas] = useState<any[]>([])
   const [monedaBase, setMonedaBase] = useState<any>(null)
+  const { empresaId } = useEmpresa()
+  console.log(' LA CHIMIBA PARCE ', empresaId)
+  const previousEmpresaIdRef = useRef<number | null>(empresaId)
+
+  // Limpiar productos y pagos cuando cambia la sucursal
+  useEffect(() => {
+    const previousEmpresaId = previousEmpresaIdRef.current
+    // Solo limpiar si cambió de una sucursal válida a otra diferente
+    if (
+      previousEmpresaId !== null &&
+      previousEmpresaId !== undefined &&
+      empresaId !== null &&
+      empresaId !== undefined &&
+      previousEmpresaId !== empresaId
+    ) {
+      // Limpiar productos si hay alguno agregado
+      if (details.length > 0) {
+        setDetails([])
+      }
+      // Limpiar pagos si hay alguno agregado
+      if (pagos.length > 0) {
+        setPagos([])
+      }
+    }
+    previousEmpresaIdRef.current = empresaId
+  }, [empresaId, details.length, pagos.length])
 
   // Cargar monedas al montar el componente
   useEffect(() => {
@@ -142,6 +169,16 @@ export default function NewPurchase() {
   const handleQuantityChange = (value: number | null, index: number) => {
     if (value === null) return
     const newDetails = [...details]
+    const currentDetail = newDetails[index]
+    const stockDisponible = currentDetail.stock || 0
+
+    if (value > stockDisponible) {
+      message.error(
+        `Stock insuficiente. Disponible en esta sucursal: ${stockDisponible}`
+      )
+      return
+    }
+
     newDetails[index] = {
       ...newDetails[index],
       cantidad: value,
@@ -433,6 +470,27 @@ export default function NewPurchase() {
         return
       }
 
+      // Validar stock disponible antes de crear la venta
+      const stockInsuficiente = details.some(
+        detail => (detail.stock || 0) < detail.cantidad
+      )
+
+      if (stockInsuficiente) {
+        const productosConStockInsuficiente = details.filter(
+          detail => (detail.stock || 0) < detail.cantidad
+        )
+        const mensaje = productosConStockInsuficiente
+          .map(
+            detail =>
+              `${detail.producto_descripcion}: Disponible ${
+                detail.stock || 0
+              }, solicitado ${detail.cantidad}`
+          )
+          .join('\n')
+        message.error(`Stock insuficiente en esta sucursal:\n${mensaje}`, 10)
+        return
+      }
+
       // Validar que si hay pagos, la suma no exceda el total
       const totalVenta = parseFloat(
         details.reduce((acc, curr) => acc + curr.subtotal, 0).toFixed(2)
@@ -491,7 +549,7 @@ export default function NewPurchase() {
 
       const data = {
         ...values,
-        empresa_id: 1,
+        empresa_id: empresaId ?? 1,
         usuario_id: 1,
         total: totalVenta,
         estado: 'vendido',
@@ -533,6 +591,7 @@ export default function NewPurchase() {
       width: 250,
       render: (_: any, record: PurchaseDetail, index: number) => (
         <ProductSelect
+          empresaId={empresaId || 1}
           value={record.producto_id}
           labelValue={`${record.producto_descripcion} - ${record.codigo}`}
           onChange={(value, product) =>
@@ -542,11 +601,20 @@ export default function NewPurchase() {
       ),
     },
     {
-      title: 'Stock Actual',
+      title: 'Stock Disponible (Sucursal)',
       dataIndex: 'stock',
-      width: 150,
+      width: 180,
       render: (_: any, record: PurchaseDetail) => (
-        <Input value={record.stock?.toString() || ''} disabled />
+        <Input
+          value={record.stock?.toString() || '0'}
+          disabled
+          style={{
+            color:
+              (record.stock || 0) < record.cantidad ? '#ff4d4f' : undefined,
+            fontWeight:
+              (record.stock || 0) < record.cantidad ? 'bold' : undefined,
+          }}
+        />
       ),
     },
     {
@@ -632,7 +700,7 @@ export default function NewPurchase() {
       filters.name = search
     }
 
-    const clients = await getClients(filters)
+    const clients = await getClients(filters, empresaId ?? 1)
     return clients
   }
 
@@ -764,7 +832,7 @@ export default function NewPurchase() {
               <Space>
                 <Button
                   loading={isLoading}
-                  onClick={() => router.push('/home/sales')}
+                  onClick={() => router.push('/home/saleOrders')}
                 >
                   Regresar
                 </Button>

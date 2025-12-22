@@ -120,9 +120,10 @@ export const columns: ColumnConfig[] = [
   },
   {
     key: 'stock',
-    title: 'Stock',
+    title: 'Stock (Sucursal)',
     dataIndex: 'stock',
     type: 'text',
+    hidden: true,
     render: (stock: number) => {
       const stockConfig = {
         color: stock > 10 ? '#52c41a' : stock > 5 ? '#faad14' : '#ff4d4f',

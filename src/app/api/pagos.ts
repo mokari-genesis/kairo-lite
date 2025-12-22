@@ -18,14 +18,15 @@ export interface VentaPago {
   monto: number
   referencia_pago?: string
   fecha?: string
-  tasa_cambio?: string
-  monto_en_moneda_venta?: string
+  tasa_cambio?: string | number
+  monto_en_moneda_venta?: string | number
 }
 
 export interface Venta {
   id: number
   total: number
   estado: 'vendido' | 'cancelado' | 'pendiente'
+  estado_pago?: 'pendiente' | 'completa'
   comentario?: string
   moneda_id?: number | null
   pagos?: VentaPago[]
@@ -40,6 +41,8 @@ export interface PaymentCreateRequest {
   moneda_id: number
   monto: number
   referencia_pago?: string
+  monto_en_moneda_venta?: number
+  tasa_cambio?: number
 }
 
 export interface PaymentUpdateRequest {
@@ -47,6 +50,8 @@ export interface PaymentUpdateRequest {
   moneda_id?: number
   monto?: number
   referencia_pago?: string
+  monto_en_moneda_venta?: number
+  tasa_cambio?: number
 }
 
 export const listPayments = async (ventaId: number): Promise<VentaPago[]> => {

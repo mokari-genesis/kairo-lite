@@ -12,6 +12,7 @@ import {
   CommentOutlined,
   InboxOutlined,
 } from '@ant-design/icons'
+import { formatCurrency } from '../utils/currency'
 
 // Define FilterConfig interface since it's not exported
 export interface FilterConfig {
@@ -46,6 +47,32 @@ export const StockColumns: ColumnConfig[] = [
       <Space>
         <ShoppingCartOutlined style={{ color: '#52c41a' }} />
         <span style={{ fontWeight: 'bold', color: '#1890ff' }}>{value}</span>
+      </Space>
+    ),
+  },
+  {
+    key: 'empresa_id',
+    title: 'ID Sucursal',
+    dataIndex: 'empresa_id',
+    type: 'text',
+    disabled: true,
+    render: (value: any) => (
+      <Space>
+        <IdcardOutlined style={{ color: '#722ed1' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+      </Space>
+    ),
+  },
+  {
+    key: 'empresa',
+    title: 'Sucursal',
+    dataIndex: 'empresa',
+    type: 'text',
+    disabled: true,
+    render: (value: any) => (
+      <Space>
+        <InboxOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 500 }}>{value}</span>
       </Space>
     ),
   },
@@ -147,6 +174,34 @@ export const StockColumns: ColumnConfig[] = [
       <Space>
         <InboxOutlined style={{ color: '#1890ff' }} />
         <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{value}</span>
+      </Space>
+    ),
+  },
+  {
+    key: 'precio_compra',
+    title: 'Precio Compra',
+    dataIndex: 'precio_compra',
+    type: 'text',
+    render: (value: any) => (
+      <Space>
+        <InboxOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+          {formatCurrency('VES', Number(value || 0))}
+        </span>
+      </Space>
+    ),
+  },
+  {
+    key: 'total_compra',
+    title: 'Total Compra',
+    dataIndex: 'total_compra',
+    type: 'text',
+    render: (value: any) => (
+      <Space>
+        <InboxOutlined style={{ color: '#1890ff' }} />
+        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+          {formatCurrency('VES', Number(value || 0))}
+        </span>
       </Space>
     ),
   },

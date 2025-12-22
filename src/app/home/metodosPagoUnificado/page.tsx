@@ -37,7 +37,6 @@ import {
 } from '../../hooks/useUnifiedPaymentMethods'
 
 const { Title, Text } = Typography
-const { TabPane } = Tabs
 
 export default function MetodosPagoUnificadoPage() {
   // State management using custom hook
@@ -709,74 +708,76 @@ export default function MetodosPagoUnificadoPage() {
               </Button>
             </Space>
           }
-        >
-          <TabPane
-            tab={
-              <span>
-                <TableOutlined />
-                Tabla de Datos
-                {tableData.total > 0 && (
-                  <Tag color='blue' style={{ marginLeft: '8px' }}>
-                    {tableData.total}
-                  </Tag>
-                )}
-              </span>
-            }
-            key='table'
-          >
-            <UnifiedPaymentMethodsTable
-              data={tableData}
-              loading={loading}
-              onViewDetails={handleViewDetails}
-              onPrintTicket={handlePrintTicket}
-              onPaginationChange={handlePaginationChange}
-              showSummary={true}
-            />
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span>
-                <BarChartOutlined />
-                Resúmenes Estadísticos
-              </span>
-            }
-            key='summary'
-          >
-            <UnifiedPaymentMethodsSummary
-              key={`summary-${summaryFilters.agrupar_por}`}
-              filters={summaryFilters}
-              onFiltersChange={handleSummaryFiltersChange}
-              summaryData={summaryData}
-              loading={loading}
-              error={error}
-            />
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span>
-                <FileTextOutlined />
-                Reportes
-              </span>
-            }
-            key='reports'
-          >
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-              <FileTextOutlined
-                style={{ fontSize: '48px', color: '#d9d9d9' }}
-              />
-              <div style={{ marginTop: '16px' }}>
-                <Title level={4} type='secondary'>
-                  Reportes Avanzados
-                </Title>
-                <Text type='secondary'>
-                  Funcionalidad de reportes personalizados en desarrollo
-                </Text>
-              </div>
-            </div>
-          </TabPane>
-        </Tabs>
+          items={[
+            {
+              key: 'table',
+              label: (
+                <span>
+                  <TableOutlined />
+                  Tabla de Datos
+                  {tableData.total > 0 && (
+                    <Tag color='blue' style={{ marginLeft: '8px' }}>
+                      {tableData.total}
+                    </Tag>
+                  )}
+                </span>
+              ),
+              children: (
+                <UnifiedPaymentMethodsTable
+                  data={tableData}
+                  loading={loading}
+                  onViewDetails={handleViewDetails}
+                  onPrintTicket={handlePrintTicket}
+                  onPaginationChange={handlePaginationChange}
+                  showSummary={true}
+                />
+              ),
+            },
+            {
+              key: 'summary',
+              label: (
+                <span>
+                  <BarChartOutlined />
+                  Resúmenes Estadísticos
+                </span>
+              ),
+              children: (
+                <UnifiedPaymentMethodsSummary
+                  key={`summary-${summaryFilters.agrupar_por}`}
+                  filters={summaryFilters}
+                  onFiltersChange={handleSummaryFiltersChange}
+                  summaryData={summaryData}
+                  loading={loading}
+                  error={error}
+                />
+              ),
+            },
+            {
+              key: 'reports',
+              label: (
+                <span>
+                  <FileTextOutlined />
+                  Reportes
+                </span>
+              ),
+              children: (
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                  <FileTextOutlined
+                    style={{ fontSize: '48px', color: '#d9d9d9' }}
+                  />
+                  <div style={{ marginTop: '16px' }}>
+                    <Title level={4} type='secondary'>
+                      Reportes Avanzados
+                    </Title>
+                    <Text type='secondary'>
+                      Funcionalidad de reportes personalizados en desarrollo
+                    </Text>
+                  </div>
+                </div>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* Detail Modal */}

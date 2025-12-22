@@ -6,6 +6,7 @@ interface TipoPrecioSelectorProps {
   onChange?: (value: string) => void
   placeholder?: string
   allowClear?: boolean
+  disabled?: boolean
 }
 
 const tiposPrecio = [
@@ -21,6 +22,7 @@ export const TipoPrecioSelector: React.FC<TipoPrecioSelectorProps> = ({
   onChange,
   placeholder = 'Seleccionar tipo de precio',
   allowClear = true,
+  disabled = false,
 }) => {
   return (
     <Select
@@ -30,6 +32,7 @@ export const TipoPrecioSelector: React.FC<TipoPrecioSelectorProps> = ({
       options={tiposPrecio}
       placeholder={placeholder}
       allowClear={allowClear}
+      disabled={disabled}
     />
   )
 }

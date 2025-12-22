@@ -6,7 +6,7 @@ import { Input, DatePicker, Select } from 'antd'
 const { RangePicker } = DatePicker
 
 interface SelectOption {
-  value: string
+  value: string | number
   label: string
 }
 

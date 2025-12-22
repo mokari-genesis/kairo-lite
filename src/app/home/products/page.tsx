@@ -46,6 +46,7 @@ import {
   ShopOutlined,
 } from '@ant-design/icons'
 import { formatCurrency } from '@/app/utils/currency'
+import { useEmpresa } from '@/app/empresaContext'
 
 function Home() {
   const [api, contextHolder] = notification.useNotification()
@@ -58,6 +59,7 @@ function Home() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
 
   const router = useRouter()
+  const { empresaId } = useEmpresa()
 
   const handleNewClick = () => {
     router.push('/home/products/new')
@@ -68,13 +70,13 @@ function Home() {
       setIsLoading(true)
       const updateData: UpdateProductRequest = {
         product_id: record.id,
-        empresa_id: 1,
+        empresa_id: empresaId ?? 1,
         codigo: record.codigo,
         serie: record.serie,
         descripcion: record.descripcion,
         categoria: record.categoria,
         estado: record.estado,
-        stock: record.stock,
+        // stock ya no se envía al backend - se gestiona únicamente por movimientos_inventario
         precio: record.precio,
         proveedor_id: record.proveedor_id,
       }
@@ -96,15 +98,16 @@ function Home() {
   }
 
   const handleDelete = async (record: any) => {
-    if (!record.id) {
-      message.error('No se puede eliminar el producto')
-      return
+    try {
+      setIsLoading(true)
+      await deleteProduct(record.id)
+      await queryClient.invalidateQueries({ queryKey: [QueryKey.productsInfo] })
+      message.success('Producto eliminado exitosamente')
+    } catch (error: any) {
+      message.error(error.message || 'Error al eliminar el producto')
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(true)
-    await deleteProduct(record.id)
-    await queryClient.invalidateQueries({ queryKey: [QueryKey.productsInfo] })
-    message.success('Producto eliminado exitosamente')
-    setIsLoading(false)
   }
 
   const handleManagePrecios = (record: any) => {
@@ -218,7 +221,7 @@ function Home() {
         productsWithZeroStock.forEach((item, index) => {
           setTimeout(() => {
             api.warning({
-              message: `Producto con stock agotado`,
+              message: `Producto sin stock`,
               description: `${item.descripcion}`,
               duration: 0,
             })
@@ -352,7 +355,7 @@ function Home() {
                 <Statistic
                   title={
                     <span style={{ color: 'white', opacity: 0.9 }}>
-                      Stock Total
+                      Stock Total (Sucursal)
                     </span>
                   }
                   value={productsStats.stockTotal}
@@ -378,7 +381,7 @@ function Home() {
                 <Statistic
                   title={
                     <span style={{ color: 'white', opacity: 0.9 }}>
-                      Stock Bajo
+                      Stock Bajo (Sucursal)
                     </span>
                   }
                   value={productsStats.stockBajo}
@@ -402,7 +405,7 @@ function Home() {
                 <Statistic
                   title={
                     <span style={{ color: 'white', opacity: 0.9 }}>
-                      Stock Agotado
+                      Stock Agotado (Sucursal)
                     </span>
                   }
                   value={productsStats.stockAgotado}
@@ -426,7 +429,7 @@ function Home() {
                 <Statistic
                   title={
                     <span style={{ color: '#333', opacity: 0.8 }}>
-                      Valor Inventario (precio sugerido)
+                      Valor Inventario Sucursal (precio sugerido)
                     </span>
                   }
                   value={formatCurrency('VES', productsStats.valorInventario)}
