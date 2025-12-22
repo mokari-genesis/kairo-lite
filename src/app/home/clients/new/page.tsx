@@ -8,11 +8,13 @@ import { useRouter } from 'next/navigation'
 import { Card, Form, Input, Select, Button, message, Space } from 'antd'
 import { motion } from 'framer-motion'
 import { createClient } from '@/app/api/clients'
+import { useEmpresa } from '@/app/empresaContext'
 
 function NewClient() {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { empresaId } = useEmpresa()
 
   const handleBack = () => {
     router.push('/home/clients')
@@ -22,7 +24,7 @@ function NewClient() {
     try {
       setIsLoading(true)
       await createClient({
-        empresa_id: 1, // Assuming this is the default company ID
+        empresa_id: empresaId ?? 1,
         name: values.nombre,
         type: values.tipo,
         nit: values.nit,

@@ -33,11 +33,12 @@ export interface StockTypeUpdate {
 }
 
 export const getStock = async (
-  filters?: Record<string, any>
+  filters?: Record<string, any>,
+  empresa_id: number = 1
 ): Promise<StockType[]> => {
   try {
     const queryParams = new URLSearchParams()
-    queryParams.append('empresa_id', '1')
+    queryParams.append('empresa_id', String(empresa_id))
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -97,6 +98,8 @@ export interface StockTypeCreate {
   movement_type: string
   quantity: number
   comment: string
+  precio_compra?: number | null
+  compra_id?: number | null
 }
 
 export const createStock = async (stock: StockTypeCreate) => {

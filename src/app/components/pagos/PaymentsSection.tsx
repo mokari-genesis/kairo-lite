@@ -32,6 +32,7 @@ interface PaymentsSectionProps {
   onEditPayment?: (paymentId: number, payment: Partial<VentaPago>) => void
   onDeletePayment?: (paymentId: number) => void
   loading?: boolean
+  readOnly?: boolean
 }
 
 export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
@@ -42,6 +43,7 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
   onEditPayment: externalEditPayment,
   onDeletePayment: externalDeletePayment,
   loading: externalLoading,
+  readOnly = false,
 }) => {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingPago, setEditingPago] = useState<VentaPago | undefined>()
@@ -101,11 +103,11 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
     cargarMonedas()
   }, [])
 
-  // Calcular total pagado con conversión si hay moneda base (memoizado)
+  // Calcular total pagado usando monto_en_moneda_venta del backend cuando esté disponible
+  // Esto es más preciso porque el backend ya calcula la conversión correctamente
   const totalPagado = useMemo(() => {
-    return monedaBase
-      ? sumPagosConConversion(pagos, monedaBase, monedas)
-      : sumPagos(pagos)
+    // Usar sumPagosConConversion que prioriza monto_en_moneda_venta del backend
+    return sumPagosConConversion(pagos, monedaBase, monedas)
   }, [pagos, monedaBase, monedas])
 
   const saldoPendiente = useMemo(() => {
@@ -227,12 +229,30 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
             />
             <div>
               <div style={{ marginBottom: '4px' }}>
-                <strong>Estado:</strong>
+                <strong>Estado Venta:</strong>
               </div>
               <Tag color={getStatusColor(venta.estado)}>
                 {getStatusText(venta.estado)}
               </Tag>
             </div>
+            {(venta as any).estado_pago && (
+              <div>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>Estado Pago:</strong>
+                </div>
+                <Tag
+                  color={
+                    (venta as any).estado_pago === 'completa'
+                      ? 'success'
+                      : 'warning'
+                  }
+                >
+                  {(venta as any).estado_pago === 'completa'
+                    ? 'Completa'
+                    : 'Pendiente'}
+                </Tag>
+              </div>
+            )}
           </Space>
         </div>
 
@@ -253,15 +273,17 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
         </div>
 
         {/* Botón para agregar pago */}
-        <div>
-          <Button
-            type='primary'
-            icon={<PlusOutlined />}
-            onClick={handleAddPayment}
-          >
-            Agregar Pago
-          </Button>
-        </div>
+        {!readOnly && (
+          <div>
+            <Button
+              type='primary'
+              icon={<PlusOutlined />}
+              onClick={handleAddPayment}
+            >
+              Agregar Pago
+            </Button>
+          </div>
+        )}
 
         {/* Lista de pagos */}
         {pagos.length > 0 ? (
@@ -271,6 +293,7 @@ export const PaymentsSection: React.FC<PaymentsSectionProps> = ({
             onEdit={handleEditPayment}
             onDelete={handleDeletePayment}
             isVendido={isVendido}
+            readOnly={readOnly}
           />
         ) : (
           <div

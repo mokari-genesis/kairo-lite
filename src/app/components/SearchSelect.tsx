@@ -17,6 +17,7 @@ interface SearchSelectProps {
   name?: string
   rules?: any[]
   label?: string
+  disabled?: boolean
 }
 
 export const SearchSelect = ({
@@ -33,6 +34,7 @@ export const SearchSelect = ({
   name,
   rules,
   label,
+  disabled = false,
 }: SearchSelectProps) => {
   const [options, setOptions] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -95,6 +97,7 @@ export const SearchSelect = ({
       filterOption={false}
       placeholder={placeholder}
       loading={isSearching}
+      disabled={disabled}
       notFoundContent={
         isSearching ? (
           <Spin size='small' />

@@ -93,6 +93,8 @@ function Home() {
     // Preparar los datos para Excel
     const excelData = dataStock.map(stock => ({
       'ID de venta': stock.venta_id,
+      'ID Sucursal': stock.empresa_id,
+      Sucursal: stock.empresa,
       Producto: stock.producto,
       'Producto ID': stock.producto_id,
       'Codigo Producto  ': stock.codigo_producto,
@@ -253,6 +255,7 @@ function Home() {
             <PageHeader
               title='Historial de Movimientos'
               onNewClick={handleNewClick}
+              showSucursalSelect={false}
             />
             <div
               style={{

@@ -101,31 +101,47 @@ export const sumPagos = (pagos: Array<{ monto: number }>): number => {
 }
 
 /**
- * Suma pagos convirtiendo todos a la moneda base
+ * Suma pagos usando monto_en_moneda_venta del backend cuando esté disponible
+ * Si no está disponible, calcula la conversión manualmente
  * @param pagos - Lista de pagos con información de moneda
- * @param monedaBase - Moneda base para la conversión
- * @returns Suma total en moneda base
+ * @param monedaBase - Moneda base para la conversión (solo si no hay monto_en_moneda_venta)
+ * @param monedas - Lista de monedas (solo si no hay monto_en_moneda_venta)
+ * @returns Suma total en moneda de la venta
  */
 export const sumPagosConConversion = (
-  pagos: Array<{ monto: number; moneda?: Moneda; moneda_id?: number }>,
-  monedaBase: Moneda,
-  monedas: Moneda[]
+  pagos: Array<{
+    monto: number
+    monto_en_moneda_venta?: string | number
+    moneda?: Moneda
+    moneda_id?: number
+  }>,
+  monedaBase?: Moneda | null,
+  monedas?: Moneda[]
 ): number => {
   const sumaTotal = pagos.reduce((sum, pago) => {
+    // Prioridad 1: Usar monto_en_moneda_venta del backend (ya convertido)
+    if (
+      pago.monto_en_moneda_venta !== undefined &&
+      pago.monto_en_moneda_venta !== null
+    ) {
+      return sum + Number(pago.monto_en_moneda_venta)
+    }
+
+    // Prioridad 2: Si no hay monto_en_moneda_venta, calcular conversión manualmente
     const monto = Number(pago.monto || 0)
 
-    // Si no hay información de moneda, asumir que es la moneda base
-    if (!pago.moneda && !pago.moneda_id) {
+    // Si no hay información de moneda o monedaBase, usar el monto directamente
+    if (!monedaBase || (!pago.moneda && !pago.moneda_id)) {
       return sum + monto
     }
 
     // Buscar la moneda del pago
     let monedaPago: Moneda | undefined = pago.moneda
-    if (!monedaPago && pago.moneda_id) {
+    if (!monedaPago && pago.moneda_id && monedas) {
       monedaPago = monedas.find(m => m.id === pago.moneda_id)
     }
 
-    // Si no se encuentra la moneda, asumir moneda base
+    // Si no se encuentra la moneda, usar el monto directamente
     if (!monedaPago) {
       return sum + monto
     }

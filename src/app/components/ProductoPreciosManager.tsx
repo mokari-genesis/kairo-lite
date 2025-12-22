@@ -25,6 +25,7 @@ import {
 } from '@/app/api/productos-precios'
 import { updateProduct } from '@/app/api/products'
 import { formatCurrency } from '../utils/currency'
+import { useEmpresa } from '@/app/empresaContext'
 
 const { Title } = Typography
 
@@ -57,6 +58,7 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
     null
   )
   const [form] = Form.useForm()
+  const { empresaId } = useEmpresa()
 
   const fetchPrecios = async () => {
     try {
@@ -122,7 +124,7 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
             }
             await updateProduct({
               product_id: parseInt(productoData.id),
-              empresa_id: 1,
+              empresa_id: empresaId ?? 1,
               codigo: productoData.codigo,
               serie: productoData.serie,
               descripcion: productoData.descripcion,

@@ -13,6 +13,13 @@ const errorMessages: ErrorMessage[] = [
     pattern: 'La venta no existe o ya está cancelada',
     message: 'La venta ya se encuentra cancelada',
   },
+  {
+    pattern:
+      'Cannot delete or update a parent row: a foreign key constraint fails (`kairo_db_lite`.`transferencias_inventario_detalle`, CONSTRAINT `fk_tid_prod` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`))',
+    message:
+      'No se puede eliminar el producto porque tiene transferencias asociadas,\n👉 Acción recomendada: Marcá el producto como inactivo en vez de eliminarlo.',
+  },
+
   // Aquí puedes añadir más patrones de error y sus mensajes amigables
 ]
 

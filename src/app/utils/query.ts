@@ -26,13 +26,17 @@ export const getLocalStoragePersister = () => {
 export const QueryKey = {
   productsInfo: 'productsInfo',
   stockInfo: 'stockInfo',
-  salesInfo: 'salesInfo',
   salesFlatInfo: 'salesFlatInfo',
   clientsInfo: 'clientsInfo',
   suppliersInfo: 'suppliersInfo-02',
   metodosPagoInfo: 'metodosPagoInfo',
   monedasInfo: 'monedasInfo',
   productosPreciosInfo: 'productosPreciosInfo',
+  enterprisesInfo: 'enterprisesInfo',
+  cuentasPorCobrarInfo: 'cuentasPorCobrarInfo',
+  cuentasPorPagarInfo: 'cuentasPorPagarInfo',
+  cuentasPorPagarResumenProveedoresInfo:
+    'cuentasPorPagarResumenProveedoresInfo',
 }
 
 // 4. Helper

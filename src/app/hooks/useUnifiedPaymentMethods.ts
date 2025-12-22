@@ -8,6 +8,7 @@ import {
   getMetodosPagoUnificado,
   getMetodosPagoUnificadoResumen,
 } from '../api/metodos-pago-unificado'
+import { useEmpresa } from '../empresaContext'
 
 interface UseUnifiedPaymentMethodsState {
   tableData: MetodosPagoUnificadoResponse
@@ -31,6 +32,7 @@ interface UseUnifiedPaymentMethodsActions {
 
 export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
   UseUnifiedPaymentMethodsActions => {
+  const { empresaId } = useEmpresa()
   // Initial state
   const [tableData, setTableData] = useState<MetodosPagoUnificadoResponse>({
     data: [],
@@ -46,14 +48,14 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
   const [error, setError] = useState<string | null>(null)
 
   const [filters, setFilters] = useState<MetodosPagoUnificadoFilters>({
-    empresa_id: 1,
+    empresa_id: empresaId ?? 1,
     limit: 100,
     offset: 0,
   })
 
   const [summaryFilters, setSummaryFilters] =
     useState<MetodosPagoUnificadoResumenFilters>({
-      empresa_id: 1,
+      empresa_id: empresaId ?? 1,
       agrupar_por: 'metodo_pago',
     })
 
@@ -64,7 +66,10 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
       setError(null)
 
       try {
-        const filtersToUse = newFilters || filters
+        const filtersToUse: MetodosPagoUnificadoFilters = {
+          ...(newFilters || filters),
+          empresa_id: empresaId ?? 1,
+        }
         const response = await getMetodosPagoUnificado(filtersToUse)
 
         // Always set new data, don't accumulate
@@ -103,10 +108,11 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
     async (filters: MetodosPagoUnificadoFilters) => {
       try {
         // Get all data with cancelled sales filter to calculate total
-        const cancelledFilters = {
+        const cancelledFilters: MetodosPagoUnificadoFilters = {
           ...filters,
+          empresa_id: empresaId ?? filters.empresa_id ?? 1,
           estado_venta: 'cancelado',
-          limit: 1000, // Get more records to ensure we have all cancelled sales
+          limit: 1000,
           offset: 0,
         }
 
@@ -126,7 +132,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         return 0
       }
     },
-    []
+    [empresaId]
   )
 
   // Load summary data
@@ -137,7 +143,11 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
 
       try {
         // Get current filters from state
-        const currentFilters = newFilters || summaryFilters
+        const currentFilters: MetodosPagoUnificadoResumenFilters = {
+          ...(newFilters || summaryFilters),
+          empresa_id:
+            empresaId ?? (newFilters || summaryFilters).empresa_id ?? 1,
+        }
         const response = await getMetodosPagoUnificadoResumen(currentFilters)
 
         // Ensure we have the data array
@@ -147,8 +157,9 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         const totalCancelled = await calculateTotalCancelled(currentFilters)
 
         // Get all data to calculate totals excluding cancelled sales
-        const allDataFilters = {
+        const allDataFilters: MetodosPagoUnificadoFilters = {
           ...currentFilters,
+          empresa_id: empresaId ?? currentFilters.empresa_id ?? 1,
           limit: 1000,
           offset: 0,
         }
@@ -198,7 +209,7 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
         setLoading(false)
       }
     },
-    [calculateTotalCancelled, summaryFilters] // Remove tableData dependency to prevent infinite loops
+    [calculateTotalCancelled, summaryFilters, empresaId]
   )
 
   // Update filters
@@ -232,8 +243,13 @@ export const useUnifiedPaymentMethods = (): UseUnifiedPaymentMethodsState &
 
   // Load initial data
   useEffect(() => {
-    loadTableData()
-  }, []) // Only run once on mount
+    // recargar cuando cambie empresa
+    loadTableData({
+      ...filters,
+      empresa_id: empresaId ?? filters.empresa_id ?? 1,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaId])
 
   return {
     // State
@@ -286,8 +302,10 @@ export const usePagination = (
 
 // Custom hook for filtering with debounce
 export const useDebouncedFilters = (delay: number = 500) => {
+  const { empresaId } = useEmpresa()
+
   const [filters, setFilters] = useState<MetodosPagoUnificadoFilters>({
-    empresa_id: 1,
+    empresa_id: empresaId ?? 1,
     limit: 100,
     offset: 0,
   })
@@ -311,13 +329,13 @@ export const useDebouncedFilters = (delay: number = 500) => {
 
   const resetFilters = useCallback(() => {
     const defaultFilters: MetodosPagoUnificadoFilters = {
-      empresa_id: 1,
+      empresa_id: empresaId ?? 1,
       limit: 100,
       offset: 0,
     }
     setFilters(defaultFilters)
     setDebouncedFilters(defaultFilters)
-  }, [])
+  }, [empresaId])
 
   return {
     filters,

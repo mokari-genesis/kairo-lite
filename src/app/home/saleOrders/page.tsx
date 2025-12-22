@@ -513,7 +513,7 @@ export default function SaleOrders() {
             showPrintTicket={false}
             deleteTooltip='Eliminar Venta'
             cancelTooltip='Cancelar Venta'
-            viewTooltip='Ver / Editar Venta'
+            viewTooltip='Visualizar Venta'
             printTicketTooltip='Imprimir Etiqueta'
           />
         </Space>

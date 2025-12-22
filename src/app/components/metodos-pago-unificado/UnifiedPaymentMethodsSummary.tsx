@@ -34,6 +34,7 @@ import { formatCurrency } from '../../utils/currency'
 import { getMetodosPago } from '../../api/metodos-pago'
 import { getClients } from '../../api/clients'
 import { getMonedas } from '../../api/monedas'
+import { useEmpresa } from '../../empresaContext'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -60,6 +61,7 @@ export const UnifiedPaymentMethodsSummary: React.FC<
   loading = false,
   error = null,
 }) => {
+  const { empresaId } = useEmpresa()
   // Use groupBy from filters or default to 'metodo_pago'
   const groupBy = filters.agrupar_por ?? 'metodo_pago'
 
@@ -140,13 +142,13 @@ export const UnifiedPaymentMethodsSummary: React.FC<
       if (onFiltersChange) {
         const newFilters: MetodosPagoUnificadoResumenFilters = {
           ...filters,
-          empresa_id: 1,
+          empresa_id: empresaId ?? 1,
           agrupar_por: newGroupBy,
         }
         onFiltersChange(newFilters)
       }
     },
-    [filters, onFiltersChange]
+    [filters, onFiltersChange, empresaId]
   )
 
   const getGroupByLabel = (

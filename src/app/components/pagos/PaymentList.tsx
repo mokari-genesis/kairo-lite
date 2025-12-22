@@ -11,10 +11,11 @@ interface PaymentListProps {
   onEdit: (pago: VentaPago) => void
   onDelete: (pagoId: number) => void
   isVendido: boolean
+  readOnly?: boolean
 }
 
 export const PaymentList: React.FC<PaymentListProps> = memo(
-  ({ pagos, loading, onEdit, onDelete, isVendido }) => {
+  ({ pagos, loading, onEdit, onDelete, isVendido, readOnly = false }) => {
     const columns = useMemo(
       () => [
         {
@@ -35,8 +36,34 @@ export const PaymentList: React.FC<PaymentListProps> = memo(
           title: 'Monto',
           dataIndex: 'monto',
           key: 'monto',
-          render: (monto: number, record: VentaPago) =>
-            formatCurrency(record.monedaCodigo || record.moneda_codigo, monto),
+          render: (monto: number, record: VentaPago) => {
+            const monedaCodigo = record.monedaCodigo || record.moneda_codigo
+            return formatCurrency(monedaCodigo, monto)
+          },
+        },
+        {
+          title: 'Monto en Moneda Venta',
+          dataIndex: 'monto_en_moneda_venta',
+          key: 'monto_en_moneda_venta',
+          render: (
+            montoEnMonedaVenta: string | number | undefined,
+            record: VentaPago
+          ) => {
+            // Mostrar monto_en_moneda_venta si está disponible (ya convertido por el backend)
+            if (
+              montoEnMonedaVenta !== undefined &&
+              montoEnMonedaVenta !== null
+            ) {
+              // Obtener la moneda de la venta (generalmente la moneda base)
+              // Por ahora usamos undefined para usar la moneda por defecto
+              return formatCurrency(undefined, Number(montoEnMonedaVenta))
+            }
+            // Si no hay monto_en_moneda_venta, mostrar el monto original
+            return formatCurrency(
+              record.monedaCodigo || record.moneda_codigo,
+              record.monto
+            )
+          },
         },
         {
           title: 'Referencia',
@@ -87,7 +114,7 @@ export const PaymentList: React.FC<PaymentListProps> = memo(
           ),
         },
       ],
-      [onEdit, onDelete, isVendido]
+      [onEdit, onDelete, isVendido, readOnly]
     )
 
     return (

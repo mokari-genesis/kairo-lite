@@ -29,11 +29,12 @@ export type CreateClientRequestType = {
 }
 
 export const getClients = async (
-  filters?: Record<string, any>
+  filters?: Record<string, any>,
+  empresa_id: number = 1
 ): Promise<ClientsTypeResponse[]> => {
   try {
     const queryParams = new URLSearchParams()
-    queryParams.append('empresa_id', '1')
+    queryParams.append('empresa_id', String(empresa_id))
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {

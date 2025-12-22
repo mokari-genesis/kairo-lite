@@ -8,6 +8,8 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { queryClient } from './utils/query'
 import { Amplify } from 'aws-amplify'
 import { amplifyConfiguration } from '@/app/auth/amplifyConfiguration'
+import { EmpresaProvider } from './empresaContext'
+import { UsuarioProvider } from './usuarioContext'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [persister, setPersister] = useState<any>(null)
@@ -33,10 +35,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
           client={queryClient}
           persistOptions={{ persister }}
         >
-          <AntdRegistry>{children}</AntdRegistry>
+          <AntdRegistry>
+            <EmpresaProvider>
+              <UsuarioProvider>{children}</UsuarioProvider>
+            </EmpresaProvider>
+          </AntdRegistry>
         </PersistQueryClientProvider>
       ) : (
-        <AntdRegistry>{children}</AntdRegistry>
+        <AntdRegistry>
+          <EmpresaProvider>
+            <UsuarioProvider>{children}</UsuarioProvider>
+          </EmpresaProvider>
+        </AntdRegistry>
       )}
     </QueryClientProvider>
   )

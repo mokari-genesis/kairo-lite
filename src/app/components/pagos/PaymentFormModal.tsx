@@ -49,8 +49,15 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
   const isEdit = !!initialValues
   const saldoPendiente = Number((ventaTotal - totalPagado).toFixed(2))
+
+  // Calcular monto máximo permitido
+  // Si es edición, permitir hasta el saldo pendiente + el monto actual del pago (en moneda de venta)
+  const montoActualEnMonedaVenta =
+    isEdit && initialValues?.monto_en_moneda_venta
+      ? Number(initialValues.monto_en_moneda_venta)
+      : 0
   const montoMaximo = isEdit
-    ? Number((saldoPendiente + (initialValues?.monto || 0)).toFixed(2))
+    ? Number((saldoPendiente + montoActualEnMonedaVenta).toFixed(2))
     : saldoPendiente
 
   // Cargar monedas al abrir el modal
@@ -120,10 +127,38 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       const values = await form.validateFields()
       setLoading(true)
 
+      // Calcular monto_en_moneda_venta y tasa_cambio si hay conversión
+      let montoEnMonedaVenta: number | undefined
+      let tasaCambio: number | undefined
+
+      if (montoConvertido && monedaSeleccionada && monedaBase) {
+        montoEnMonedaVenta = Number(montoConvertido.toFixed(2))
+
+        // Calcular tasa_cambio si las monedas son diferentes
+        if (
+          monedaSeleccionada.id !== monedaBase.id &&
+          monedaSeleccionada.tasa_vs_base
+        ) {
+          tasaCambio = Number(monedaSeleccionada.tasa_vs_base)
+        }
+      } else if (
+        monto &&
+        monedaSeleccionada &&
+        monedaBase &&
+        monedaSeleccionada.id === monedaBase.id
+      ) {
+        // Misma moneda, monto_en_moneda_venta es igual al monto
+        montoEnMonedaVenta = Number(monto.toFixed(2))
+      }
+
       // Asegurar que el monto tenga 2 decimales
       const payload = {
         ...values,
         monto: Number(values.monto.toFixed(2)),
+        ...(montoEnMonedaVenta !== undefined && {
+          monto_en_moneda_venta: montoEnMonedaVenta,
+        }),
+        ...(tasaCambio !== undefined && { tasa_cambio: tasaCambio }),
       }
 
       await onSave(payload)
@@ -218,13 +253,16 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             {
               validator: (_, value) => {
                 // Validar que el monto convertido no exceda el saldo pendiente
+                // El backend validará usando monto_en_moneda_venta, pero validamos aquí también
                 if (
                   value &&
                   montoConvertido &&
                   monedaBase &&
                   monedaSeleccionada
                 ) {
-                  if (montoConvertido > montoMaximo) {
+                  // El monto convertido debe ser en moneda de venta (moneda base)
+                  // y no debe exceder el monto máximo permitido
+                  if (montoConvertido > montoMaximo + 0.01) {
                     return Promise.reject(
                       new Error(
                         `El monto convertido a ${
@@ -232,7 +270,10 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                         } (${formatCurrency(
                           monedaBase.codigo,
                           montoConvertido
-                        )}) excede el saldo pendiente`
+                        )}) excede el saldo pendiente disponible (${formatCurrency(
+                          monedaBase.codigo,
+                          montoMaximo
+                        )})`
                       )
                     )
                   }

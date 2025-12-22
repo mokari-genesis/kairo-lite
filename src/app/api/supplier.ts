@@ -42,11 +42,12 @@ export type UpdateSupplierRequest = {
 
 export const getSuppliers = async (
   filters?: Record<string, any>,
-  limit?: number
+  limit?: number,
+  empresa_id: number = 1
 ): Promise<SupplierTypeResponse[]> => {
   try {
     const queryParams = new URLSearchParams()
-    queryParams.append('empresa_id', '1')
+    queryParams.append('empresa_id', String(empresa_id))
 
     // Add limit parameter if provided
     if (limit) {

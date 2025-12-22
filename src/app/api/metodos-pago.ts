@@ -22,11 +22,12 @@ export interface UpdateMetodoPagoRequest {
 }
 
 export const getMetodosPago = async (
-  filters?: Record<string, any>
+  filters?: Record<string, any>,
+  empresa_id: number = 1
 ): Promise<MetodoPago[]> => {
   try {
     const queryParams = new URLSearchParams()
-    queryParams.append('empresa_id', '1')
+    queryParams.append('empresa_id', String(empresa_id))
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -49,14 +50,15 @@ export const getMetodosPago = async (
 }
 
 export const createMetodoPago = async (
-  metodoPago: CreateMetodoPagoRequest
+  metodoPago: CreateMetodoPagoRequest,
+  empresa_id: number = 1
 ): Promise<LambdaResponse<any>> => {
   try {
     const response = await fetchApi<LambdaResponse<any>>({
       api: API_URL,
       service: '/metodos-pago',
       method: 'POST',
-      body: { ...metodoPago, empresa_id: 1 },
+      body: { ...metodoPago, empresa_id },
     })
     return response
   } catch (error: any) {
@@ -68,14 +70,15 @@ export const createMetodoPago = async (
 }
 
 export const updateMetodoPago = async (
-  metodoPago: UpdateMetodoPagoRequest
+  metodoPago: UpdateMetodoPagoRequest,
+  empresa_id: number = 1
 ): Promise<LambdaResponse<any>> => {
   try {
     const response = await fetchApi<LambdaResponse<any>>({
       api: API_URL,
       service: '/metodos-pago',
       method: 'PUT',
-      body: { ...metodoPago, empresa_id: 1 },
+      body: { ...metodoPago, empresa_id },
     })
     return response
   } catch (error: any) {
@@ -87,14 +90,15 @@ export const updateMetodoPago = async (
 }
 
 export const deleteMetodoPago = async (
-  id: number
+  id: number,
+  empresa_id: number = 1
 ): Promise<LambdaResponse<any>> => {
   try {
     const response = await fetchApi<LambdaResponse<any>>({
       api: API_URL,
       service: '/metodos-pago',
       method: 'DELETE',
-      body: { id, empresa_id: 1 },
+      body: { id, empresa_id },
     })
     return response
   } catch (error: any) {
