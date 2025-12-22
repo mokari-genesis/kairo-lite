@@ -152,6 +152,7 @@ function MonedasPage() {
       >
         <PageHeader
           title='Monedas'
+          showSucursalSelect={false}
           showNewButton={true}
           onNewClick={handleNewClick}
           newButtonText='Nueva Moneda'

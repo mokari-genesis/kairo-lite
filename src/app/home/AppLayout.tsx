@@ -170,22 +170,7 @@ export default function AppLayout({ children }: any) {
         router.push('/home/enterprises')
       },
     },
-    {
-      key: '6',
-      label: 'Reportes',
-      icon: React.createElement(BarChartOutlined),
-      children: [
-        {
-          key: '6-3',
-          label: 'Métodos de Pago Unificados',
-          icon: React.createElement(BankOutlined),
-          onClick: () => {
-            setSelectedKey('6-3')
-            router.push('/home/metodosPagoUnificado')
-          },
-        },
-      ],
-    },
+
     {
       key: '7',
       label: 'Métodos de Pago',
@@ -315,7 +300,7 @@ export default function AppLayout({ children }: any) {
               type='warning'
               showIcon
               message='Debe seleccionar una sucursal'
-              description='Vaya a la sección "Sucursales" y seleccione una sucursal para continuar.'
+              description='No tienes una sucursal seleccionada. Por favor, selecciona una sucursal para ejecutar cualquier acción.'
             />
           </div>
         )}

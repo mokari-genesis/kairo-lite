@@ -136,6 +136,7 @@ function MetodosPagoPage() {
       >
         <PageHeader
           title='Métodos de Pago'
+          showSucursalSelect={false}
           showNewButton={true}
           onNewClick={handleNewClick}
           newButtonText='Nuevo Método de Pago'

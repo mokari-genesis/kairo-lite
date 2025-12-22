@@ -160,7 +160,11 @@ function EnterprisesPage() {
               alignItems: 'center',
             }}
           >
-            <PageHeader title='Sucursales' onNewClick={handleNewClick} />
+            <PageHeader
+              title='Sucursales'
+              onNewClick={handleNewClick}
+              showSucursalSelect={false}
+            />
             <div
               style={{
                 margin: 10,

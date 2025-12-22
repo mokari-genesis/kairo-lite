@@ -22,6 +22,13 @@ function NewSupplier() {
 
   const handleSubmit = async (values: any) => {
     try {
+      if (!empresaId) {
+        message.error(
+          'Debe seleccionar una sucursal antes de crear un producto.'
+        )
+        return
+      }
+
       setIsLoading(true)
       await createSupplier({
         empresa_id: empresaId ?? 1,

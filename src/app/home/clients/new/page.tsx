@@ -22,6 +22,13 @@ function NewClient() {
 
   const handleSubmit = async (values: any) => {
     try {
+      if (!empresaId) {
+        message.error(
+          'Debe seleccionar una sucursal antes de crear un cliente.'
+        )
+        return
+      }
+
       setIsLoading(true)
       await createClient({
         empresa_id: empresaId ?? 1,

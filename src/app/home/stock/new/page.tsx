@@ -30,7 +30,10 @@ export default function NewStockMovement() {
   // Resetear todos los valores cuando cambia la sucursal
   useEffect(() => {
     // Solo resetear si ya había una empresa seleccionada y cambió
-    if (prevEmpresaIdRef.current !== null && prevEmpresaIdRef.current !== empresaId) {
+    if (
+      prevEmpresaIdRef.current !== null &&
+      prevEmpresaIdRef.current !== empresaId
+    ) {
       // Resetear el formulario
       form.resetFields()
       // Resetear el stock actual
@@ -42,6 +45,13 @@ export default function NewStockMovement() {
 
   const handleSubmit = async (values: any) => {
     try {
+      if (!empresaId) {
+        message.error(
+          'Debe seleccionar una sucursal antes de crear un movimiento de inventario.'
+        )
+        return
+      }
+
       setLoading(true)
       const stockData = {
         ...values,
@@ -101,8 +111,13 @@ export default function NewStockMovement() {
     if (product && value) {
       // Obtener el stock actualizado del producto
       try {
-        const products = await getProducts({ product_id: value }, empresaId ?? 1)
-        const selectedProduct = products.find(p => Number(p.id) === Number(value))
+        const products = await getProducts(
+          { product_id: value },
+          empresaId ?? 1
+        )
+        const selectedProduct = products.find(
+          p => Number(p.id) === Number(value)
+        )
         setCurrentStock(selectedProduct?.stock ?? 0)
       } catch (error) {
         console.error('Error al obtener el stock del producto:', error)

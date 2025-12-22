@@ -105,6 +105,11 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
 
   const handleSubmit = async (values: any) => {
     try {
+      if (!empresaId) {
+        message.error('Debe seleccionar una sucursal antes.')
+        return
+      }
+
       if (editingPrecio) {
         // Update existing price
         const updateData: UpdateProductoPrecioRequest = {
