@@ -382,18 +382,27 @@ function Reportes2CarteraPage() {
 
         {/* KPIs */}
         {(selectedReport === 'cxc-aging' || selectedReport === 'cxp-aging') && (
-          <Row gutter={[16, 16]} justify='center' style={{ marginBottom: '24px' }}>
+          <Row
+            gutter={[16, 16]}
+            justify='center'
+            style={{ marginBottom: '24px' }}
+          >
             <Col xs={24} sm={12} md={6}>
               <Card
                 style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background:
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   border: 'none',
                   borderRadius: '12px',
                   color: 'white',
                 }}
               >
                 <Statistic
-                  title={<span style={{ color: 'white', opacity: 0.9 }}>Saldo Total</span>}
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Saldo Total
+                    </span>
+                  }
                   value={reportStats.saldoTotal}
                   precision={2}
                   prefix={<BankOutlined style={{ color: 'white' }} />}
@@ -404,17 +413,24 @@ function Reportes2CarteraPage() {
             <Col xs={24} sm={12} md={6}>
               <Card
                 style={{
-                  background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                  background:
+                    'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
                   border: 'none',
                   borderRadius: '12px',
                   color: 'white',
                 }}
               >
                 <Statistic
-                  title={<span style={{ color: 'white', opacity: 0.9 }}>Saldo Vencido</span>}
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      Saldo Vencido
+                    </span>
+                  }
                   value={reportStats.saldoVencido}
                   precision={2}
-                  prefix={<ExclamationCircleOutlined style={{ color: 'white' }} />}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -422,18 +438,25 @@ function Reportes2CarteraPage() {
             <Col xs={24} sm={12} md={6}>
               <Card
                 style={{
-                  background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  background:
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
                   border: 'none',
                   borderRadius: '12px',
                   color: 'white',
                 }}
               >
                 <Statistic
-                  title={<span style={{ color: 'white', opacity: 0.9 }}>% Vencido</span>}
+                  title={
+                    <span style={{ color: 'white', opacity: 0.9 }}>
+                      % Vencido
+                    </span>
+                  }
                   value={reportStats.porcentajeVencido}
                   precision={2}
                   suffix='%'
-                  prefix={<ExclamationCircleOutlined style={{ color: 'white' }} />}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -441,17 +464,24 @@ function Reportes2CarteraPage() {
             <Col xs={24} sm={12} md={6}>
               <Card
                 style={{
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  background:
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                   border: 'none',
                   borderRadius: '12px',
                   color: 'white',
                 }}
               >
                 <Statistic
-                  title={<span style={{ color: 'white', opacity: 0.9 }}>Saldo >90 días</span>}
+                  title={
+                    <span
+                      style={{ color: 'white', opacity: 0.9 }}
+                    >{`Saldo >90 días`}</span>
+                  }
                   value={reportStats.saldoMas90}
                   precision={2}
-                  prefix={<ExclamationCircleOutlined style={{ color: 'white' }} />}
+                  prefix={
+                    <ExclamationCircleOutlined style={{ color: 'white' }} />
+                  }
                   valueStyle={{ color: 'white' }}
                 />
               </Card>
@@ -460,7 +490,10 @@ function Reportes2CarteraPage() {
         )}
 
         <div style={{ marginBottom: '24px' }}>
-          <FilterSection filters={filterConfigs} onFilterChange={onFilterChange} />
+          <FilterSection
+            filters={filterConfigs}
+            onFilterChange={onFilterChange}
+          />
         </div>
 
         <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
