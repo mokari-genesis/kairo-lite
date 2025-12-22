@@ -448,7 +448,7 @@ function Reportes2CarteraPage() {
                 <Statistic
                   title={
                     <span style={{ color: 'white', opacity: 0.9 }}>
-                      % Vencido
+                      {'% Vencido'}
                     </span>
                   }
                   value={reportStats.porcentajeVencido}

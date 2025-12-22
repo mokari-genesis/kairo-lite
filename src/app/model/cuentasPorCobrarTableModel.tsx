@@ -12,6 +12,7 @@ import {
   DollarCircleOutlined,
 } from '@ant-design/icons'
 import { formatCurrency } from '@/app/utils/currency'
+import { JSX } from 'react'
 // FilterConfig compatible with FilterSection
 export interface FilterConfig {
   type: 'text' | 'dateRange' | 'select'
