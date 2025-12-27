@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Card, Typography, Button, message, Image } from 'antd'
+import { Card, Typography, Button, message, Image, Spin } from 'antd'
 import { ArrowRightOutlined } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { EmpresaSelect } from '@/app/components/EmpresaSelect'
 import { useEmpresa } from '@/app/empresaContext'
-import { EnterpriseType } from '@/app/api/enterprise'
+import { EnterpriseType, getEnterprises } from '@/app/api/enterprise'
 import { withAuth } from '@/app/auth/withAuth'
 
 const { Title, Text } = Typography
@@ -19,6 +19,8 @@ function SelectEmpresaPage() {
     empresa
   )
   const [loading, setLoading] = useState(false)
+  const [checkingEmpresas, setCheckingEmpresas] = useState(true)
+  const [showSelection, setShowSelection] = useState(false)
 
   // Si ya hay una empresa seleccionada, redirigir al home
   useEffect(() => {
@@ -26,6 +28,48 @@ function SelectEmpresaPage() {
       router.replace('/home')
     }
   }, [empresaId, empresa, router])
+
+  // Verificar si hay solo una sucursal y seleccionarla automáticamente
+  useEffect(() => {
+    const checkAndAutoSelect = async () => {
+      // Si ya hay una empresa seleccionada, no hacer nada
+      if (empresaId && empresa) {
+        setCheckingEmpresas(false)
+        return
+      }
+
+      try {
+        setCheckingEmpresas(true)
+        const empresas = await getEnterprises()
+        
+        // Si solo hay una sucursal, seleccionarla automáticamente
+        if (empresas.length === 1) {
+          const unicaEmpresa = empresas[0]
+          setEmpresa(unicaEmpresa)
+          message.success(`Sucursal ${unicaEmpresa.nombre} seleccionada automáticamente`)
+          // Redirigir al home después de un pequeño delay
+          setTimeout(() => {
+            router.replace('/home')
+          }, 500)
+        } else if (empresas.length > 1) {
+          // Si hay más de una, mostrar la página de selección
+          setShowSelection(true)
+        } else {
+          // Si no hay sucursales, mostrar mensaje de error
+          message.error('No se encontraron sucursales disponibles')
+          setShowSelection(true)
+        }
+      } catch (error) {
+        console.error('Error al verificar sucursales:', error)
+        message.error('Error al cargar las sucursales')
+        setShowSelection(true)
+      } finally {
+        setCheckingEmpresas(false)
+      }
+    }
+
+    checkAndAutoSelect()
+  }, [empresaId, empresa, setEmpresa, router])
 
   const handleSelect = (value: number, empresa: EnterpriseType | null) => {
     setSelectedEmpresa(empresa)
@@ -52,6 +96,29 @@ function SelectEmpresaPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Mostrar spinner mientras se verifica si hay solo una sucursal
+  if (checkingEmpresas) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          minWidth: '100vw',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    )
+  }
+
+  // Si no se debe mostrar la selección (porque ya se seleccionó automáticamente), no renderizar nada
+  if (!showSelection) {
+    return null
   }
 
   return (
