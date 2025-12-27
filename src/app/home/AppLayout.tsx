@@ -67,10 +67,17 @@ export default function AppLayout({ children }: any) {
   const pathname = usePathname()
   const { empresaId, setEmpresa, setEmpresaId } = useEmpresa()
 
-  // Si estamos en la página de login, no renderizar el layout
-  if (pathname === '/login') {
+  // Si estamos en la página de login o selección de empresa, no renderizar el layout
+  if (pathname === '/login' || pathname === '/home/select-empresa') {
     return children
   }
+
+  // Si no hay empresa seleccionada, redirigir a la página de selección
+  useEffect(() => {
+    if (empresaId === null && pathname !== '/home/select-empresa') {
+      router.replace('/home/select-empresa')
+    }
+  }, [empresaId, pathname, router])
 
   // Determina la clave del menú basada en la ruta actual
   const getMenuKey = (path: string) => pathToMenuKey[path] || ''
