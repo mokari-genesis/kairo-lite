@@ -56,7 +56,7 @@ function SignIn() {
           await Auth.completeNewPassword(signIn, password)
         }
 
-        router.replace('/home')
+        router.replace('/home/select-empresa')
       }
     } catch (error: any) {
       message.error(error.message || 'Usuario y/o contraseña no válidos')

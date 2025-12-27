@@ -12,8 +12,9 @@ export function withAuth<T extends {}>(Component: ComponentType<T>) {
       try {
         await Auth.currentAuthenticatedUser()
         setAllow(true)
+        // Si está en login o home, redirigir a selección de empresa
         if (pathname === '/login' || pathname === '/home') {
-          router.replace('/home')
+          router.replace('/home/select-empresa')
         }
       } catch (error) {
         router.replace('/login')
