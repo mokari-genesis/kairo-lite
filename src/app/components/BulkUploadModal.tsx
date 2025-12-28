@@ -61,7 +61,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           Serie: 'SER001',
           Descripción: 'Ejemplo de producto',
           Categoría: 'juguete',
-          'Nombre Proveedor': suppliers.length > 0 ? suppliers[0].nombre : '',
+          'NIT Proveedor': suppliers.length > 0 ? suppliers[0].nit : '',
           Estado: 'activo',
           'Precio Sugerido': '0.00',
         },
@@ -70,7 +70,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           Serie: 'SER002',
           Descripción: 'Otro ejemplo de producto',
           Categoría: 'ropa',
-          'Nombre Proveedor': suppliers.length > 1 ? suppliers[1].nombre : '',
+          'NIT Proveedor': suppliers.length > 1 ? suppliers[1].nit : '',
           Estado: 'activo',
           'Precio Sugerido': '0.00',
         },
@@ -86,7 +86,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
         { wch: 15 }, // Serie
         { wch: 30 }, // Descripción
         { wch: 20 }, // Categoría
-        { wch: 30 }, // Nombre Proveedor
+        { wch: 20 }, // NIT Proveedor
         { wch: 12 }, // Estado
         { wch: 18 }, // Precio Sugerido
       ]
@@ -142,15 +142,15 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
       const suppliersData: (string | number | undefined)[][] = [
         ['REFERENCIA: Proveedores Disponibles'],
         [
-          'IMPORTANTE: Puede usar el ID Proveedor o el Nombre Proveedor en la hoja Productos. Solo necesita uno de los dos.',
+          'IMPORTANTE: Use el NIT Proveedor en la hoja Productos. El NIT es un identificador único.',
         ],
         [''], // Fila vacía
-        ['ID Proveedor', 'Nombre Proveedor'], // Encabezados
+        ['NIT Proveedor', 'Nombre Proveedor'], // Encabezados (Nombre solo como referencia)
       ]
 
       // Agregar proveedores
       suppliers.forEach(supplier => {
-        suppliersData.push([supplier.id, supplier.nombre])
+        suppliersData.push([supplier.nit, supplier.nombre])
       })
 
       const wsSuppliers = XLSX.utils.aoa_to_sheet(suppliersData)
@@ -168,7 +168,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
 
       // Ajustar ancho de columnas de proveedores
       wsSuppliers['!cols'] = [
-        { wch: 15 }, // ID Proveedor
+        { wch: 20 }, // NIT Proveedor
         { wch: 30 }, // Nombre Proveedor
       ]
 
@@ -217,9 +217,9 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
         return
       }
 
-      // Obtener lista de proveedores para validar IDs
+      // Obtener lista de proveedores para validar NITs
       const suppliers = await getSuppliers({}, undefined)
-      const supplierMap = new Map(suppliers.map(s => [s.id.toString(), s.id]))
+      const supplierMapByNit = new Map(suppliers.map(s => [s.nit, s.id]))
 
       // Validar y procesar cada fila
       const errors: string[] = []
@@ -269,34 +269,21 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
             continue
           }
 
-          // Validar proveedor
+          // Validar proveedor por NIT
           let proveedorId: number | undefined
-          if (row['ID Proveedor']) {
-            const supplierIdStr = row['ID Proveedor'].toString()
-            if (supplierMap.has(supplierIdStr)) {
-              proveedorId = supplierMap.get(supplierIdStr)
+          if (row['NIT Proveedor']) {
+            const nitStr = row['NIT Proveedor'].toString().trim()
+            if (supplierMapByNit.has(nitStr)) {
+              proveedorId = supplierMapByNit.get(nitStr)
             } else {
               errors.push(
-                `Fila ${rowNumber}: ID de Proveedor "${row['ID Proveedor']}" no existe`
-              )
-              continue
-            }
-          } else if (row['Nombre Proveedor']) {
-            // Buscar proveedor por nombre
-            const supplier = suppliers.find(
-              s => s.nombre === row['Nombre Proveedor']
-            )
-            if (supplier) {
-              proveedorId = supplier.id
-            } else {
-              errors.push(
-                `Fila ${rowNumber}: Proveedor "${row['Nombre Proveedor']}" no encontrado`
+                `Fila ${rowNumber}: NIT de Proveedor "${nitStr}" no existe. Consulte la hoja "Proveedores" para ver los NITs disponibles.`
               )
               continue
             }
           } else {
             errors.push(
-              `Fila ${rowNumber}: Debe especificar ID Proveedor o Nombre Proveedor`
+              `Fila ${rowNumber}: Debe especificar NIT Proveedor. Consulte la hoja "Proveedores" para ver los NITs disponibles.`
             )
             continue
           }
@@ -315,6 +302,22 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
             }
           }
 
+          // Validar que proveedorId esté definido (debería estar después de la validación anterior)
+          if (!proveedorId) {
+            errors.push(
+              `Fila ${rowNumber}: No se pudo determinar el proveedor.`
+            )
+            continue
+          }
+
+          // Validar que usuarioId esté definido
+          if (!usuarioId) {
+            errors.push(
+              `Fila ${rowNumber}: Usuario ID es requerido para crear productos.`
+            )
+            continue
+          }
+
           // Crear el producto
           const productData = {
             codigo: row.Código.toString().trim(),
@@ -325,8 +328,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
             stock: 0, // El stock se gestiona por movimientos de inventario
             precio: precio,
             proveedor_id: proveedorId,
-            empresa_id: empresaId,
-            usuario_id: usuarioId ?? null,
+            usuario_id: usuarioId,
           }
 
           const response = await createProduct(productData, empresaId)
@@ -474,8 +476,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           </Paragraph>
           <Text type='secondary' style={{ fontSize: '12px' }}>
             Campos requeridos: Código, Serie, Descripción, Categoría, Estado,
-            Nombre Proveedor. El Precio Sugerido es opcional. Consulte la hoja
-            "Proveedores" para ver los proveedores disponibles.
+            NIT Proveedor. El Precio Sugerido es opcional. Consulte la hoja
+            "Proveedores" para ver los NITs disponibles.
           </Text>
           <Dragger {...uploadProps} disabled={uploading}>
             <p className='ant-upload-drag-icon'>
