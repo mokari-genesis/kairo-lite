@@ -35,6 +35,7 @@ import {
   convertirDesdeMonedaBase,
 } from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
+import { useUsuario } from '@/app/usuarioContext'
 
 interface PurchaseDetail {
   producto_id: number
@@ -67,6 +68,7 @@ export default function NewPurchase() {
   const [monedas, setMonedas] = useState<any[]>([])
   const [monedaBase, setMonedaBase] = useState<any>(null)
   const { empresaId } = useEmpresa()
+  const { usuarioId } = useUsuario()
   console.log(' LA CHIMIBA PARCE ', empresaId)
   const previousEmpresaIdRef = useRef<number | null>(empresaId)
 
@@ -550,7 +552,7 @@ export default function NewPurchase() {
       const data = {
         ...values,
         empresa_id: empresaId ?? 1,
-        usuario_id: 1,
+        usuario_id: usuarioId ?? null,
         total: totalVenta,
         estado: 'vendido',
         moneda_id: 1, // Por defecto VES (Bolívares Fuertes)

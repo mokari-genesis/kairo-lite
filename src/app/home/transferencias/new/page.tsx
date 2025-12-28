@@ -227,7 +227,7 @@ export default function NewTransferencia() {
       const data = {
         empresa_origen_id: empresaOrigen!.id,
         empresa_destino_id: empresaDestino!.id,
-        usuario_id: usuarioId || 1,
+        usuario_id: usuarioId ?? null,
         estado: 'borrador' as const,
         comentario: values.comentario || '',
         detalles: details.map(detail => ({

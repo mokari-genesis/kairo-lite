@@ -9,12 +9,14 @@ import { EmpresaSelect } from '@/app/components/EmpresaSelect'
 import { useEmpresa } from '@/app/empresaContext'
 import { EnterpriseType, getEnterprises } from '@/app/api/enterprise'
 import { withAuth } from '@/app/auth/withAuth'
+import { useCurrentUser } from '@/app/usuarioContext'
 
 const { Title, Text } = Typography
 
 function SelectEmpresaPage() {
   const router = useRouter()
   const { empresaId, empresa, setEmpresa } = useEmpresa()
+  const { isMaster, loading: loadingUser } = useCurrentUser()
   const [selectedEmpresa, setSelectedEmpresa] = useState<EnterpriseType | null>(
     empresa
   )
@@ -22,12 +24,13 @@ function SelectEmpresaPage() {
   const [checkingEmpresas, setCheckingEmpresas] = useState(true)
   const [showSelection, setShowSelection] = useState(false)
 
-  // Si ya hay una empresa seleccionada, redirigir al home
+  // Si ya hay una empresa seleccionada y el usuario no es master, redirigir al home
+  // (solo los master pueden cambiar la sucursal después de seleccionarla)
   useEffect(() => {
-    if (empresaId && empresa) {
+    if (!loadingUser && empresaId && empresa && !isMaster) {
       router.replace('/home')
     }
-  }, [empresaId, empresa, router])
+  }, [empresaId, empresa, isMaster, loadingUser, router])
 
   // Verificar si hay solo una sucursal y seleccionarla automáticamente
   useEffect(() => {
@@ -41,12 +44,14 @@ function SelectEmpresaPage() {
       try {
         setCheckingEmpresas(true)
         const empresas = await getEnterprises()
-        
+
         // Si solo hay una sucursal, seleccionarla automáticamente
         if (empresas.length === 1) {
           const unicaEmpresa = empresas[0]
           setEmpresa(unicaEmpresa)
-          message.success(`Sucursal ${unicaEmpresa.nombre} seleccionada automáticamente`)
+          message.success(
+            `Sucursal ${unicaEmpresa.nombre} seleccionada automáticamente`
+          )
           // Redirigir al home después de un pequeño delay
           setTimeout(() => {
             router.replace('/home')
@@ -85,7 +90,7 @@ function SelectEmpresaPage() {
       setLoading(true)
       setEmpresa(selectedEmpresa)
       message.success(`Sucursal ${selectedEmpresa.nombre} seleccionada`)
-      
+
       // Pequeño delay para que el mensaje se muestre
       setTimeout(() => {
         router.replace('/home')
@@ -111,7 +116,7 @@ function SelectEmpresaPage() {
           background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
         }}
       >
-        <Spin size="large" />
+        <Spin size='large' />
       </div>
     )
   }
@@ -211,6 +216,7 @@ function SelectEmpresaPage() {
               value={selectedEmpresa?.id}
               onChange={handleSelect}
               placeholder='Busca y selecciona una sucursal'
+              disabled={!isMaster && !!empresaId}
             />
           </div>
 
@@ -243,4 +249,3 @@ function SelectEmpresaPage() {
 }
 
 export default withAuth(SelectEmpresaPage)
-

@@ -80,7 +80,7 @@ export default function NewProduct() {
         ...values,
         empresa_id: empresaId,
         proveedor_id: selectedSupplier?.id,
-        usuario_id: usuarioId || 1,
+        usuario_id: usuarioId ?? null,
       }
 
       const response = await createProduct(productData, empresaId)

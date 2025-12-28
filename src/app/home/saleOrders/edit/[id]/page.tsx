@@ -32,6 +32,7 @@ import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
 import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
+import { useUsuario } from '@/app/usuarioContext'
 
 interface PurchaseDetail {
   producto_id: number
@@ -61,6 +62,7 @@ export default function EditPurchase({
 }) {
   const resolvedParams = use(params)
   const { empresaId } = useEmpresa()
+  const { usuarioId } = useUsuario()
   const [isLoading, setIsLoading] = useState(false)
   const [modal, contextHolder] = Modal.useModal()
   const [form] = Form.useForm()
@@ -621,7 +623,7 @@ export default function EditPurchase({
         venta_id: parseInt(resolvedParams.id),
         empresa_id: empresaId ?? 1,
         cliente_id: values.cliente_id.value || values.cliente_id,
-        usuario_id: 1,
+        usuario_id: usuarioId ?? null,
         total: updatedTotal,
         estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,

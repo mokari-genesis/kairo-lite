@@ -8,6 +8,7 @@ interface EmpresaSelectProps {
   labelValue?: string
   excludeId?: number // ID de empresa a excluir (útil para evitar seleccionar la misma empresa)
   placeholder?: string
+  disabled?: boolean // Deshabilitar el selector
 }
 
 export const EmpresaSelect: React.FC<EmpresaSelectProps> = ({
@@ -16,6 +17,7 @@ export const EmpresaSelect: React.FC<EmpresaSelectProps> = ({
   labelValue,
   excludeId,
   placeholder = 'Busque una sucursal por nombre',
+  disabled = false,
 }) => {
   const [options, setOptions] = React.useState<
     { label: string; value: number; empresa: EnterpriseType }[]
@@ -86,6 +88,7 @@ export const EmpresaSelect: React.FC<EmpresaSelectProps> = ({
       notFoundContent={loading ? 'Cargando...' : 'No se encontraron sucursales'}
       loading={loading}
       optionLabelProp='label'
+      disabled={disabled}
       labelRender={label => {
         if (labelValue) return labelValue
         if (typeof label === 'string') return label

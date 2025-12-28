@@ -5,51 +5,57 @@ import { PageHeader } from '@/app/components/PageHeader'
 import { withAuth } from '@/app/auth/withAuth'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, Form, Input, Button, message, Space } from 'antd'
+import { Card, Form, Input, Select, Button, message, Space, Switch } from 'antd'
+import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { motion } from 'framer-motion'
-import { createEnterprise } from '@/app/api/enterprise'
+import { createUsuario } from '@/app/api/usuarios'
+import { useEmpresa } from '@/app/empresaContext'
 import { useCurrentUser } from '@/app/usuarioContext'
 import { useEffect } from 'react'
 
-function NewEnterprise() {
+function NewUsuario() {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { empresaId } = useEmpresa()
   const { isMaster, loading: userLoading } = useCurrentUser()
 
   // Redirigir si no es master
   useEffect(() => {
     if (!userLoading && !isMaster) {
-      message.error('No tienes permisos para crear sucursales')
-      router.push('/home/enterprises')
+      message.error('No tienes permisos para crear usuarios')
+      router.push('/home/usuarios')
     }
   }, [isMaster, userLoading, router])
 
   const handleBack = () => {
-    router.push('/home/enterprises')
+    router.push('/home/usuarios')
   }
 
   const handleSubmit = async (values: any) => {
     // Validación adicional de seguridad
     if (!isMaster) {
-      message.error('No tienes permisos para crear sucursales')
-      router.push('/home/enterprises')
+      message.error('No tienes permisos para crear usuarios')
+      router.push('/home/usuarios')
       return
     }
 
     try {
       setIsLoading(true)
-      await createEnterprise({
+      await createUsuario({
+        empresa_id: empresaId ?? null,
         nombre: values.nombre,
-        nit: values.nit,
-        direccion: values.direccion,
-        telefono: values.telefono,
         email: values.email,
+        rol: values.rol,
+        password: values.password,
+        activo: values.activo !== undefined ? (values.activo ? 1 : 0) : 1,
       })
-      message.success('Sucursal creada exitosamente')
-      router.push('/home/enterprises')
+      message.success(
+        'Usuario creado exitosamente en Cognito y sincronizado con la base de datos'
+      )
+      router.push('/home/usuarios')
     } catch (error: any) {
-      message.error(error.message || 'Error al crear la sucursal')
+      message.error(error.message || 'Error al crear el usuario')
     } finally {
       setIsLoading(false)
     }
@@ -89,7 +95,7 @@ function NewEnterprise() {
       >
         <Space direction='vertical' size='large' style={{ width: '100%' }}>
           <PageHeader
-            title='Nueva Sucursal'
+            title='Nuevo Usuario'
             showNewButton={true}
             onNewClick={() => router.back()}
             newButtonText='Volver'
@@ -100,6 +106,9 @@ function NewEnterprise() {
             layout='vertical'
             onFinish={handleSubmit}
             style={{ maxWidth: '60%', margin: '0 auto' }}
+            initialValues={{
+              activo: true,
+            }}
           >
             <Form.Item
               name='nombre'
@@ -108,15 +117,7 @@ function NewEnterprise() {
                 { required: true, message: 'Por favor ingrese el nombre' },
               ]}
             >
-              <Input placeholder='Nombre de la sucursal' />
-            </Form.Item>
-
-            <Form.Item
-              name='nit'
-              label='NIT'
-              rules={[{ required: true, message: 'Por favor ingrese el NIT' }]}
-            >
-              <Input placeholder='NIT de la sucursal' />
+              <Input placeholder='Ingrese el nombre completo' />
             </Form.Item>
 
             <Form.Item
@@ -127,35 +128,56 @@ function NewEnterprise() {
                 { type: 'email', message: 'Por favor ingrese un email válido' },
               ]}
             >
-              <Input placeholder='Email de la sucursal' />
+              <Input placeholder='usuario@ejemplo.com' />
             </Form.Item>
 
             <Form.Item
-              name='telefono'
-              label='Teléfono'
+              name='password'
+              label='Contraseña'
               rules={[
-                { required: true, message: 'Por favor ingrese el teléfono' },
+                { required: true, message: 'Por favor ingrese la contraseña' },
+                {
+                  min: 8,
+                  message: 'La contraseña debe tener al menos 8 caracteres',
+                },
               ]}
             >
-              <Input placeholder='Teléfono de la sucursal' />
+              <Input.Password
+                placeholder='Ingrese la contraseña (mínimo 8 caracteres)'
+                iconRender={visible =>
+                  visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                }
+              />
             </Form.Item>
 
             <Form.Item
-              name='direccion'
-              label='Dirección'
+              name='rol'
+              label='Rol'
               rules={[
-                { required: true, message: 'Por favor ingrese la dirección' },
+                { required: true, message: 'Por favor seleccione el rol' },
               ]}
             >
-              <Input.TextArea placeholder='Dirección de la sucursal' rows={3} />
+              <Select
+                placeholder='Seleccione el rol del usuario'
+                options={[
+                  { value: 'admin', label: 'Administrador' },
+                  { value: 'vendedor', label: 'Vendedor' },
+                  { value: 'bodega', label: 'Bodega' },
+                  { value: 'master', label: 'Master' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item name='activo' label='Estado' valuePropName='checked'>
+              <Switch checkedChildren='Activo' unCheckedChildren='Inactivo' />
             </Form.Item>
 
             <Form.Item>
               <Space>
-                <Button onClick={handleBack}>Cancelar</Button>
                 <Button type='primary' htmlType='submit' loading={isLoading}>
-                  Crear Sucursal
+                  Crear Usuario
                 </Button>
+                <Button onClick={handleBack}>Cancelar</Button>
               </Space>
             </Form.Item>
           </Form>
@@ -165,4 +187,4 @@ function NewEnterprise() {
   )
 }
 
-export default withAuth(NewEnterprise)
+export default withAuth(NewUsuario)

@@ -17,10 +17,13 @@ import {
   GlobalOutlined,
   SettingOutlined,
   SwapOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
 import { EMPRESA_STORAGE_KEY, useEmpresa } from '../empresaContext'
+import { USUARIO_STORAGE_KEY, useUsuario } from '../usuarioContext'
+import { useCurrentUser } from '../usuarioContext'
 
 const { Content, Footer, Sider } = Layout
 type MenuItem = Required<MenuProps>['items'][number]
@@ -55,6 +58,9 @@ const pathToMenuKey: Record<string, string> = {
 
   '/home/metodosPagoUnificado': '6-3',
 
+  '/home/usuarios': '12',
+  '/home/usuarios/new': '12',
+
   // Reportes
   '/home/reportes2/ventas': '11-1',
   '/home/reportes2/cartera': '11-2',
@@ -66,6 +72,8 @@ export default function AppLayout({ children }: any) {
   const router = useRouter()
   const pathname = usePathname()
   const { empresaId, setEmpresa, setEmpresaId } = useEmpresa()
+  const { clearUserCache } = useUsuario()
+  const { usuario, rol } = useCurrentUser()
 
   // Si estamos en la página de login o selección de empresa, no renderizar el layout
   if (pathname === '/login' || pathname === '/home/select-empresa') {
@@ -197,6 +205,15 @@ export default function AppLayout({ children }: any) {
       },
     },
     {
+      key: '12',
+      label: 'Usuarios',
+      icon: React.createElement(UserOutlined),
+      onClick: () => {
+        setSelectedKey('12')
+        router.push('/home/usuarios')
+      },
+    },
+    {
       key: '11',
       label: 'Reportes',
       icon: React.createElement(BarChartOutlined),
@@ -244,26 +261,34 @@ export default function AppLayout({ children }: any) {
   const [loading, setLoading] = useState(false)
 
   const handleLogout = async () => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.sessionStorage.removeItem(EMPRESA_STORAGE_KEY)
-      } catch (e) {
-        console.error('Error clearing empresa session storage on logout', e)
-      }
-    }
-
-    // Limpiar contexto en memoria
-    setEmpresa(null)
-    setEmpresaId(null)
-
     try {
       setLoading(true)
+
+      // Limpiar cache del usuario primero
+      clearUserCache()
+
+      // Limpiar contexto en memoria
+      // Los providers ahora eliminarán automáticamente las keys cuando los valores sean null
+      setEmpresa(null)
+      setEmpresaId(null)
+
+      // Limpiar sessionStorage completamente (por si acaso)
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.removeItem(EMPRESA_STORAGE_KEY)
+          window.sessionStorage.removeItem(USUARIO_STORAGE_KEY)
+        } catch (e) {
+          console.error('Error clearing session storage on logout', e)
+        }
+      }
+
       await Auth.signOut()
-      router.push('/login')
       queryClient.clear()
+      router.push('/login')
       setLoading(false)
     } catch (error) {
       console.error('Error signing out:', error)
+      setLoading(false)
     }
   }
 
@@ -275,7 +300,8 @@ export default function AppLayout({ children }: any) {
         <div
           style={{
             display: 'flex',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            alignItems: 'center',
             padding: '16px',
           }}
         >
@@ -289,6 +315,50 @@ export default function AppLayout({ children }: any) {
               router.push('/home')
             }}
           />
+          {usuario?.nombre && (
+            <div
+              style={{
+                marginTop: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}
+            >
+              <div
+                style={{
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                }}
+              >
+                {usuario.nombre}
+              </div>
+              {rol && (
+                <div
+                  style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    marginTop: '4px',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {rol === 'admin'
+                    ? 'Administrador'
+                    : rol === 'vendedor'
+                    ? 'Vendedor'
+                    : rol === 'bodega'
+                    ? 'Bodega'
+                    : rol === 'master'
+                    ? 'Master'
+                    : rol}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <Menu

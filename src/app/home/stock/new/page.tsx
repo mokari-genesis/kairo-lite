@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { getProducts } from '@/app/api/products'
 import { SearchSelect } from '@/app/components/SearchSelect'
 import { useEmpresa } from '@/app/empresaContext'
+import { useUsuario } from '@/app/usuarioContext'
 
 const { TextArea } = Input
 
@@ -25,6 +26,7 @@ export default function NewStockMovement() {
   const [loading, setLoading] = useState(false)
   const [currentStock, setCurrentStock] = useState<number | null>(null)
   const { empresaId } = useEmpresa()
+  const { usuarioId } = useUsuario()
   const prevEmpresaIdRef = useRef<number | null>(empresaId)
 
   // Resetear todos los valores cuando cambia la sucursal
@@ -56,7 +58,7 @@ export default function NewStockMovement() {
       const stockData = {
         ...values,
         empresa_id: empresaId ?? 1,
-        user_id: 1, // This should be replaced with the actual user ID from your auth system
+        user_id: usuarioId ?? null,
         // Asegurar que precio_compra y compra_id se envíen correctamente
         precio_compra: values.precio_compra
           ? parseFloat(values.precio_compra)

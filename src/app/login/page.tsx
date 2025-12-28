@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Auth } from 'aws-amplify'
 import { CognitoUser } from 'amazon-cognito-identity-js'
 import { withAuth } from '../auth/withAuth'
+import { useUsuario } from '../usuarioContext'
 import '@ant-design/v5-patch-for-react-19'
 import { motion } from 'framer-motion'
 
@@ -20,6 +21,7 @@ const { Title, Text } = Typography
 
 function SignIn() {
   const router = useRouter()
+  const { fetchAndSaveUserInfo } = useUsuario()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [resetPassword, setResetPassword] = useState(false)
@@ -54,6 +56,14 @@ function SignIn() {
 
         if (signIn.challengeName === 'NEW_PASSWORD_REQUIRED') {
           await Auth.completeNewPassword(signIn, password)
+        }
+
+        // Consultar y guardar información del usuario en sessionStorage
+        try {
+          await fetchAndSaveUserInfo()
+        } catch (error) {
+          console.error('Error guardando información del usuario:', error)
+          // Continuar con el flujo aunque falle la consulta del usuario
         }
 
         router.replace('/home/select-empresa')

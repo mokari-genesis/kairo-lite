@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { useEnterprises } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import { queryClient, QueryKey } from '@/app/utils/query'
+import { useCurrentUser } from '@/app/usuarioContext'
 import { Card, message, Space, Row, Col, Statistic, Button, Modal } from 'antd'
 import { motion } from 'framer-motion'
 import { columns, filterConfigs } from '@/app/model/enterprisesTableModel'
@@ -27,12 +28,19 @@ function EnterprisesPage() {
   const [filters, setFilters] = useState<Record<string, any>>({})
 
   const router = useRouter()
+  const { isMaster } = useCurrentUser()
 
   const handleNewClick = () => {
     router.push('/home/enterprises/new')
   }
 
   const handleEdit = async (record: any) => {
+    // Validación de permisos
+    if (!isMaster) {
+      message.error('No tienes permisos para modificar sucursales')
+      return
+    }
+
     try {
       setIsLoading(true)
       const updateData: UpdateEnterpriseRequest = {
@@ -61,6 +69,12 @@ function EnterprisesPage() {
   }
 
   const handleDelete = (record: any) => {
+    // Validación de permisos
+    if (!isMaster) {
+      message.error('No tienes permisos para eliminar sucursales')
+      return
+    }
+
     if (!record.id) {
       message.error('No se puede eliminar la sucursal')
       return
@@ -162,7 +176,8 @@ function EnterprisesPage() {
           >
             <PageHeader
               title='Sucursales'
-              onNewClick={handleNewClick}
+              onNewClick={isMaster ? handleNewClick : undefined}
+              showNewButton={isMaster}
               showSucursalSelect={false}
             />
             <div
@@ -216,8 +231,8 @@ function EnterprisesPage() {
           <DataTable
             data={dataEnterprises || []}
             columns={columns}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={isMaster ? handleEdit : undefined}
+            onDelete={isMaster ? handleDelete : undefined}
             loading={enterprisesLoading || isLoading}
             pagination={{
               total: dataEnterprises?.length || 0,
@@ -225,7 +240,7 @@ function EnterprisesPage() {
               current: currentPage,
               onChange: handlePageChange,
             }}
-            showActions={true}
+            showActions={isMaster}
             showDelete={false}
           />
         </Space>
