@@ -29,7 +29,7 @@ export const fetchApi = async <T>({
   try {
     authenticatedUser = await Auth.currentSession()
     idToken = authenticatedUser?.getIdToken().getJwtToken()
-    console.log('Authentication successful, token length:', idToken.length)
+    console.log('Authentication successful, token length:', idToken)
   } catch (err) {
     console.log('Authentication error:', err)
     if (err !== 'No current user') {

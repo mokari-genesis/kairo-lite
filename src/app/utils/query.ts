@@ -37,6 +37,7 @@ export const QueryKey = {
   cuentasPorPagarInfo: 'cuentasPorPagarInfo',
   cuentasPorPagarResumenProveedoresInfo:
     'cuentasPorPagarResumenProveedoresInfo',
+  usuariosInfo: 'usuariosInfo',
 }
 
 // 4. Helper

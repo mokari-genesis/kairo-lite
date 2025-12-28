@@ -17,6 +17,7 @@ import {
   GlobalOutlined,
   SettingOutlined,
   SwapOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
@@ -54,6 +55,9 @@ const pathToMenuKey: Record<string, string> = {
   '/home/metodosPago/new': '7',
 
   '/home/metodosPagoUnificado': '6-3',
+
+  '/home/usuarios': '12',
+  '/home/usuarios/new': '12',
 
   // Reportes
   '/home/reportes2/ventas': '11-1',
@@ -194,6 +198,15 @@ export default function AppLayout({ children }: any) {
       onClick: () => {
         setSelectedKey('9')
         router.push('/home/monedas')
+      },
+    },
+    {
+      key: '12',
+      label: 'Usuarios',
+      icon: React.createElement(UserOutlined),
+      onClick: () => {
+        setSelectedKey('12')
+        router.push('/home/usuarios')
       },
     },
     {

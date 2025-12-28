@@ -15,6 +15,7 @@ import {
   getCuentasPorPagar,
   CuentaPorPagarTypeResponse,
 } from '../api/cuentas-por-pagar'
+import { getUsuarios, UsuarioTypeResponse } from '../api/usuarios'
 import { QueryKey } from '../utils/query'
 import { useQuery } from '@tanstack/react-query'
 import { useEmpresa } from '../empresaContext'
@@ -161,6 +162,19 @@ export const useCuentasPorPagarResumenProveedores = (
         ...filters,
         empresa_id: empresaId,
       }),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  })
+}
+
+export const useUsuarios = (filters?: Record<string, any>) => {
+  const { empresaId } = useEmpresa()
+
+  return useQuery<UsuarioTypeResponse[]>({
+    queryKey: [QueryKey.usuariosInfo, { ...filters, empresa_id: empresaId }],
+    queryFn: () => getUsuarios({ ...filters }, empresaId ?? undefined),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
