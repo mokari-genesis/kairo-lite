@@ -326,7 +326,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
             precio: precio,
             proveedor_id: proveedorId,
             empresa_id: empresaId,
-            usuario_id: usuarioId || 1,
+            usuario_id: usuarioId ?? null,
           }
 
           const response = await createProduct(productData, empresaId)

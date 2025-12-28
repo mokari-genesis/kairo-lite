@@ -8,17 +8,35 @@ import { useRouter } from 'next/navigation'
 import { Card, Form, Input, Button, message, Space } from 'antd'
 import { motion } from 'framer-motion'
 import { createEnterprise } from '@/app/api/enterprise'
+import { useCurrentUser } from '@/app/usuarioContext'
+import { useEffect } from 'react'
 
 function NewEnterprise() {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { isMaster, loading: userLoading } = useCurrentUser()
+
+  // Redirigir si no es master
+  useEffect(() => {
+    if (!userLoading && !isMaster) {
+      message.error('No tienes permisos para crear sucursales')
+      router.push('/home/enterprises')
+    }
+  }, [isMaster, userLoading, router])
 
   const handleBack = () => {
     router.push('/home/enterprises')
   }
 
   const handleSubmit = async (values: any) => {
+    // Validación adicional de seguridad
+    if (!isMaster) {
+      message.error('No tienes permisos para crear sucursales')
+      router.push('/home/enterprises')
+      return
+    }
+
     try {
       setIsLoading(true)
       await createEnterprise({
@@ -35,6 +53,24 @@ function NewEnterprise() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Mostrar loading mientras se verifica el rol
+  if (userLoading) {
+    return (
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <Card>
+          <Space direction='vertical' size='large'>
+            <div>Cargando...</div>
+          </Space>
+        </Card>
+      </div>
+    )
+  }
+
+  // No mostrar el formulario si no es master
+  if (!isMaster) {
+    return null
   }
 
   return (

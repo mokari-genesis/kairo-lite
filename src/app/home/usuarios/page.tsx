@@ -12,6 +12,7 @@ import { useState, useMemo } from 'react'
 import { useUsuarios } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import { queryClient, QueryKey } from '@/app/utils/query'
+import { useCurrentUser } from '@/app/usuarioContext'
 import { Card, message, Space, Row, Col, Statistic, Tag, Button } from 'antd'
 import { motion } from 'framer-motion'
 import {
@@ -39,12 +40,19 @@ function Home() {
   const [filters, setFilters] = useState<Record<string, any>>({})
 
   const router = useRouter()
+  const { isMaster } = useCurrentUser()
 
   const handleNewClick = () => {
     router.push('/home/usuarios/new')
   }
 
   const handleEdit = async (record: any) => {
+    // Validación de permisos
+    if (!isMaster) {
+      message.error('No tienes permisos para modificar usuarios')
+      return
+    }
+
     try {
       setIsLoading(true)
       const updateData: UpdateUsuarioRequest = {
@@ -73,6 +81,12 @@ function Home() {
   }
 
   const handleDelete = async (record: any) => {
+    // Validación de permisos
+    if (!isMaster) {
+      message.error('No tienes permisos para eliminar usuarios')
+      return
+    }
+
     if (!record.id) {
       message.error('No se puede eliminar el usuario')
       return
@@ -179,7 +193,11 @@ function Home() {
               alignItems: 'center',
             }}
           >
-            <PageHeader title='Usuarios' onNewClick={handleNewClick} />
+            <PageHeader
+              title='Usuarios'
+              onNewClick={isMaster ? handleNewClick : undefined}
+              showNewButton={isMaster}
+            />
             <div
               style={{
                 margin: 10,
@@ -337,8 +355,8 @@ function Home() {
           <DataTable
             data={dataUsuarios || []}
             columns={UsuarioColumns}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={isMaster ? handleEdit : undefined}
+            onDelete={isMaster ? handleDelete : undefined}
             loading={usuariosLoading || isLoading}
             pagination={{
               total: dataUsuarios?.length || 0,
@@ -346,8 +364,8 @@ function Home() {
               current: currentPage,
               onChange: handlePageChange,
             }}
-            showActions={true}
-            showDelete={true}
+            showActions={isMaster}
+            showDelete={isMaster}
           />
         </Space>
       </Card>

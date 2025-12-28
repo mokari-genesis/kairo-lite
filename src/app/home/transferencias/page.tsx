@@ -5,6 +5,7 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
+import { useUsuario } from '@/app/usuarioContext'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -37,6 +38,7 @@ import {
 
 function TransferenciasPage() {
   const router = useRouter()
+  const { usuarioId } = useUsuario()
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -94,7 +96,7 @@ function TransferenciasPage() {
       onOk: async () => {
         try {
           setIsLoading(true)
-          await confirmarTransferencia(record.id, record.usuario_id || 999)
+          await confirmarTransferencia(record.id, usuarioId ?? null)
           message.success('Transferencia confirmada exitosamente')
           await loadTransferencias()
         } catch (error: any) {

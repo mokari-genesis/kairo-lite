@@ -59,9 +59,20 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     initial.empresa
   )
 
-  // Persistir cambios
+  // Persistir cambios (solo si hay valores, no persistir null)
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    // Si ambos valores son null, eliminar la key en lugar de guardar null
+    if (empresaId === null && empresa === null) {
+      try {
+        window.sessionStorage.removeItem(EMPRESA_STORAGE_KEY)
+      } catch (e) {
+        console.error('Error eliminando empresa del sessionStorage', e)
+      }
+      return
+    }
+
     try {
       window.sessionStorage.setItem(
         EMPRESA_STORAGE_KEY,

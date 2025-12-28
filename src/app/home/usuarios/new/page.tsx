@@ -10,18 +10,36 @@ import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { motion } from 'framer-motion'
 import { createUsuario } from '@/app/api/usuarios'
 import { useEmpresa } from '@/app/empresaContext'
+import { useCurrentUser } from '@/app/usuarioContext'
+import { useEffect } from 'react'
 
 function NewUsuario() {
   const [form] = Form.useForm()
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { empresaId } = useEmpresa()
+  const { isMaster, loading: userLoading } = useCurrentUser()
+
+  // Redirigir si no es master
+  useEffect(() => {
+    if (!userLoading && !isMaster) {
+      message.error('No tienes permisos para crear usuarios')
+      router.push('/home/usuarios')
+    }
+  }, [isMaster, userLoading, router])
 
   const handleBack = () => {
     router.push('/home/usuarios')
   }
 
   const handleSubmit = async (values: any) => {
+    // Validación adicional de seguridad
+    if (!isMaster) {
+      message.error('No tienes permisos para crear usuarios')
+      router.push('/home/usuarios')
+      return
+    }
+
     try {
       setIsLoading(true)
       await createUsuario({
@@ -41,6 +59,24 @@ function NewUsuario() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Mostrar loading mientras se verifica el rol
+  if (userLoading) {
+    return (
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <Card>
+          <Space direction='vertical' size='large'>
+            <div>Cargando...</div>
+          </Space>
+        </Card>
+      </div>
+    )
+  }
+
+  // No mostrar el formulario si no es master
+  if (!isMaster) {
+    return null
   }
 
   return (

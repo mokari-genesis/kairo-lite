@@ -4,6 +4,7 @@ import React from 'react'
 import { Button } from 'antd'
 import { EmpresaSelect } from './EmpresaSelect'
 import { useEmpresa } from '@/app/empresaContext'
+import { useCurrentUser } from '@/app/usuarioContext'
 
 interface PageHeaderProps {
   title: string
@@ -21,6 +22,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   showSucursalSelect = true,
 }) => {
   const { empresaId, empresa, setEmpresa } = useEmpresa()
+  const { isMaster, loading, rol } = useCurrentUser()
+
+  // Deshabilitar si:
+  // 1. No es master (cuando ya tenemos el rol cargado)
+  // 2. O si está cargando y no tenemos rol todavía (para evitar habilitar incorrectamente)
+  // Pero si tenemos rol desde sessionStorage, isMaster debería estar disponible inmediatamente
+  const shouldDisable = loading && !rol ? true : !isMaster
 
   return (
     <div
@@ -51,6 +59,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               }}
               placeholder='Selecciona una sucursal'
               labelValue={empresa ? `Sucursal: ${empresa.nombre}` : undefined}
+              disabled={shouldDisable}
             />
           )}
         </div>
