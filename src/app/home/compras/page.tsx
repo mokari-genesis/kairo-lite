@@ -82,14 +82,58 @@ function ComprasPage() {
         totalAnuladas: 0,
       }
     }
+
+    // Función helper para calcular total en VES
+    const calcularTotalVES = (
+      value: number,
+      record: CompraResponse
+    ): number => {
+      if (!monedas || !monedaVES || value <= 0 || !record.moneda_codigo) {
+        return 0
+      }
+
+      const monedaCompra = monedas.find(m => m.codigo === record.moneda_codigo)
+      if (!monedaCompra) return 0
+
+      if (monedaCompra.codigo === 'VES') {
+        return value
+      }
+
+      const monedaBase = obtenerMonedaBase(monedas)
+      if (monedaBase) {
+        // Convertir de moneda compra a base
+        const montoEnBase = convertirAMonedaBase(
+          value,
+          monedaCompra,
+          monedaBase
+        )
+        // Convertir de base a VES
+        if (monedaVES.id === monedaBase.id) {
+          return montoEnBase
+        } else {
+          const tasaVES = parseFloat(monedaVES.tasa_vs_base)
+          return montoEnBase * tasaVES
+        }
+      } else {
+        // Si no hay moneda base, usar conversión directa
+        const tasaOrigen = parseFloat(monedaCompra.tasa_vs_base)
+        const tasaVES = parseFloat(monedaVES.tasa_vs_base)
+        return (value * tasaVES) / tasaOrigen
+      }
+    }
+
     return compras.reduce(
       (acc, compra) => {
         acc.totalCompras += 1
-        acc.totalMonto += Number(compra.total)
+
+        // Convertir el total a VES antes de sumar
+        const totalVES = calcularTotalVES(Number(compra.total), compra)
+        acc.totalMonto += totalVES
+
         if (compra.tipo_pago === 'contado') {
-          acc.totalContado += Number(compra.total)
+          acc.totalContado += totalVES
         } else if (compra.tipo_pago === 'credito') {
-          acc.totalCredito += Number(compra.total)
+          acc.totalCredito += totalVES
         }
         if (compra.estado === 'anulada') {
           acc.totalAnuladas += 1
@@ -104,7 +148,7 @@ function ComprasPage() {
         totalAnuladas: 0,
       }
     )
-  }, [compras])
+  }, [compras, monedas, monedaVES])
 
   const handleFilterChange = (newFilters: Record<string, any>) => {
     // Convertir fechas a formato YYYY-MM-DD
@@ -276,7 +320,7 @@ function ComprasPage() {
                         marginLeft: '20px',
                       }}
                     >
-                      {formatCurrency('VES', totalVES)} (local)
+                      {formatCurrency('VES', totalVES)} (Moneda local)
                     </span>
                   )}
               </Space>
@@ -364,6 +408,7 @@ function ComprasPage() {
                 prefix={<DollarCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#52c41a' }}
+                formatter={value => formatCurrency('VES', Number(value))}
               />
             </Col>
             <Col xs={24} sm={12} md={6}>
@@ -373,6 +418,7 @@ function ComprasPage() {
                 prefix={<CheckCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#52c41a' }}
+                formatter={value => formatCurrency('VES', Number(value))}
               />
             </Col>
             <Col xs={24} sm={12} md={6}>
@@ -382,6 +428,7 @@ function ComprasPage() {
                 prefix={<DollarCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#1890ff' }}
+                formatter={value => formatCurrency('VES', Number(value))}
               />
             </Col>
           </Row>
@@ -397,6 +444,7 @@ function ComprasPage() {
             data={compras || []}
             loading={isLoading}
             rowKey='id'
+            showActions={false}
           />
         </Card>
       </motion.div>

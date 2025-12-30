@@ -1,6 +1,6 @@
 'use client'
 import '@ant-design/v5-patch-for-react-19'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -29,6 +29,7 @@ import { useUsuario } from '@/app/usuarioContext'
 import {
   formatCurrency,
   convertirAMonedaBase,
+  convertirDesdeMonedaBase,
   obtenerMonedaBase,
 } from '@/app/utils/currency'
 import { getMonedas, Moneda } from '@/app/api/monedas'
@@ -43,7 +44,8 @@ interface CompraDetail {
   producto_descripcion: string
   codigo: string
   stock?: number
-  precio_sugerido?: number
+  precio_sugerido?: number // Precio sugerido en VES (moneda local)
+  precio_sugerido_convertido?: number // Precio sugerido convertido a la moneda seleccionada
   key: number
 }
 
@@ -84,6 +86,37 @@ function NewCompra() {
     loadMonedas()
   }, [])
 
+  // Función para convertir de VES a la moneda seleccionada
+  const convertirVESAMonedaSeleccionada = useCallback(
+    (
+      montoVES: number,
+      monedaDestino: Moneda | null,
+      monedaVES: Moneda | null
+    ): number => {
+      if (!monedaDestino || !monedaVES || montoVES <= 0) {
+        return 0
+      }
+
+      if (monedaDestino.codigo === 'VES') {
+        return montoVES
+      }
+
+      // Convertir usando la fórmula: tasa = tasa_ves / tasa_moneda_destino
+      // monto_convertido = monto_ves * tasa
+      const tasaVES = parseFloat(monedaVES.tasa_vs_base)
+      const tasaDestino = parseFloat(monedaDestino.tasa_vs_base)
+
+      if (!tasaVES || !tasaDestino || tasaVES <= 0 || tasaDestino <= 0) {
+        return 0
+      }
+
+      const tasa = tasaVES / tasaDestino
+      const decimales = monedaDestino.decimales || 2
+      return Number((montoVES * tasa).toFixed(decimales))
+    },
+    []
+  )
+
   // Actualizar moneda seleccionada cuando cambia en el formulario
   useEffect(() => {
     const monedaId = form.getFieldValue('moneda_id')
@@ -95,6 +128,30 @@ function NewCompra() {
     }
   }, [form.getFieldValue('moneda_id'), monedas])
 
+  // Recalcular precios convertidos cuando cambia la moneda seleccionada
+  // Solo actualiza precio_sugerido_convertido, NO modifica costo_unitario
+  useEffect(() => {
+    if (monedaSeleccionada && monedaVES && details.length > 0) {
+      const newDetails = details.map(detail => {
+        if (detail.precio_sugerido && detail.precio_sugerido > 0) {
+          const precioConvertido = convertirVESAMonedaSeleccionada(
+            detail.precio_sugerido,
+            monedaSeleccionada,
+            monedaVES
+          )
+          return {
+            ...detail,
+            precio_sugerido_convertido: precioConvertido,
+            // NO modificar costo_unitario aquí - mantener el valor que el usuario editó
+          }
+        }
+        return detail
+      })
+      setDetails(newDetails)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monedaSeleccionada, monedaVES, convertirVESAMonedaSeleccionada])
+
   useEffect(() => {
     form.setFieldsValue({
       fecha: dayjs(),
@@ -102,40 +159,32 @@ function NewCompra() {
     })
   }, [empresaId, form])
 
-  // Agregar un producto inicial vacío al montar el componente
-  useEffect(() => {
-    if (details.length === 0) {
-      setDetails([
-        {
-          key: 0,
-          producto_id: 0,
-          producto_descripcion: '',
-          codigo: '',
-          cantidad: 1,
-          costo_unitario: 0,
-          subtotal: 0,
-          stock: undefined,
-          precio_sugerido: undefined,
-        },
-      ])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // No agregar producto inicial automáticamente - el usuario debe seleccionar proveedor y moneda primero
 
   const handleProductChange = async (
     value: number,
     product: any,
     index: number
   ) => {
+    // Check if the product is already in the details array
+    const isProductAlreadyAdded = details.some(
+      (detail, i) => detail.producto_id === value && i !== index
+    )
+
+    if (isProductAlreadyAdded) {
+      message.error('Este producto ya ha sido agregado a la compra')
+      return
+    }
+
     const newDetails = [...details]
 
     // Obtener stock actual del producto
     let currentStock = 0
-    let precioSugerido = 0
+    let precioSugeridoVES = 0 // Precio sugerido siempre está en VES
 
     if (product) {
       currentStock = product.stock || 0
-      precioSugerido = product.precio || 0
+      precioSugeridoVES = product.precio || 0 // Este precio ya está en VES
     } else {
       // Si no viene en el product, obtenerlo del backend
       try {
@@ -147,19 +196,32 @@ function NewCompra() {
         const selectedProduct = products.find(p => Number(p.id) === value)
         if (selectedProduct) {
           currentStock = selectedProduct.stock || 0
-          precioSugerido = selectedProduct.precio || 0
+          precioSugeridoVES = selectedProduct.precio || 0 // Este precio ya está en VES
         }
       } catch (error) {
         console.error('Error loading product details:', error)
       }
     }
 
+    // Convertir precio sugerido (VES) a la moneda seleccionada
+    const precioSugeridoConvertido = convertirVESAMonedaSeleccionada(
+      precioSugeridoVES,
+      monedaSeleccionada,
+      monedaVES
+    )
+
     const cantidad = newDetails[index].cantidad || 1
-    // Si no hay costo_unitario establecido, usar el precio sugerido
+    // Auto-rellenar costo_unitario con el precio sugerido convertido SOLO si:
+    // 1. El producto es nuevo (producto_id cambió de 0 a un valor)
+    // 2. O si el costo_unitario actual es 0 o no está definido
+    // NO sobrescribir si el usuario ya editó el costo_unitario
+    const productoAnterior = newDetails[index].producto_id
+    const costoUnitarioActual = newDetails[index].costo_unitario || 0
+    const esProductoNuevo = productoAnterior === 0 || productoAnterior !== value
     const costoUnitario =
-      newDetails[index].costo_unitario > 0
-        ? newDetails[index].costo_unitario
-        : precioSugerido || 0
+      !esProductoNuevo && costoUnitarioActual > 0
+        ? costoUnitarioActual // Mantener el valor editado por el usuario
+        : precioSugeridoConvertido || 0 // Solo usar sugerido si es producto nuevo o costo es 0
 
     newDetails[index] = {
       ...newDetails[index],
@@ -167,7 +229,8 @@ function NewCompra() {
       producto_descripcion: product?.descripcion || '',
       codigo: product?.codigo || '',
       stock: currentStock,
-      precio_sugerido: precioSugerido,
+      precio_sugerido: precioSugeridoVES, // Precio en VES
+      precio_sugerido_convertido: precioSugeridoConvertido, // Precio convertido a moneda seleccionada
       costo_unitario: costoUnitario,
       subtotal: Number((costoUnitario * cantidad).toFixed(2)),
     }
@@ -209,6 +272,20 @@ function NewCompra() {
   }
 
   const handleAddDetail = () => {
+    // Validar que proveedor y moneda estén seleccionados
+    const proveedorId = form.getFieldValue('proveedor_id')
+    const monedaId = form.getFieldValue('moneda_id')
+
+    if (!proveedorId) {
+      message.error('Debe seleccionar un proveedor antes de agregar productos')
+      return
+    }
+
+    if (!monedaId) {
+      message.error('Debe seleccionar una moneda antes de agregar productos')
+      return
+    }
+
     if (!canAddNewProduct()) {
       message.error(
         'Por favor complete todos los campos del producto actual antes de agregar uno nuevo'
@@ -227,6 +304,7 @@ function NewCompra() {
         subtotal: 0,
         stock: undefined,
         precio_sugerido: undefined,
+        precio_sugerido_convertido: undefined,
       },
     ])
   }
@@ -333,15 +411,30 @@ function NewCompra() {
       ),
     },
     {
-      title: 'Precio Sugerido',
+      title: 'Precio Sugerido (Local)',
       dataIndex: 'precio_sugerido',
-      width: 140,
+      width: 160,
       align: 'right' as const,
       render: (value: number | undefined) => {
-        const codigoMoneda = monedaSeleccionada?.codigo || 'USD'
         return (
           <span style={{ color: '#1890ff', fontWeight: 500 }}>
-            {value !== undefined ? formatCurrency(codigoMoneda, value) : '-'}
+            {value !== undefined ? formatCurrency('VES', value) : '-'}
+          </span>
+        )
+      },
+    },
+    {
+      title: `Precio Sugerido (${monedaSeleccionada?.codigo || 'Moneda'})`,
+      dataIndex: 'precio_sugerido_convertido',
+      width: 180,
+      align: 'right' as const,
+      render: (value: number | undefined, record: CompraDetail) => {
+        const codigoMoneda = monedaSeleccionada?.codigo || 'USD'
+        return (
+          <span style={{ color: '#52c41a', fontWeight: 500 }}>
+            {value !== undefined && value > 0
+              ? formatCurrency(codigoMoneda, value)
+              : '-'}
           </span>
         )
       },
@@ -376,27 +469,38 @@ function NewCompra() {
               return `${simbolo} ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
             }}
             parser={value => {
+              if (!value) return ''
               const simbolo = monedaSeleccionada?.simbolo || '$'
-              return value!.replace(
-                new RegExp(`\\${simbolo}\\s?|(,*)`, 'g'),
+              // Escapar caracteres especiales del símbolo para la expresión regular
+              const simboloEscapado = simbolo.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+              )
+              // Remover el símbolo y las comas, mantener solo números y punto decimal
+              const cleaned = value.replace(
+                new RegExp(`${simboloEscapado}\\s?|,`, 'g'),
                 ''
               )
+              return cleaned || ''
             }}
           />
-          {record.precio_sugerido !== undefined &&
-            record.precio_sugerido > 0 &&
-            record.costo_unitario !== record.precio_sugerido && (
+          {record.precio_sugerido_convertido !== undefined &&
+            record.precio_sugerido_convertido > 0 &&
+            record.costo_unitario !== record.precio_sugerido_convertido && (
               <Button
                 type='link'
                 size='small'
                 onClick={() => {
                   const newDetails = [...details]
                   const cantidad = newDetails[index].cantidad || 1
-                  const precioSugerido = record.precio_sugerido || 0
+                  const precioSugeridoConvertido =
+                    record.precio_sugerido_convertido || 0
                   newDetails[index] = {
                     ...newDetails[index],
-                    costo_unitario: precioSugerido,
-                    subtotal: Number((precioSugerido * cantidad).toFixed(2)),
+                    costo_unitario: precioSugeridoConvertido,
+                    subtotal: Number(
+                      (precioSugeridoConvertido * cantidad).toFixed(2)
+                    ),
                   }
                   setDetails(newDetails)
                 }}
@@ -405,7 +509,7 @@ function NewCompra() {
                 Usar sugerido (
                 {formatCurrency(
                   monedaSeleccionada?.codigo || 'USD',
-                  record.precio_sugerido
+                  record.precio_sugerido_convertido
                 )}
                 )
               </Button>
@@ -496,6 +600,7 @@ function NewCompra() {
       <PageHeader
         title='Nueva Compra'
         subtitle='Registrar una nueva compra de productos'
+        showNewButton={false}
       />
 
       <motion.div
@@ -649,6 +754,10 @@ function NewCompra() {
                 type='dashed'
                 icon={<PlusOutlined />}
                 onClick={handleAddDetail}
+                disabled={
+                  !form.getFieldValue('proveedor_id') ||
+                  !form.getFieldValue('moneda_id')
+                }
               >
                 Agregar Producto
               </Button>

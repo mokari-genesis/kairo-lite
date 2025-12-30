@@ -33,6 +33,7 @@ import {
   obtenerMonedaBase,
   convertirAMonedaBase,
   convertirDesdeMonedaBase,
+  formatCurrency,
 } from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
 import { useUsuario } from '@/app/usuarioContext'
@@ -650,10 +651,23 @@ export default function NewPurchase() {
         <div>
           <InputNumber
             min={0}
+            step={0.01}
             value={record.precio_unitario}
             onChange={value => handlePriceChange(value, index)}
             disabled={record.precio_no_encontrado}
             status={record.precio_realmente_no_encontrado ? 'error' : undefined}
+            formatter={value => {
+              const simbolo = 'Bs.'
+              const numValue = Number(value || 0)
+              return `${simbolo} ${numValue.toFixed(2)}`.replace(
+                /\B(?=(\d{3})+(?!\d))/g,
+                ','
+              )
+            }}
+            parser={value => {
+              return value!.replace(/Bs\.\s?|(,*)/g, '')
+            }}
+            style={{ width: '100%' }}
           />
           {record.precio_realmente_no_encontrado && (
             <div
@@ -677,7 +691,12 @@ export default function NewPurchase() {
     {
       title: 'Subtotal',
       dataIndex: 'subtotal',
-      render: (value: number) => `Bs. ${value.toFixed(2)}`,
+      align: 'right' as const,
+      render: (value: number) => (
+        <span style={{ fontWeight: 'bold' }}>
+          {formatCurrency('VES', value)}
+        </span>
+      ),
     },
     {
       title: 'Acciones',
@@ -812,10 +831,13 @@ export default function NewPurchase() {
 
             <div style={{ textAlign: 'right' }}>
               <h3>
-                Total: Bs.{' '}
-                {details
-                  .reduce((acc, curr) => acc + curr.subtotal, 0)
-                  .toFixed(2)}
+                Total:{' '}
+                <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+                  {formatCurrency(
+                    'VES',
+                    details.reduce((acc, curr) => acc + curr.subtotal, 0)
+                  )}
+                </span>
               </h3>
             </div>
 
