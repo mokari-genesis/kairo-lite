@@ -155,7 +155,7 @@ function MetodosPagoPage() {
           <Col span={24}>
             <Space style={{ marginBottom: '16px' }}>
               <Button onClick={handleExportExcel} type='primary'>
-                Exportar Excel
+                📊 Exportar Excel
               </Button>
             </Space>
           </Col>

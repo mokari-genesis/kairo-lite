@@ -14,6 +14,9 @@ import { useCompras } from '../../hooks/useHooks'
 import { QueryKey, queryClient } from '../../utils/query'
 import { anularCompra, CompraResponse } from '../../api/compras'
 import { useEmpresa } from '../../empresaContext'
+import { useUsuario } from '../../usuarioContext'
+import { BulkUploadModalCompras } from '../../components/BulkUploadModalCompras'
+import { TemplateInfoModal } from '../../components/TemplateInfoModal'
 import {
   Button,
   Card,
@@ -34,6 +37,7 @@ import {
   ExportOutlined,
   EyeOutlined,
   StopOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
 import { motion } from 'framer-motion'
 import {
@@ -48,10 +52,20 @@ import dayjs from 'dayjs'
 
 function ComprasPage() {
   const { empresaId } = useEmpresa()
+  const { usuarioId } = useUsuario()
   const [filters, setFilters] = useState<Record<string, any>>({})
   const router = useRouter()
   const [monedas, setMonedas] = useState<Moneda[]>([])
   const [monedaVES, setMonedaVES] = useState<Moneda | null>(null)
+  const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false)
+  const [summaryModalVisible, setSummaryModalVisible] = useState(false)
+  const [summaryData, setSummaryData] = useState<{
+    successCount: number
+    totalRows: number
+    errors: string[]
+  } | null>(null)
+  const [templateInfoModalVisible, setTemplateInfoModalVisible] =
+    useState(false)
 
   const { data: compras, isLoading } = useCompras(filters)
 
@@ -242,7 +256,6 @@ function ComprasPage() {
       Moneda: compra.moneda_codigo,
       'Tipo de Pago': compra.tipo_pago || 'No especificado',
       Estado: compra.estado,
-      'Total Items': compra.total_items || 0,
       'Total Productos': compra.total_productos || 0,
       Comentario: compra.comentario || 'N/A',
     }))
@@ -252,6 +265,19 @@ function ComprasPage() {
     XLSX.utils.book_append_sheet(wb, ws, 'Compras')
     XLSX.writeFile(wb, `compras_${dayjs().format('YYYY-MM-DD')}.xlsx`)
     message.success('Archivo exportado exitosamente')
+  }
+
+  const handleTemplateDownloaded = () => {
+    setTemplateInfoModalVisible(true)
+  }
+
+  const handleProcessComplete = (data: {
+    successCount: number
+    totalRows: number
+    errors: string[]
+  }) => {
+    setSummaryData(data)
+    setSummaryModalVisible(true)
   }
 
   const columnsWithActions = useMemo(() => {
@@ -377,13 +403,20 @@ function ComprasPage() {
           textAlign: 'right',
         }}
       >
-        <Button
-          icon={<ExportOutlined />}
-          onClick={handleExportExcel}
-          disabled={!compras || compras.length === 0}
-        >
-          Exportar Excel
-        </Button>
+        <Space>
+          <Button
+            onClick={() => setBulkUploadModalVisible(true)}
+            type='default'
+          >
+            📦 Carga Masiva
+          </Button>
+          <Button
+            onClick={handleExportExcel}
+            disabled={!compras || compras.length === 0}
+          >
+            📊Exportar Excel
+          </Button>
+        </Space>
       </div>
 
       <motion.div
@@ -448,6 +481,126 @@ function ComprasPage() {
           />
         </Card>
       </motion.div>
+
+      {/* Modal de Carga Masiva */}
+      <BulkUploadModalCompras
+        visible={bulkUploadModalVisible}
+        onClose={() => setBulkUploadModalVisible(false)}
+        empresaId={empresaId}
+        usuarioId={usuarioId}
+        onTemplateDownloaded={handleTemplateDownloaded}
+        onProcessComplete={handleProcessComplete}
+      />
+
+      {/* Modal de Información de Plantilla */}
+      <TemplateInfoModal
+        visible={templateInfoModalVisible}
+        onClose={() => setTemplateInfoModalVisible(false)}
+        title='Información sobre la Plantilla de Compras'
+        content={
+          <div>
+            <p>
+              La plantilla de compras incluye las siguientes hojas de
+              referencia:
+            </p>
+            <ul>
+              <li>
+                <strong>Compras:</strong> Hoja principal donde debe ingresar los
+                datos de las compras. Las filas con el mismo NIT Proveedor,
+                Fecha, Moneda y Tipo Pago se agruparán en una sola compra.
+              </li>
+              <li>
+                <strong>Tipos de Pago:</strong> Lista de tipos de pago
+                permitidos (contado, credito).
+              </li>
+              <li>
+                <strong>Proveedores:</strong> Lista de proveedores disponibles
+                con sus NITs. Use el NIT en la hoja Compras.
+              </li>
+              <li>
+                <strong>Productos:</strong> Lista de productos disponibles con
+                sus códigos. Use el código en la hoja Compras.
+              </li>
+              <li>
+                <strong>Monedas:</strong> Lista de monedas disponibles con sus
+                códigos. Use el código en la hoja Compras.
+              </li>
+            </ul>
+            <p>
+              <strong>Nota importante:</strong> Si el Tipo Pago es "credito",
+              debe especificar la Fecha Vencimiento. Las filas con el mismo NIT
+              Proveedor, Fecha, Moneda y Tipo Pago se agruparán automáticamente
+              en una sola compra.
+            </p>
+          </div>
+        }
+      />
+
+      {/* Modal de Resumen */}
+      <Modal
+        title='Resumen de Carga Masiva'
+        open={summaryModalVisible}
+        onOk={() => {
+          setSummaryModalVisible(false)
+          setSummaryData(null)
+        }}
+        onCancel={() => {
+          setSummaryModalVisible(false)
+          setSummaryData(null)
+        }}
+        footer={[
+          <Button
+            key='ok'
+            type='primary'
+            onClick={() => {
+              setSummaryModalVisible(false)
+              setSummaryData(null)
+            }}
+          >
+            Aceptar
+          </Button>,
+        ]}
+        width={600}
+      >
+        {summaryData && (
+          <div>
+            <p>
+              <strong>Total de filas procesadas:</strong>{' '}
+              {summaryData.totalRows}
+            </p>
+            <p>
+              <strong>Compras creadas exitosamente:</strong>{' '}
+              {summaryData.successCount}
+            </p>
+            {summaryData.errors.length > 0 && (
+              <div>
+                <p>
+                  <strong>Errores encontrados:</strong>{' '}
+                  {summaryData.errors.length}
+                </p>
+                <div
+                  style={{
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    marginTop: '10px',
+                    padding: '10px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {summaryData.errors.map((error, index) => (
+                      <li key={index} style={{ marginBottom: '5px' }}>
+                        {error}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

@@ -328,9 +328,7 @@ export default function CompraDetailPage() {
                   <strong>Total de Productos:</strong>{' '}
                   {compra.detalles?.length || 0}
                 </div>
-                <div>
-                  <strong>Total de Items:</strong> {compra.total_items || 0}
-                </div>
+
                 <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
                   <DollarCircleOutlined style={{ color: '#52c41a' }} /> Total:{' '}
                   <span style={{ color: '#52c41a' }}>
