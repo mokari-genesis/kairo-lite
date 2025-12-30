@@ -31,6 +31,7 @@ import {
   convertirAMonedaBase,
   obtenerMonedaBase,
   formatearTasa,
+  convertirEntreMonedas,
 } from '@/app/utils/currency'
 import dayjs from 'dayjs'
 
@@ -58,6 +59,7 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     null
   )
   const [montoConvertido, setMontoConvertido] = useState<number | undefined>()
+  const [tasaConversion, setTasaConversion] = useState<number | undefined>()
   const [showForm, setShowForm] = useState(false)
 
   // Cargar cuenta y monedas al abrir el modal
@@ -99,17 +101,33 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
 
   // Calcular conversión cuando cambia el monto o la moneda
   useEffect(() => {
-    if (monto && monedaSeleccionada && monedaBase && cuenta) {
-      const convertido = convertirAMonedaBase(
-        monto,
-        monedaSeleccionada,
-        monedaBase
-      )
-      setMontoConvertido(convertido)
+    if (monto && monedaSeleccionada && cuenta) {
+      // Obtener la moneda de la cuenta
+      const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
+      if (monedaCuenta && monedaSeleccionada.id !== monedaCuenta.id) {
+        try {
+          // Calcular conversión usando la función de conversión directa
+          const { montoConvertido: convertido, tasa } = convertirEntreMonedas(
+            Number(monto),
+            monedaSeleccionada,
+            monedaCuenta
+          )
+          setMontoConvertido(convertido)
+          setTasaConversion(tasa)
+        } catch (error) {
+          console.error('Error calculando conversión:', error)
+          setMontoConvertido(undefined)
+          setTasaConversion(undefined)
+        }
+      } else {
+        setMontoConvertido(monto)
+        setTasaConversion(1.0)
+      }
     } else {
       setMontoConvertido(undefined)
+      setTasaConversion(undefined)
     }
-  }, [monto, monedaSeleccionada, monedaBase, cuenta])
+  }, [monto, monedaSeleccionada, cuenta, monedas])
 
   const saldoPendiente = cuenta ? Number(cuenta.saldo) : 0
 
@@ -118,6 +136,7 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     form.resetFields()
     setMonto(undefined)
     setMontoConvertido(undefined)
+    setTasaConversion(undefined)
     setMonedaSeleccionada(null)
   }
 
@@ -126,6 +145,7 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     form.resetFields()
     setMonto(undefined)
     setMontoConvertido(undefined)
+    setTasaConversion(undefined)
     setMonedaSeleccionada(null)
   }
 
@@ -300,6 +320,7 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
   }
 
   const abonos = cuenta.abonos || []
+  const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
 
   return (
     <Modal
@@ -407,10 +428,22 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                   },
                   {
                     validator: (_, value) => {
-                      if (value && value > saldoPendiente) {
+                      if (!value) return Promise.resolve()
+                      
+                      // Si la moneda es diferente, validar usando el monto convertido
+                      // Si no hay conversión (misma moneda), usar el valor directamente
+                      const montoAValidar =
+                        montoConvertido !== undefined && monedaSeleccionada
+                          ? montoConvertido
+                          : value
+                      
+                      if (montoAValidar > saldoPendiente) {
                         return Promise.reject(
                           new Error(
-                            `El monto no puede exceder el saldo pendiente (${formatCurrency(
+                            `El monto convertido (${formatCurrency(
+                              cuenta.moneda_codigo,
+                              montoAValidar
+                            )}) excede el saldo pendiente (${formatCurrency(
                               cuenta.moneda_codigo,
                               saldoPendiente
                             )})`
@@ -425,7 +458,6 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                 <InputNumber
                   style={{ width: '100%' }}
                   min={0.01}
-                  max={saldoPendiente}
                   step={0.01}
                   precision={2}
                   onChange={handleMontoChange}
@@ -446,34 +478,107 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                 />
               </Form.Item>
 
-              {montoConvertido &&
+              {montoConvertido !== undefined &&
                 monedaSeleccionada &&
-                monedaBase &&
-                monedaSeleccionada.id !== monedaBase.id && (
+                monedaCuenta &&
+                monedaSeleccionada.id !== monedaCuenta.id &&
+                monto &&
+                tasaConversion !== undefined && (
                   <div
                     style={{
-                      padding: '12px',
+                      padding: '16px',
                       backgroundColor: '#e6f7ff',
                       borderRadius: '6px',
                       border: '1px solid #91d5ff',
                       marginBottom: '16px',
                     }}
                   >
-                    <div style={{ fontSize: '12px', color: '#1890ff' }}>
-                      <strong>Conversión:</strong>{' '}
-                      {formatCurrency(monedaSeleccionada.codigo, monto)} ={' '}
-                      {formatCurrency(monedaBase.codigo, montoConvertido)}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        color: '#8c8c8c',
-                        marginTop: '2px',
-                      }}
-                    >
-                      Tasa: 1 {monedaSeleccionada.codigo} ={' '}
-                      {formatearTasa(monedaSeleccionada.tasa_vs_base)}{' '}
-                      {monedaBase.codigo}
+                    <Space direction='vertical' size='small' style={{ width: '100%' }}>
+                      <div style={{ fontSize: '14px', color: '#1890ff', fontWeight: 'bold' }}>
+                        💱 Conversión de Moneda
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                        <strong>Monto ingresado:</strong>{' '}
+                        {formatCurrency(monedaSeleccionada.codigo, monto)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#595959',
+                          backgroundColor: '#f0f0f0',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          marginTop: '4px',
+                        }}
+                      >
+                        <div style={{ marginBottom: '4px' }}>
+                          <strong>Cálculo de la tasa:</strong>
+                        </div>
+                        <div style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                          Tasa = tasa_vs_base({monedaSeleccionada.codigo}) / tasa_vs_base({monedaCuenta.codigo})
+                        </div>
+                        <div style={{ fontSize: '11px', fontFamily: 'monospace', marginTop: '2px' }}>
+                          Tasa = {Number(monedaSeleccionada.tasa_vs_base).toFixed(6)} / {Number(monedaCuenta.tasa_vs_base).toFixed(6)} = {tasaConversion.toFixed(6)}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                        <strong>Tasa de conversión:</strong> 1{' '}
+                        {monedaSeleccionada.codigo} = {tasaConversion.toFixed(6)}{' '}
+                        {monedaCuenta.codigo}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '14px',
+                          color: '#0050b3',
+                          fontWeight: 'bold',
+                          paddingTop: '4px',
+                          borderTop: '1px solid #91d5ff',
+                        }}
+                      >
+                        <strong>Equivale a:</strong>{' '}
+                        {formatCurrency(monedaCuenta.codigo, montoConvertido)} en{' '}
+                        {monedaCuenta.codigo}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#8c8c8c',
+                          fontStyle: 'italic',
+                          marginTop: '4px',
+                        }}
+                      >
+                        Saldo pendiente: {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
+                        {montoConvertido <= saldoPendiente ? (
+                          <span style={{ color: '#52c41a', marginLeft: '8px' }}>
+                            ✓ Monto válido
+                          </span>
+                        ) : (
+                          <span style={{ color: '#ff4d4f', marginLeft: '8px' }}>
+                            ⚠ Excede el saldo
+                          </span>
+                        )}
+                      </div>
+                    </Space>
+                  </div>
+                )}
+              
+              {montoConvertido !== undefined &&
+                monedaSeleccionada &&
+                monedaCuenta &&
+                monedaSeleccionada.id === monedaCuenta.id &&
+                monto && (
+                  <div
+                    style={{
+                      padding: '12px',
+                      backgroundColor: '#f6ffed',
+                      borderRadius: '6px',
+                      border: '1px solid #b7eb8f',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', color: '#52c41a' }}>
+                      <strong>Misma moneda:</strong> No se requiere conversión. Saldo pendiente:{' '}
+                      {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
                     </div>
                   </div>
                 )}
