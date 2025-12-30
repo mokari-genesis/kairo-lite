@@ -47,6 +47,9 @@ import {
 } from '@ant-design/icons'
 import { formatCurrency } from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
+import { useUsuario } from '@/app/usuarioContext'
+import { BulkUploadModal } from '@/app/components/BulkUploadModal'
+import { TemplateInfoModal } from '@/app/components/TemplateInfoModal'
 
 function Home() {
   const [api, contextHolder] = notification.useNotification()
@@ -60,6 +63,16 @@ function Home() {
 
   const router = useRouter()
   const { empresaId } = useEmpresa()
+  const { usuarioId } = useUsuario()
+  const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false)
+  const [summaryModalVisible, setSummaryModalVisible] = useState(false)
+  const [summaryData, setSummaryData] = useState<{
+    successCount: number
+    totalRows: number
+    errors: string[]
+  } | null>(null)
+  const [templateInfoModalVisible, setTemplateInfoModalVisible] =
+    useState(false)
 
   const handleNewClick = () => {
     router.push('/home/products/new')
@@ -262,13 +275,21 @@ function Home() {
                 textAlign: 'right',
               }}
             >
-              <Button
-                type='primary'
-                onClick={handleExportExcel}
-                icon={<span>📊</span>}
-              >
-                Exportar a Excel
-              </Button>
+              <Space>
+                <Button
+                  onClick={() => setBulkUploadModalVisible(true)}
+                  type='default'
+                >
+                  📦 Carga Masiva
+                </Button>
+                <Button
+                  type='primary'
+                  onClick={handleExportExcel}
+                  icon={<span>📊</span>}
+                >
+                  Exportar a Excel
+                </Button>
+              </Space>
             </div>
           </div>
 
@@ -480,6 +501,105 @@ function Home() {
               onClose={() => setPreciosModalVisible(false)}
               onProductUpdate={handleProductUpdate}
             />
+          )}
+        </Modal>
+
+        {/* Modal de Carga Masiva */}
+        <BulkUploadModal
+          visible={bulkUploadModalVisible}
+          onClose={() => setBulkUploadModalVisible(false)}
+          empresaId={empresaId}
+          usuarioId={usuarioId}
+          categories={[
+            { value: 'juguete', label: 'Juguete' },
+            { value: 'ropa', label: 'Ropa' },
+            { value: 'accesorio', label: 'Accesorio' },
+            { value: 'artículo_pinata', label: 'Artículo piñata' },
+            { value: 'utensilio_cocina', label: 'Utensilio de cocina' },
+            { value: 'material_educativo', label: 'Material educativo' },
+            { value: 'material_didactico', label: 'Material didáctico' },
+            { value: 'otros', label: 'Otros' },
+          ]}
+          estados={[
+            { value: 'activo', label: 'Activo' },
+            { value: 'inactivo', label: 'Inactivo' },
+          ]}
+          onTemplateDownloaded={() => setTemplateInfoModalVisible(true)}
+          onProcessComplete={data => {
+            setSummaryData(data)
+            setSummaryModalVisible(true)
+          }}
+        />
+
+        {/* Modal de Información de Plantilla */}
+        <TemplateInfoModal
+          visible={templateInfoModalVisible}
+          onClose={() => setTemplateInfoModalVisible(false)}
+        />
+
+        {/* Modal de Resumen */}
+        <Modal
+          title='Resumen de Carga Masiva'
+          open={summaryModalVisible}
+          onOk={() => {
+            setSummaryModalVisible(false)
+            setSummaryData(null)
+          }}
+          onCancel={() => {
+            setSummaryModalVisible(false)
+            setSummaryData(null)
+          }}
+          footer={[
+            <Button
+              key='ok'
+              type='primary'
+              onClick={() => {
+                setSummaryModalVisible(false)
+                setSummaryData(null)
+              }}
+            >
+              Aceptar
+            </Button>,
+          ]}
+          width={600}
+        >
+          {summaryData && (
+            <div>
+              <p>
+                <strong>Total de filas procesadas:</strong>{' '}
+                {summaryData.totalRows}
+              </p>
+              <p>
+                <strong>Productos creados exitosamente:</strong>{' '}
+                {summaryData.successCount}
+              </p>
+              {summaryData.errors.length > 0 && (
+                <div>
+                  <p>
+                    <strong>Errores encontrados:</strong>{' '}
+                    {summaryData.errors.length}
+                  </p>
+                  <div
+                    style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      marginTop: '10px',
+                      padding: '10px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                      {summaryData.errors.map((error, index) => (
+                        <li key={index} style={{ marginBottom: '5px' }}>
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </Modal>
       </Card>
