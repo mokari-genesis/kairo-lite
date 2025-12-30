@@ -43,6 +43,9 @@ const pathToMenuKey: Record<string, string> = {
   '/home/saleOrders/edit': '4-1',
   '/home/cuentasPorCobrar': '4-2',
   '/home/cuentasPorPagar': '4-3',
+  '/home/compras': '4-4',
+  '/home/compras/new': '4-4',
+  '/home/compras/[id]': '4-4',
 
   '/home/stock': '5',
   '/home/stock/new': '5',
@@ -154,6 +157,15 @@ export default function AppLayout({ children }: any) {
           onClick: () => {
             setSelectedKey('4-3')
             router.push('/home/cuentasPorPagar')
+          },
+        },
+        {
+          key: '4-4',
+          label: 'Compras',
+          icon: React.createElement(ShopOutlined),
+          onClick: () => {
+            setSelectedKey('4-4')
+            router.push('/home/compras')
           },
         },
       ],
