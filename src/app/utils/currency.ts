@@ -186,3 +186,43 @@ export const formatearTasa = (tasa: string | number): string => {
   const tasaNumerica = Number(tasa)
   return tasaNumerica.toFixed(2)
 }
+
+/**
+ * Convierte un monto de una moneda a otra directamente usando tasa_vs_base
+ * @param monto - Monto a convertir
+ * @param monedaOrigen - Moneda de origen
+ * @param monedaDestino - Moneda de destino
+ * @returns Objeto con el monto convertido y la tasa de conversión
+ */
+export const convertirEntreMonedas = (
+  monto: number,
+  monedaOrigen: Moneda,
+  monedaDestino: Moneda
+): { montoConvertido: number; tasa: number } => {
+  if (monedaOrigen.id === monedaDestino.id) {
+    return {
+      montoConvertido: Number(monto.toFixed(monedaDestino.decimales || 2)),
+      tasa: 1.0,
+    }
+  }
+
+  const tasaFrom = Number(monedaOrigen.tasa_vs_base || 1)
+  const tasaTo = Number(monedaDestino.tasa_vs_base || 1)
+
+  if (tasaFrom <= 0 || tasaTo <= 0) {
+    throw new Error(
+      'Falta tasa_vs_base válida en monedas para convertir el monto'
+    )
+  }
+
+  // La tasa es: tasa_from / tasa_to
+  // Ejemplo: si pago en USD (tasa=1) y CxP está en GTQ (tasa=7.8)
+  // tasa = 1 / 7.8 = 0.1282
+  // monto_en_GTQ = monto_USD * 0.1282
+  const tasa = tasaFrom / tasaTo
+  const montoConvertido = Number(
+    (monto * tasa).toFixed(monedaDestino.decimales || 2)
+  )
+
+  return { montoConvertido, tasa }
+}

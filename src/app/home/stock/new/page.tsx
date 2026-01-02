@@ -15,7 +15,6 @@ import { useUsuario } from '@/app/usuarioContext'
 const { TextArea } = Input
 
 const movementTypes = [
-  { value: 'entrada', label: 'Entrada' },
   { value: 'salida', label: 'Salida' },
   { value: 'ajuste', label: 'Ajuste (Re-stock)' },
 ]

@@ -18,8 +18,6 @@ import { createProduct } from '@/app/api/products'
 import { PageHeader } from '@/app/components/PageHeader'
 import { SupplierSelect } from '@/app/components/SupplierSelect'
 import { ProductoPreciosManager } from '@/app/components/ProductoPreciosManager'
-import { TemplateInfoModal } from '@/app/components/TemplateInfoModal'
-import { BulkUploadModal } from '@/app/components/BulkUploadModal'
 import { createProductoPrecio } from '@/app/api/productos-precios'
 import { useState } from 'react'
 import { queryClient, QueryKey } from '@/app/utils/query'
@@ -54,15 +52,6 @@ export default function NewProduct() {
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [createdProduct, setCreatedProduct] = useState<any>(null)
-  const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false)
-  const [summaryModalVisible, setSummaryModalVisible] = useState(false)
-  const [summaryData, setSummaryData] = useState<{
-    successCount: number
-    totalRows: number
-    errors: string[]
-  } | null>(null)
-  const [templateInfoModalVisible, setTemplateInfoModalVisible] =
-    useState(false)
   const { empresaId, empresa } = useEmpresa()
   const { usuarioId } = useUsuario()
 
@@ -173,21 +162,6 @@ export default function NewProduct() {
     }
   }
 
-  // Handler para cuando se descarga la plantilla
-  const handleTemplateDownloaded = () => {
-    setTemplateInfoModalVisible(true)
-  }
-
-  // Handler para cuando se completa el procesamiento
-  const handleProcessComplete = (data: {
-    successCount: number
-    totalRows: number
-    errors: string[]
-  }) => {
-    setSummaryData(data)
-    setSummaryModalVisible(true)
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -208,23 +182,6 @@ export default function NewProduct() {
           onNewClick={() => router.back()}
           newButtonText='Volver'
         />
-
-        {currentStep === 0 && (
-          <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-            <Button
-              type='default'
-              size='large'
-              onClick={() => setBulkUploadModalVisible(true)}
-              style={{
-                marginBottom: '16px',
-                backgroundColor: '#f0f0f0',
-                borderColor: '#d9d9d9',
-              }}
-            >
-              📦 Carga Masiva
-            </Button>
-          </div>
-        )}
 
         <Steps
           current={currentStep}
@@ -379,103 +336,6 @@ export default function NewProduct() {
             </div>
           </div>
         )}
-
-        {/* Modal de Carga Masiva */}
-        <BulkUploadModal
-          visible={bulkUploadModalVisible}
-          onClose={() => setBulkUploadModalVisible(false)}
-          empresaId={empresaId}
-          usuarioId={usuarioId}
-          categories={categories}
-          estados={estados}
-          onTemplateDownloaded={handleTemplateDownloaded}
-          onProcessComplete={handleProcessComplete}
-        />
-
-        {/* Modal de Resumen */}
-        <Modal
-          title={
-            <Title level={4} style={{ margin: 0 }}>
-              Resumen de Carga Masiva
-            </Title>
-          }
-          open={summaryModalVisible}
-          onOk={() => {
-            setSummaryModalVisible(false)
-            setSummaryData(null)
-            router.push('/home/products')
-          }}
-          okText='Aceptar'
-          cancelButtonProps={{ style: { display: 'none' } }}
-          width={600}
-        >
-          {summaryData && (
-            <Space direction='vertical' size='large' style={{ width: '100%' }}>
-              <div>
-                <Title level={5}>Resultados de la carga:</Title>
-                <Paragraph>
-                  <Text strong>
-                    {summaryData.successCount} de {summaryData.totalRows}{' '}
-                    productos
-                  </Text>{' '}
-                  se cargaron exitosamente.
-                </Paragraph>
-                {summaryData.errors.length > 0 && (
-                  <div>
-                    <Text type='warning' strong>
-                      Se encontraron {summaryData.errors.length} error(es):
-                    </Text>
-                    <div
-                      style={{
-                        marginTop: '12px',
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        padding: '12px',
-                        backgroundColor: '#fff7e6',
-                        borderRadius: '4px',
-                        border: '1px solid #ffe58f',
-                      }}
-                    >
-                      {summaryData.errors.slice(0, 10).map((error, index) => (
-                        <div key={index} style={{ marginBottom: '8px' }}>
-                          <Text type='warning' style={{ fontSize: '12px' }}>
-                            • {error}
-                          </Text>
-                        </div>
-                      ))}
-                      {summaryData.errors.length > 10 && (
-                        <Text type='secondary' style={{ fontSize: '12px' }}>
-                          ... y {summaryData.errors.length - 10} error(es) más
-                        </Text>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {summaryData.errors.length === 0 && (
-                  <div
-                    style={{
-                      marginTop: '12px',
-                      padding: '12px',
-                      backgroundColor: '#f6ffed',
-                      borderRadius: '4px',
-                      border: '1px solid #b7eb8f',
-                    }}
-                  >
-                    <Text type='success' strong>
-                      ✓ Todos los productos se cargaron correctamente
-                    </Text>
-                  </div>
-                )}
-              </div>
-            </Space>
-          )}
-        </Modal>
-
-        {/* Modal Informativo de Plantilla */}
-        <TemplateInfoModal
-          visible={templateInfoModalVisible}
-          onClose={() => setTemplateInfoModalVisible(false)}
-        />
       </Card>
     </motion.div>
   )

@@ -18,6 +18,7 @@ import {
   SettingOutlined,
   SwapOutlined,
   UserOutlined,
+  ShoppingOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
@@ -36,6 +37,11 @@ const pathToMenuKey: Record<string, string> = {
 
   '/home/suppliers': '3',
   '/home/suppliers/new': '3',
+
+  // Sección Compras
+  '/home/compras': '3.5',
+  '/home/compras/new': '3.5',
+  '/home/compras/[id]': '3.5',
 
   // Sección Ventas
   '/home/saleOrders': '4-1',
@@ -88,7 +94,26 @@ export default function AppLayout({ children }: any) {
   }, [empresaId, pathname, router])
 
   // Determina la clave del menú basada en la ruta actual
-  const getMenuKey = (path: string) => pathToMenuKey[path] || ''
+  const getMenuKey = (path: string) => {
+    // Primero intenta buscar la ruta exacta
+    if (pathToMenuKey[path]) {
+      return pathToMenuKey[path]
+    }
+    
+    // Maneja rutas dinámicas: si el path comienza con /home/compras/ y no es /home/compras o /home/compras/new,
+    // entonces es una ruta dinámica de detalle
+    if (path.startsWith('/home/compras/') && path !== '/home/compras' && path !== '/home/compras/new') {
+      return '3.5'
+    }
+    
+    // Maneja otras rutas dinámicas similares si es necesario
+    // Por ejemplo, para saleOrders/edit/[id]
+    if (path.startsWith('/home/saleOrders/edit/') && path !== '/home/saleOrders/edit') {
+      return '4-1'
+    }
+    
+    return ''
+  }
 
   const [selectedKey, setSelectedKey] = useState(getMenuKey(pathname))
 
@@ -122,6 +147,15 @@ export default function AppLayout({ children }: any) {
       onClick: () => {
         setSelectedKey('3')
         router.push('/home/suppliers')
+      },
+    },
+    {
+      key: '3.5',
+      label: 'Compras',
+      icon: React.createElement(ShoppingOutlined),
+      onClick: () => {
+        setSelectedKey('3.5')
+        router.push('/home/compras')
       },
     },
     {
