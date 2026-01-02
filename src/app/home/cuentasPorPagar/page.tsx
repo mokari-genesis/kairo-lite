@@ -1,7 +1,8 @@
 'use client'
 import '../../globals.css'
 import '@ant-design/v5-patch-for-react-19'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { withAuth } from '../../auth/withAuth'
 import { PageHeader } from '../../components/PageHeader'
 import { FilterSection } from '../../components/FilterSection'
@@ -39,6 +40,7 @@ import {
   InputNumber,
   Input,
   DatePicker,
+  Select,
 } from 'antd'
 import dayjs from 'dayjs'
 import {
@@ -55,12 +57,61 @@ const DATE_FORMAT = 'DD/MM/YYYY'
 
 function CuentasPorPagarPage() {
   const { empresaId } = useEmpresa()
+  const searchParams = useSearchParams()
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const [idInputValue, setIdInputValue] = useState<string>('')
+  const idDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const isInitialLoadRef = useRef<boolean>(true)
   const [abonosModalOpen, setAbonosModalOpen] = useState(false)
   const [selectedCuentaId, setSelectedCuentaId] = useState<number | null>(null)
   const [newModalOpen, setNewModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [form] = Form.useForm()
+
+  // Leer el parámetro ID de la URL al cargar la página
+  useEffect(() => {
+    const idFromUrl = searchParams.get('id')
+    if (idFromUrl) {
+      setIdInputValue(idFromUrl)
+      setFilters(prev => ({
+        ...prev,
+        id: idFromUrl,
+      }))
+    }
+    // Marcar que la carga inicial ya se hizo después de un pequeño delay
+    // para permitir que el debounce funcione en ediciones posteriores
+    const timer = setTimeout(() => {
+      isInitialLoadRef.current = false
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [searchParams])
+
+  // Debounce para el campo ID (solo cuando el usuario escribe manualmente)
+  useEffect(() => {
+    // No aplicar debounce en la carga inicial desde URL
+    if (isInitialLoadRef.current) {
+      return
+    }
+
+    if (idDebounceRef.current) {
+      clearTimeout(idDebounceRef.current)
+    }
+
+    const timer = setTimeout(() => {
+      setFilters(prev => ({
+        ...prev,
+        id: idInputValue || undefined,
+      }))
+    }, 1000)
+
+    idDebounceRef.current = timer
+
+    return () => {
+      if (idDebounceRef.current) {
+        clearTimeout(idDebounceRef.current)
+      }
+    }
+  }, [idInputValue])
 
   const { data: cuentas, isLoading } = useCuentasPorPagar(filters)
   const { data: resumenProveedores } =
@@ -377,22 +428,67 @@ function CuentasPorPagarPage() {
 
           {/* Filtros */}
           <Card size='small' title='Filtros' style={{ marginBottom: '16px' }}>
-            <Space direction='vertical' size='middle' style={{ width: '100%' }}>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={8}>
-                  <SupplierSelect
-                    value={filters.proveedor_id}
-                    onChange={handleProveedorFilter}
-                  />
-                </Col>
-                <Col xs={24} md={10}>
-                  <FilterSection
-                    filters={CuentasPorPagarFilterConfigs}
-                    onFilterChange={handleFilterChange}
-                  />
-                </Col>
-              </Row>
-            </Space>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={6}>
+                <SupplierSelect
+                  value={filters.proveedor_id}
+                  onChange={handleProveedorFilter}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Input
+                  placeholder='Buscar por ID'
+                  value={idInputValue}
+                  onChange={e => {
+                    setIdInputValue(e.target.value)
+                  }}
+                  allowClear
+                  onClear={() => {
+                    setIdInputValue('')
+                    setFilters(prev => {
+                      const { id, ...rest } = prev
+                      return rest
+                    })
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Select
+                  allowClear
+                  placeholder='Estado'
+                  style={{ width: '100%' }}
+                  onChange={value =>
+                    handleFilterChange({
+                      ...filters,
+                      estado: value || undefined,
+                    })
+                  }
+                  value={filters.estado || undefined}
+                  options={[
+                    { value: 'abierta', label: 'Abierta' },
+                    { value: 'parcial', label: 'Parcial' },
+                    { value: 'cancelada', label: 'Cancelada' },
+                    { value: 'vencida', label: 'Vencida' },
+                    { value: 'anulada', label: 'Anulada' },
+                  ]}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <DatePicker.RangePicker
+                  style={{ width: '100%' }}
+                  onChange={(_, dateStrings) => {
+                    handleFilterChange({
+                      ...filters,
+                      fecha_inicio: dateStrings[0] || undefined,
+                      fecha_fin: dateStrings[1] || undefined,
+                    })
+                  }}
+                  format='YYYY-MM-DD'
+                  placeholder={['Inicio', 'Fin']}
+                />
+              </Col>
+            </Row>
           </Card>
 
           {/* Resumen por Proveedor */}

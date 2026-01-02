@@ -202,6 +202,12 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
 
 export const CuentasPorPagarFilterConfigs: FilterConfig[] = [
   {
+    type: 'text',
+    key: 'id',
+    placeholder: 'Buscar por ID',
+    width: 140,
+  },
+  {
     type: 'select',
     key: 'estado',
     placeholder: 'Estado',

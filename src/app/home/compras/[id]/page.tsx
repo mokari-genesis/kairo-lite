@@ -22,6 +22,7 @@ import {
   CloseCircleOutlined,
   DollarCircleOutlined,
   ShoppingOutlined,
+  LinkOutlined,
 } from '@ant-design/icons'
 import { getCompra, anularCompra, CompraResponse } from '@/app/api/compras'
 import { motion } from 'framer-motion'
@@ -267,7 +268,28 @@ export default function CompraDetailPage() {
               <Card title='Cuenta por Pagar' style={{ marginBottom: '24px' }}>
                 <Descriptions column={1} bordered>
                   <Descriptions.Item label='ID'>
-                    #{compra.cuenta_por_pagar.id}
+                    <a
+                      href={`/home/cuentasPorPagar?id=${compra.cuenta_por_pagar.id}`}
+                      onClick={e => {
+                        e.preventDefault()
+                        router.push(
+                          `/home/cuentasPorPagar?id=${
+                            compra.cuenta_por_pagar!.id
+                          }`
+                        )
+                      }}
+                      style={{
+                        color: '#1890ff',
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      #{compra.cuenta_por_pagar.id}
+                      <LinkOutlined style={{ fontSize: '12px' }} />
+                    </a>
                   </Descriptions.Item>
                   <Descriptions.Item label='Total'>
                     {formatCurrency(
@@ -346,7 +368,30 @@ export default function CompraDetailPage() {
                   >
                     <strong>ℹ️ Esta compra generó una cuenta por pagar</strong>
                     <div style={{ marginTop: '8px', fontSize: '12px' }}>
-                      ID: #{compra.cuenta_por_pagar.id} | Saldo:{' '}
+                      ID:{' '}
+                      <a
+                        href={`/home/cuentasPorPagar?id=${compra.cuenta_por_pagar.id}`}
+                        onClick={e => {
+                          e.preventDefault()
+                          router.push(
+                            `/home/cuentasPorPagar?id=${
+                              compra.cuenta_por_pagar!.id
+                            }`
+                          )
+                        }}
+                        style={{
+                          color: '#1890ff',
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        #{compra.cuenta_por_pagar.id}
+                        <LinkOutlined style={{ fontSize: '10px' }} />
+                      </a>{' '}
+                      | Saldo:{' '}
                       {formatCurrency(
                         compra.moneda_codigo,
                         compra.cuenta_por_pagar.saldo
