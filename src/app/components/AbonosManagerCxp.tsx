@@ -405,14 +405,14 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                   {
                     validator: (_, value) => {
                       if (!value) return Promise.resolve()
-                      
+
                       // Si la moneda es diferente, validar usando el monto convertido
                       // Si no hay conversión (misma moneda), usar el valor directamente
                       const montoAValidar =
                         montoConvertido !== undefined && monedaSeleccionada
                           ? montoConvertido
                           : value
-                      
+
                       if (montoAValidar > saldoPendiente) {
                         return Promise.reject(
                           new Error(
@@ -441,9 +441,9 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                   formatter={value =>
                     `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                   }
-                  parser={value =>
-                    parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0
-                  }
+                  parser={(value: string | undefined): number => {
+                    return parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0
+                  }}
                 />
               </Form.Item>
 
@@ -477,8 +477,18 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                       marginBottom: '16px',
                     }}
                   >
-                    <Space direction='vertical' size='small' style={{ width: '100%' }}>
-                      <div style={{ fontSize: '14px', color: '#1890ff', fontWeight: 'bold' }}>
+                    <Space
+                      direction='vertical'
+                      size='small'
+                      style={{ width: '100%' }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '14px',
+                          color: '#1890ff',
+                          fontWeight: 'bold',
+                        }}
+                      >
                         💱 Conversión de Moneda
                       </div>
                       <div style={{ fontSize: '13px', color: '#0050b3' }}>
@@ -498,17 +508,29 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                         <div style={{ marginBottom: '4px' }}>
                           <strong>Cálculo de la tasa:</strong>
                         </div>
-                        <div style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                          Tasa = tasa_vs_base({monedaSeleccionada.codigo}) / tasa_vs_base({monedaCuenta.codigo})
+                        <div
+                          style={{ fontSize: '11px', fontFamily: 'monospace' }}
+                        >
+                          Tasa = tasa_vs_base({monedaSeleccionada.codigo}) /
+                          tasa_vs_base({monedaCuenta.codigo})
                         </div>
-                        <div style={{ fontSize: '11px', fontFamily: 'monospace', marginTop: '2px' }}>
-                          Tasa = {Number(monedaSeleccionada.tasa_vs_base).toFixed(6)} / {Number(monedaCuenta.tasa_vs_base).toFixed(6)} = {tasaConversion.toFixed(6)}
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            fontFamily: 'monospace',
+                            marginTop: '2px',
+                          }}
+                        >
+                          Tasa ={' '}
+                          {Number(monedaSeleccionada.tasa_vs_base).toFixed(6)} /{' '}
+                          {Number(monedaCuenta.tasa_vs_base).toFixed(6)} ={' '}
+                          {tasaConversion.toFixed(6)}
                         </div>
                       </div>
                       <div style={{ fontSize: '13px', color: '#0050b3' }}>
                         <strong>Tasa de conversión:</strong> 1{' '}
-                        {monedaSeleccionada.codigo} = {tasaConversion.toFixed(6)}{' '}
-                        {monedaCuenta.codigo}
+                        {monedaSeleccionada.codigo} ={' '}
+                        {tasaConversion.toFixed(6)} {monedaCuenta.codigo}
                       </div>
                       <div
                         style={{
@@ -520,8 +542,8 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                         }}
                       >
                         <strong>Equivale a:</strong>{' '}
-                        {formatCurrency(monedaCuenta.codigo, montoConvertido)} en{' '}
-                        {monedaCuenta.codigo}
+                        {formatCurrency(monedaCuenta.codigo, montoConvertido)}{' '}
+                        en {monedaCuenta.codigo}
                       </div>
                       <div
                         style={{
@@ -531,7 +553,8 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                           marginTop: '4px',
                         }}
                       >
-                        Saldo pendiente: {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
+                        Saldo pendiente:{' '}
+                        {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
                         {montoConvertido <= saldoPendiente ? (
                           <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                             ✓ Monto válido
@@ -545,7 +568,7 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                     </Space>
                   </div>
                 )}
-              
+
               {montoConvertido !== undefined &&
                 monedaSeleccionada &&
                 monedaCuenta &&
@@ -561,7 +584,8 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                     }}
                   >
                     <div style={{ fontSize: '12px', color: '#52c41a' }}>
-                      <strong>Misma moneda:</strong> No se requiere conversión. Saldo pendiente:{' '}
+                      <strong>Misma moneda:</strong> No se requiere conversión.
+                      Saldo pendiente:{' '}
                       {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
                     </div>
                   </div>
