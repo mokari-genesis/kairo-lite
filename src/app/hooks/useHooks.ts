@@ -188,7 +188,8 @@ export const useCompras = (filters?: Record<string, any>) => {
 
   return useQuery<CompraResponse[]>({
     queryKey: [QueryKey.comprasInfo, { ...filters, empresa_id: empresaId }],
-    queryFn: () => getCompras({ ...filters, empresa_id: empresaId }),
+    queryFn: () =>
+      getCompras({ ...filters, empresa_id: empresaId ?? undefined }),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,

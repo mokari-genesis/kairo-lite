@@ -440,7 +440,7 @@ export const BulkUploadModalCompras: React.FC<BulkUploadModalComprasProps> = ({
             }
 
             // Validar cantidad
-            const cantidad = parseInt(row.Cantidad.toString())
+            const cantidad: number = parseInt(row.Cantidad.toString(), 10)
             if (isNaN(cantidad) || cantidad <= 0) {
               errors.push(
                 `Fila ${row.rowNumber}: Cantidad debe ser un número mayor a 0`
@@ -449,7 +449,9 @@ export const BulkUploadModalCompras: React.FC<BulkUploadModalComprasProps> = ({
             }
 
             // Validar costo unitario
-            const costoUnitario = parseFloat(row['Costo Unitario'].toString())
+            const costoUnitario: number = parseFloat(
+              row['Costo Unitario'].toString()
+            )
             if (isNaN(costoUnitario) || costoUnitario < 0) {
               errors.push(
                 `Fila ${row.rowNumber}: Costo Unitario debe ser un número mayor o igual a 0`
@@ -458,9 +460,9 @@ export const BulkUploadModalCompras: React.FC<BulkUploadModalComprasProps> = ({
             }
 
             items.push({
-              producto_id: productoId,
-              cantidad: cantidad,
-              costo_unitario: costoUnitario,
+              producto_id: Number(productoId),
+              cantidad: Number(cantidad),
+              costo_unitario: Number(costoUnitario),
             })
           }
 

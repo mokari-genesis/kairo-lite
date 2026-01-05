@@ -96,7 +96,7 @@ function TransferenciasPage() {
       onOk: async () => {
         try {
           setIsLoading(true)
-          await confirmarTransferencia(record.id, usuarioId ?? null)
+          await confirmarTransferencia(record.id, usuarioId ?? undefined)
           message.success('Transferencia confirmada exitosamente')
           await loadTransferencias()
         } catch (error: any) {

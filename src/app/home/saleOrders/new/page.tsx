@@ -665,7 +665,7 @@ export default function NewPurchase() {
               )
             }}
             parser={value => {
-              return value!.replace(/Bs\.\s?|(,*)/g, '')
+              return parseFloat(value!.replace(/Bs\.\s?|(,*)/g, '')) || 0
             }}
             style={{ width: '100%' }}
           />

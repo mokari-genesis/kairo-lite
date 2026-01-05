@@ -469,7 +469,7 @@ function NewCompra() {
               return `${simbolo} ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
             }}
             parser={value => {
-              if (!value) return ''
+              if (!value) return NaN
               const simbolo = monedaSeleccionada?.simbolo || '$'
               // Escapar caracteres especiales del símbolo para la expresión regular
               const simboloEscapado = simbolo.replace(
@@ -481,7 +481,8 @@ function NewCompra() {
                 new RegExp(`${simboloEscapado}\\s?|,`, 'g'),
                 ''
               )
-              return cleaned || ''
+              const parsed = parseFloat(cleaned)
+              return isNaN(parsed) ? NaN : parsed
             }}
           />
           {record.precio_sugerido_convertido !== undefined &&
@@ -597,11 +598,7 @@ function NewCompra() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <PageHeader
-        title='Nueva Compra'
-        subtitle='Registrar una nueva compra de productos'
-        showNewButton={false}
-      />
+      <PageHeader title='Nueva Compra' showNewButton={false} />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -725,7 +722,7 @@ function NewCompra() {
                         color: '#52c41a',
                       }}
                     >
-                      {formatCurrency(total, '$')}
+                      {formatCurrency(monedaSeleccionada?.codigo || '', total)}
                     </span>
                   </div>
                   {tipoPago === 'credito' && (

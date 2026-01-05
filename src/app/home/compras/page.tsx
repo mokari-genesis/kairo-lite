@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { withAuth } from '../../auth/withAuth'
 import { PageHeader } from '../../components/PageHeader'
 import { FilterSection } from '../../components/FilterSection'
-import { DataTable } from '../../components/DataTable'
+import { DataTable, ColumnConfig } from '../../components/DataTable'
 import {
   CompraColumns,
   CompraFilterConfigs,
@@ -357,36 +357,35 @@ function ComprasPage() {
       return col
     })
 
-    return [
-      ...columnsWithCustomTotal,
-      {
-        key: 'actions',
-        title: 'Acciones',
-        dataIndex: 'actions',
-        type: 'text',
-        render: (_: any, record: CompraResponse) => (
-          <Space>
+    const actionsColumn: ColumnConfig = {
+      key: 'actions',
+      title: 'Acciones',
+      dataIndex: 'actions',
+      type: 'action',
+      render: (_: any, record: CompraResponse) => (
+        <Space>
+          <Button
+            type='link'
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+          >
+            Ver
+          </Button>
+          {record.estado !== 'anulada' && (
             <Button
               type='link'
-              icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
+              danger
+              icon={<StopOutlined />}
+              onClick={() => handleAnular(record)}
             >
-              Ver
+              Anular
             </Button>
-            {record.estado !== 'anulada' && (
-              <Button
-                type='link'
-                danger
-                icon={<StopOutlined />}
-                onClick={() => handleAnular(record)}
-              >
-                Anular
-              </Button>
-            )}
-          </Space>
-        ),
-      },
-    ]
+          )}
+        </Space>
+      ),
+    }
+
+    return [...columnsWithCustomTotal, actionsColumn] as ColumnConfig[]
   }, [monedas, monedaVES, handleView, handleAnular])
 
   return (
@@ -476,7 +475,6 @@ function ComprasPage() {
             columns={columnsWithActions}
             data={compras || []}
             loading={isLoading}
-            rowKey='id'
             showActions={false}
           />
         </Card>
