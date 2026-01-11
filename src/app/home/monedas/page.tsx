@@ -41,14 +41,29 @@ function MonedasPage() {
   }
 
   const handleEdit = async (record: any) => {
-    // No permitir editar la moneda base
+    // No permitir editar la moneda base (USD)
     if (record.es_base === 1 || record.es_base === true) {
-      message.warning('No se puede editar la moneda base del sistema')
+      message.warning('No se puede editar la moneda base del sistema (USD)')
+      return
+    }
+
+    // Validar que no se intente cambiar USD a no-base
+    if (record.codigo === 'USD' && record.es_base !== 1) {
+      message.warning('USD debe ser siempre la moneda base del sistema')
       return
     }
 
     try {
       setIsLoading(true)
+      
+      // Validar tasa_vs_base
+      const tasa = Number(record.tasa_vs_base)
+      if (!tasa || tasa <= 0 || !isFinite(tasa)) {
+        message.error('tasa_vs_base debe ser un número mayor a 0')
+        setIsLoading(false)
+        return
+      }
+
       const updateData: UpdateMonedaRequest = {
         id: record.id,
         codigo: record.codigo,
@@ -56,9 +71,9 @@ function MonedasPage() {
         simbolo: record.simbolo,
         decimales: record.decimales,
         activo: record.activo === 'true' ? 1 : 0,
-        tasa_vs_base: record.tasa_vs_base,
+        tasa_vs_base: tasa,
         tasa_actualizada: new Date().toISOString(),
-        es_base: 0,
+        es_base: 0, // Solo USD puede ser base
       }
       await updateMoneda(updateData)
 
@@ -85,17 +100,29 @@ function MonedasPage() {
       return
     }
 
-    // No permitir eliminar la moneda base
+    // No permitir eliminar la moneda base (USD)
     if (record.es_base === 1 || record.es_base === true) {
-      message.warning('No se puede eliminar la moneda base del sistema')
+      message.warning('No se puede eliminar la moneda base del sistema (USD)')
+      return
+    }
+
+    // No permitir eliminar USD aunque no sea base (por seguridad)
+    if (record.codigo === 'USD') {
+      message.warning('No se puede eliminar la moneda USD')
       return
     }
 
     setIsLoading(true)
-    await deleteMoneda(record.id)
-    await queryClient.invalidateQueries({ queryKey: [QueryKey.monedasInfo] })
-    message.success('Moneda eliminada exitosamente')
-    setIsLoading(false)
+    try {
+      await deleteMoneda(record.id)
+      await queryClient.invalidateQueries({ queryKey: [QueryKey.monedasInfo] })
+      await fetchData()
+      message.success('Moneda eliminada exitosamente')
+    } catch (error: any) {
+      message.error(error.message || 'Error al eliminar la moneda')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const onFilterChange = (newFilters: Record<string, any>) => {

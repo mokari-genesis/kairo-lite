@@ -13,6 +13,7 @@ import { useEmpresa } from '../../../empresaContext'
 import { formatCurrency } from '@/app/utils/currency'
 import {
   getReporteInventarioRotacion,
+  getReporteInventarioCompras,
   getReporteInventarioBajaRotacion,
   getReporteInventarioRupturas,
 } from '@/app/api/reportes2'
@@ -57,6 +58,12 @@ function Reportes2InventarioPage() {
       icon: <DatabaseOutlined />,
     },
     {
+      key: 'compras',
+      title: 'Compras por Producto',
+      description: 'Análisis de compras realizadas',
+      icon: <FileTextOutlined />,
+    },
+    {
       key: 'baja-rotacion',
       title: 'Productos de Baja Rotación',
       description: 'Productos obsoletos o lentos',
@@ -73,7 +80,7 @@ function Reportes2InventarioPage() {
   const rotacionColumns = [
     {
       key: 'producto_codigo',
-      title: 'Código',
+      title: 'Código Producto',
       dataIndex: 'producto_codigo',
       type: 'text',
     },
@@ -90,53 +97,217 @@ function Reportes2InventarioPage() {
       type: 'text',
     },
     {
-      key: 'unidades_vendidas',
-      title: 'Unidades Vendidas',
-      dataIndex: 'unidades_vendidas',
-      type: 'text',
-    },
-    {
-      key: 'stock_promedio',
-      title: 'Stock Promedio',
-      dataIndex: 'stock_promedio',
+      key: 'stock_actual',
+      title: 'Stock Actual',
+      dataIndex: 'stock_actual',
       type: 'text',
       render: (value: number | string | null) => {
-        if (value === null || value === undefined) return 'N/A'
+        if (value === null || value === undefined) return '0'
         const numValue =
           typeof value === 'number' ? value : parseFloat(String(value))
-        return isNaN(numValue) ? 'N/A' : Math.round(numValue)
-      },
-    },
-    {
-      key: 'rotacion',
-      title: 'Rotación',
-      dataIndex: 'rotacion',
-      type: 'text',
-      render: (value: number | string | null) => {
-        const numValue =
-          typeof value === 'number' ? value : parseFloat(String(value || 0))
         return (
           <Tag
             color={
-              numValue > 1 ? 'success' : numValue > 0.5 ? 'warning' : 'error'
+              numValue === 0 ? 'error' : numValue <= 5 ? 'warning' : 'success'
             }
           >
-            {isNaN(numValue) ? 'N/A' : numValue.toFixed(2)}
+            {isNaN(numValue) ? '0' : Math.round(numValue)}
           </Tag>
         )
       },
     },
     {
-      key: 'dias_cobertura',
-      title: 'Días Cobertura',
-      dataIndex: 'dias_cobertura',
+      key: 'precio_unitario',
+      title: 'Precio Sugerido para Venta',
+      dataIndex: 'precio_unitario',
       type: 'text',
       render: (value: number | string | null) => {
-        if (value === null || value === undefined) return 'N/A'
+        if (value === null || value === undefined) return '-'
         const numValue =
           typeof value === 'number' ? value : parseFloat(String(value))
-        return isNaN(numValue) ? 'N/A' : Math.round(numValue)
+        return isNaN(numValue) ? '-' : formatCurrency('USD', numValue)
       },
+    },
+    {
+      key: 'valor_inventario',
+      title: 'Valor Inventario Actual',
+      dataIndex: 'valor_inventario',
+      type: 'text',
+      render: (value: number | string | null) => {
+        if (value === null || value === undefined) return '-'
+        const numValue =
+          typeof value === 'number' ? value : parseFloat(String(value))
+        return isNaN(numValue) ? '-' : formatCurrency('USD', numValue)
+      },
+    },
+    {
+      key: 'unidades_vendidas',
+      title: 'Unidades Vendidas',
+      dataIndex: 'unidades_vendidas',
+      type: 'text',
+    },
+  ]
+
+  const comprasColumns = [
+    {
+      key: 'producto_codigo',
+      title: 'Código Producto',
+      dataIndex: 'producto_codigo',
+      type: 'text',
+    },
+    {
+      key: 'producto_descripcion',
+      title: 'Descripción',
+      dataIndex: 'producto_descripcion',
+      type: 'text',
+    },
+    {
+      key: 'categoria',
+      title: 'Categoría',
+      dataIndex: 'categoria',
+      type: 'text',
+    },
+    {
+      key: 'compra_id',
+      title: 'ID Compra',
+      dataIndex: 'compra_id',
+      type: 'text',
+      render: (value: number) => (
+        <Tag color="blue">#{value}</Tag>
+      ),
+    },
+    {
+      key: 'fecha_compra',
+      title: 'Fecha Compra',
+      dataIndex: 'fecha_compra',
+      type: 'text',
+      render: (value: string) => {
+        if (!value) return '-'
+        return new Date(value).toLocaleDateString('es-ES')
+      },
+    },
+    {
+      key: 'moneda_codigo',
+      title: 'Moneda',
+      dataIndex: 'moneda_codigo',
+      type: 'text',
+      render: (value: string, record: any) => (
+        <div>
+          <Tag color="purple">{value}</Tag>
+          {record.moneda_simbolo && (
+            <span style={{ marginLeft: '4px', fontSize: '12px' }}>
+              {record.moneda_simbolo}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'cantidad',
+      title: 'Cantidad',
+      dataIndex: 'cantidad',
+      type: 'text',
+      align: 'right' as const,
+    },
+    {
+      key: 'costo_unitario',
+      title: 'Costo Unitario',
+      dataIndex: 'costo_unitario',
+      type: 'text',
+      render: (value: number | string | null, record: any) => {
+        if (value === null || value === undefined) return '-'
+        const numValue =
+          typeof value === 'number' ? value : parseFloat(String(value))
+        if (isNaN(numValue)) return '-'
+
+        const costoBase = record.costo_unitario_base || 0
+        const monedaCodigo = record.moneda_codigo || 'USD'
+
+        return (
+          <div>
+            <div style={{ fontWeight: 'bold' }}>
+              {formatCurrency(monedaCodigo, numValue)}
+            </div>
+            {costoBase > 0 && costoBase !== numValue && (
+              <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
+                {formatCurrency('USD', costoBase)} (base)
+              </div>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'subtotal',
+      title: 'Subtotal',
+      dataIndex: 'subtotal',
+      type: 'text',
+      render: (value: number | string | null, record: any) => {
+        if (value === null || value === undefined) return '-'
+        const numValue =
+          typeof value === 'number' ? value : parseFloat(String(value))
+        if (isNaN(numValue)) return '-'
+
+        const subtotalBase = record.subtotal_base || 0
+        const monedaCodigo = record.moneda_codigo || 'USD'
+
+        return (
+          <div>
+            <div style={{ fontWeight: 'bold', color: '#1890ff' }}>
+              {formatCurrency(monedaCodigo, numValue)}
+            </div>
+            {subtotalBase > 0 && subtotalBase !== numValue && (
+              <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
+                {formatCurrency('USD', subtotalBase)} (base)
+              </div>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'proveedor_nombre',
+      title: 'Proveedor',
+      dataIndex: 'proveedor_nombre',
+      type: 'text',
+      render: (value: string, record: any) => (
+        <div>
+          <div>{value || '-'}</div>
+          {record.proveedor_nit && (
+            <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
+              NIT: {record.proveedor_nit}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'usuario_nombre',
+      title: 'Usuario',
+      dataIndex: 'usuario_nombre',
+      type: 'text',
+    },
+    {
+      key: 'tipo_pago',
+      title: 'Tipo Pago',
+      dataIndex: 'tipo_pago',
+      type: 'text',
+      render: (value: string) => (
+        <Tag color={value === 'contado' ? 'green' : 'orange'}>
+          {value || '-'}
+        </Tag>
+      ),
+    },
+    {
+      key: 'estado_compra',
+      title: 'Estado',
+      dataIndex: 'estado_compra',
+      type: 'text',
+      render: (value: string) => (
+        <Tag color={value === 'completa' ? 'success' : 'warning'}>
+          {value || '-'}
+        </Tag>
+      ),
     },
   ]
 
@@ -255,6 +426,8 @@ function Reportes2InventarioPage() {
     switch (reportType) {
       case 'rotacion':
         return rotacionColumns
+      case 'compras':
+        return comprasColumns
       case 'baja-rotacion':
         return bajaRotacionColumns
       case 'rupturas':
@@ -278,6 +451,9 @@ function Reportes2InventarioPage() {
       switch (reportType) {
         case 'rotacion':
           result = await getReporteInventarioRotacion(filtersWithEmpresa)
+          break
+        case 'compras':
+          result = await getReporteInventarioCompras(filtersWithEmpresa)
           break
         case 'baja-rotacion':
           // Convertir dias_minimos a número si viene como string

@@ -29,6 +29,7 @@ import {
   Statistic,
   Badge,
   Tag,
+  theme,
 } from 'antd'
 import { motion } from 'framer-motion'
 import { columns } from '@/app/model/productsTableModel'
@@ -45,13 +46,35 @@ import {
   TagOutlined,
   ShopOutlined,
 } from '@ant-design/icons'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, obtenerMonedaBase } from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
 import { useUsuario } from '@/app/usuarioContext'
 import { BulkUploadModal } from '@/app/components/BulkUploadModal'
 import { TemplateInfoModal } from '@/app/components/TemplateInfoModal'
+import { getMonedas, Moneda } from '@/app/api/monedas'
+import { useTheme } from '@/app/themeContext'
 
 function Home() {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorBgContainer, colorText, colorTextSecondary },
+  } = theme.useToken()
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+
+  // Cargar moneda base
+  useEffect(() => {
+    const loadMonedaBase = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error loading moneda base:', error)
+      }
+    }
+    loadMonedaBase()
+  }, [])
   const [api, contextHolder] = notification.useNotification()
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -207,7 +230,10 @@ function Home() {
       Proveedor: product.nombre_proveedor || 'Sin proveedor',
       Estado: product.estado,
       Stock: product.stock,
-      Precio_sugerido: formatCurrency('VES', product.precio),
+      Precio_sugerido: formatCurrency(
+        monedaBase?.codigo || 'USD',
+        product.precio
+      ),
     }))
 
     // Crear libro de Excel
@@ -453,7 +479,10 @@ function Home() {
                       Valor Inventario Sucursal (precio sugerido)
                     </span>
                   }
-                  value={formatCurrency('VES', productsStats.valorInventario)}
+                  value={formatCurrency(
+                    monedaBase?.codigo || 'USD',
+                    productsStats.valorInventario
+                  )}
                   precision={2}
                   prefix={<BankOutlined style={{ color: '#333' }} />}
                   valueStyle={{ color: '#333' }}
@@ -585,13 +614,20 @@ function Home() {
                       overflowY: 'auto',
                       marginTop: '10px',
                       padding: '10px',
-                      backgroundColor: '#f5f5f5',
+                      backgroundColor: isDark ? colorBgContainer : '#f5f5f5',
                       borderRadius: '4px',
+                      border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'}`,
                     }}
                   >
                     <ul style={{ margin: 0, paddingLeft: '20px' }}>
                       {summaryData.errors.map((error, index) => (
-                        <li key={index} style={{ marginBottom: '5px' }}>
+                        <li
+                          key={index}
+                          style={{
+                            marginBottom: '5px',
+                            color: isDark ? colorText : undefined,
+                          }}
+                        >
                           {error}
                         </li>
                       ))}

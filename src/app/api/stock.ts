@@ -18,6 +18,13 @@ export interface StockType {
   stock_actual: number
   tipo_movimiento: string
   cantidad: number
+  precio_compra?: number | null
+  total_compra?: number | null
+  moneda_id?: number | null
+  moneda_codigo?: string | null
+  moneda_simbolo?: string | null
+  moneda_nombre?: string | null
+  compra_id?: number | null
   fecha: string
   comentario: string
   stock_movimiento: number

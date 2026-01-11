@@ -183,7 +183,6 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
 
   return (
     <Drawer
-      style={{ backgroundColor: '#d1d1d1' }}
       title={showView ? 'Detalle' : 'Editar Registro'}
       placement='right'
       onClose={handleClose}
@@ -215,8 +214,8 @@ export const EditDrawer: React.FC<EditDrawerProps> = ({
         <Card
           variant='outlined'
           style={{
-            borderRadius: '15px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            borderRadius: borderRadiusLG,
+            backgroundColor: colorBgContainer,
           }}
         >
           <Form form={form} layout='vertical'>

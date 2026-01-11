@@ -8,11 +8,11 @@ export const formatCurrency = (
   monedaCodigo?: string,
   monto?: number
 ): string => {
-  const currencyCode = monedaCodigo || 'VES'
+  const currencyCode = monedaCodigo || 'USD'
   const amount = Number(monto) || 0
 
   try {
-    return new Intl.NumberFormat(currencyCode === 'VES' ? 'es-VE' : 'es-US', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -20,9 +20,9 @@ export const formatCurrency = (
     }).format(amount)
   } catch (error) {
     // Fallback si la moneda no es válida
-    return new Intl.NumberFormat('es-VE', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'VES',
+      currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
@@ -30,10 +30,11 @@ export const formatCurrency = (
 }
 
 /**
- * Convierte un monto de una moneda a la moneda base
+ * Convierte un monto de una moneda a la moneda base (USD)
+ * Valida que la moneda base sea USD
  * @param monto - Monto a convertir
  * @param monedaOrigen - Moneda de origen
- * @param monedaBase - Moneda base (es_base = 1)
+ * @param monedaBase - Moneda base (debe ser USD)
  * @returns Monto convertido a la moneda base
  */
 export const convertirAMonedaBase = (
@@ -41,6 +42,13 @@ export const convertirAMonedaBase = (
   monedaOrigen: Moneda,
   monedaBase: Moneda
 ): number => {
+  // Validar que la moneda base sea USD
+  if (monedaBase.codigo !== 'USD') {
+    console.warn(
+      `Advertencia: La moneda base proporcionada (${monedaBase.codigo}) no es USD. Solo USD puede ser moneda base.`
+    )
+  }
+
   if (monedaOrigen.id === monedaBase.id) {
     return Number(monto.toFixed(2))
   }
@@ -50,19 +58,31 @@ export const convertirAMonedaBase = (
     return Number(monto.toFixed(2))
   }
 
-  // Convertir usando la tasa_vs_base de la moneda origen (siempre 2 decimales)
-  const tasaConversion = parseFloat(
-    Number(monedaOrigen.tasa_vs_base).toFixed(2)
-  )
-  const resultado = monto * tasaConversion
+  // Validar tasas
+  const tasaFrom = Number(monedaOrigen.tasa_vs_base)
+  const tasaTo = Number(monedaBase.tasa_vs_base)
+  
+  if (!tasaFrom || !tasaTo || tasaFrom <= 0 || tasaTo <= 0 || !isFinite(tasaFrom) || !isFinite(tasaTo)) {
+    throw new Error(
+      `tasa_vs_base inválida para las monedas. Origen: ${monedaOrigen.codigo} (${tasaFrom}), Base: ${monedaBase.codigo} (${tasaTo})`
+    )
+  }
+
+  // Convertir usando la misma lógica que convertirEntreMonedas
+  // tasa_vs_base significa: cuántas unidades de esta moneda = 1 USD
+  // Ejemplo: si GTQ tiene tasa_vs_base = 7.8, significa 7.8 GTQ = 1 USD
+  // Para convertir GTQ a USD: monto_usd = monto_gtq * (tasa_usd / tasa_gtq) = monto_gtq * (1 / 7.8)
+  const tasa = tasaTo / tasaFrom
+  const resultado = monto * tasa
   return Number(resultado.toFixed(2))
 }
 
 /**
- * Convierte un monto de la moneda base a una moneda específica
+ * Convierte un monto de la moneda base (USD) a una moneda específica
+ * Valida que la moneda base sea USD
  * @param monto - Monto en moneda base
  * @param monedaDestino - Moneda de destino
- * @param monedaBase - Moneda base (es_base = 1)
+ * @param monedaBase - Moneda base (debe ser USD)
  * @returns Monto convertido a la moneda destino
  */
 export const convertirDesdeMonedaBase = (
@@ -70,6 +90,13 @@ export const convertirDesdeMonedaBase = (
   monedaDestino: Moneda,
   monedaBase: Moneda
 ): number => {
+  // Validar que la moneda base sea USD
+  if (monedaBase.codigo !== 'USD') {
+    console.warn(
+      `Advertencia: La moneda base proporcionada (${monedaBase.codigo}) no es USD. Solo USD puede ser moneda base.`
+    )
+  }
+
   if (monedaDestino.id === monedaBase.id) {
     return Number(monto.toFixed(2))
   }
@@ -79,21 +106,53 @@ export const convertirDesdeMonedaBase = (
     return Number(monto.toFixed(2))
   }
 
-  // Convertir usando la tasa_vs_base de la moneda destino (siempre 2 decimales)
-  const tasaConversion = parseFloat(
-    Number(monedaDestino.tasa_vs_base).toFixed(2)
-  )
-  const resultado = monto / tasaConversion
+  // Validar tasa_vs_base
+  const tasaConversion = Number(monedaDestino.tasa_vs_base)
+  if (!tasaConversion || tasaConversion <= 0 || !isFinite(tasaConversion)) {
+    throw new Error(
+      `tasa_vs_base inválida para la moneda ${monedaDestino.codigo}: ${monedaDestino.tasa_vs_base}`
+    )
+  }
+
+  // Convertir usando la tasa_vs_base de la moneda destino
+  // tasa_vs_base significa: cuántas unidades de esta moneda = 1 USD
+  // Ejemplo: si GTQ tiene tasa_vs_base = 7.8, significa 7.8 GTQ = 1 USD
+  // Para convertir USD a GTQ: monto_gtq = monto_usd * 7.8
+  const resultado = monto * tasaConversion
   return Number(resultado.toFixed(2))
 }
 
 /**
  * Obtiene la moneda base de una lista de monedas
+ * Valida que sea USD (única moneda base permitida)
  * @param monedas - Lista de monedas
- * @returns Moneda base o null si no se encuentra
+ * @returns Moneda base (USD) o null si no se encuentra
  */
 export const obtenerMonedaBase = (monedas: Moneda[]): Moneda | null => {
-  return monedas.find(moneda => moneda.es_base === 1) || null
+  const monedaBase = monedas.find(moneda => moneda.es_base === 1)
+  
+  // Validar que la moneda base sea USD
+  if (monedaBase && monedaBase.codigo !== 'USD') {
+    console.warn(
+      `Advertencia: La moneda base encontrada (${monedaBase.codigo}) no es USD. Solo USD puede ser moneda base.`
+    )
+    // Buscar USD específicamente
+    const usd = monedas.find(moneda => moneda.codigo === 'USD')
+    if (usd) {
+      return usd
+    }
+  }
+  
+  // Si no hay moneda base pero existe USD, retornar USD
+  if (!monedaBase) {
+    const usd = monedas.find(moneda => moneda.codigo === 'USD')
+    if (usd) {
+      console.warn('Advertencia: USD no está marcado como moneda base, pero se usará como tal.')
+      return usd
+    }
+  }
+  
+  return monedaBase || null
 }
 
 export const sumPagos = (pagos: Array<{ monto: number }>): number => {
@@ -161,19 +220,19 @@ export const calculateSaldo = (total: number, totalPagado: number): number => {
 }
 
 export const getCurrencySymbol = (monedaCodigo?: string): string => {
-  const currencyCode = monedaCodigo || 'VES'
+  const currencyCode = monedaCodigo || 'USD'
 
   try {
-    const formatter = new Intl.NumberFormat('es-VE', {
+    const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode,
     })
     return (
       formatter.formatToParts(0).find(part => part.type === 'currency')
-        ?.value || 'Bs'
+        ?.value || '$'
     )
   } catch (error) {
-    return 'Bs'
+    return '$'
   }
 }
 
@@ -189,6 +248,7 @@ export const formatearTasa = (tasa: string | number): string => {
 
 /**
  * Convierte un monto de una moneda a otra directamente usando tasa_vs_base
+ * Valida que las tasas sean válidas antes de convertir
  * @param monto - Monto a convertir
  * @param monedaOrigen - Moneda de origen
  * @param monedaDestino - Moneda de destino
@@ -209,17 +269,35 @@ export const convertirEntreMonedas = (
   const tasaFrom = Number(monedaOrigen.tasa_vs_base || 1)
   const tasaTo = Number(monedaDestino.tasa_vs_base || 1)
 
-  if (tasaFrom <= 0 || tasaTo <= 0) {
+  // Validar que las tasas sean válidas
+  if (!tasaFrom || !tasaTo || tasaFrom <= 0 || tasaTo <= 0 || !isFinite(tasaFrom) || !isFinite(tasaTo)) {
     throw new Error(
-      'Falta tasa_vs_base válida en monedas para convertir el monto'
+      `Falta tasa_vs_base válida en monedas para convertir el monto. Origen: ${monedaOrigen.codigo} (${tasaFrom}), Destino: ${monedaDestino.codigo} (${tasaTo})`
     )
   }
 
-  // La tasa es: tasa_from / tasa_to
-  // Ejemplo: si pago en USD (tasa=1) y CxP está en GTQ (tasa=7.8)
-  // tasa = 1 / 7.8 = 0.1282
-  // monto_en_GTQ = monto_USD * 0.1282
-  const tasa = tasaFrom / tasaTo
+  // Validar que la moneda base (USD) tenga tasa = 1
+  if (monedaOrigen.es_base === 1 && tasaFrom !== 1.0) {
+    console.warn(
+      `Advertencia: La moneda base ${monedaOrigen.codigo} tiene tasa_vs_base = ${tasaFrom}, debería ser 1.0`
+    )
+  }
+  if (monedaDestino.es_base === 1 && tasaTo !== 1.0) {
+    console.warn(
+      `Advertencia: La moneda base ${monedaDestino.codigo} tiene tasa_vs_base = ${tasaTo}, debería ser 1.0`
+    )
+  }
+
+  // Calcular tasa de conversión correcta
+  // tasa_vs_base significa: cuántas unidades de esta moneda = 1 USD
+  // Ejemplo: EUR tiene tasa_vs_base = 0.86 (0.86 EUR = 1 USD)
+  //          GTQ tiene tasa_vs_base = 7.66 (7.66 GTQ = 1 USD)
+  // Para convertir EUR a GTQ:
+  // 1. Convertir EUR a USD: monto_usd = monto_eur / tasa_eur = monto_eur / 0.86
+  // 2. Convertir USD a GTQ: monto_gtq = monto_usd * tasa_gtq = monto_usd * 7.66
+  // Combinado: monto_gtq = monto_eur * (tasa_gtq / tasa_eur) = monto_eur * (7.66 / 0.86)
+  // Por lo tanto: tasa = tasaTo / tasaFrom
+  const tasa = tasaTo / tasaFrom
   const montoConvertido = Number(
     (monto * tasa).toFixed(monedaDestino.decimales || 2)
   )

@@ -16,6 +16,7 @@ import {
   Radio,
   DatePicker,
   Tag,
+  theme,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { createCompra, CompraItem } from '@/app/api/compras'
@@ -35,6 +36,7 @@ import {
 import { getMonedas, Moneda } from '@/app/api/monedas'
 import { withAuth } from '@/app/auth/withAuth'
 import dayjs from 'dayjs'
+import { useTheme } from '@/app/themeContext'
 
 interface CompraDetail {
   producto_id: number
@@ -44,12 +46,17 @@ interface CompraDetail {
   producto_descripcion: string
   codigo: string
   stock?: number
-  precio_sugerido?: number // Precio sugerido en VES (moneda local)
+  precio_sugerido?: number // Precio sugerido en moneda base (USD)
   precio_sugerido_convertido?: number // Precio sugerido convertido a la moneda seleccionada
   key: number
 }
 
 function NewCompra() {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorInfoBg, colorInfoBorder, colorText },
+  } = theme.useToken()
   const [isLoading, setIsLoading] = useState(false)
   const [form] = Form.useForm()
   const router = useRouter()
@@ -61,7 +68,7 @@ function NewCompra() {
   const [monedaSeleccionada, setMonedaSeleccionada] = useState<Moneda | null>(
     null
   )
-  const [monedaVES, setMonedaVES] = useState<Moneda | null>(null)
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
   const total = useMemo(() => {
     return Number(
@@ -75,9 +82,9 @@ function NewCompra() {
       try {
         const monedasData = await getMonedas()
         setMonedas(monedasData)
-        const ves = monedasData.find(m => m.codigo === 'VES')
-        if (ves) {
-          setMonedaVES(ves)
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
         }
       } catch (error) {
         console.error('Error loading monedas:', error)
@@ -86,33 +93,24 @@ function NewCompra() {
     loadMonedas()
   }, [])
 
-  // Función para convertir de VES a la moneda seleccionada
-  const convertirVESAMonedaSeleccionada = useCallback(
+  // Función para convertir de moneda base (USD) a la moneda seleccionada
+  // Usa la función utilitaria convertirDesdeMonedaBase que tiene la lógica correcta
+  const convertirDesdeBaseAMonedaSeleccionada = useCallback(
     (
-      montoVES: number,
+      montoBase: number,
       monedaDestino: Moneda | null,
-      monedaVES: Moneda | null
+      monedaBase: Moneda | null
     ): number => {
-      if (!monedaDestino || !monedaVES || montoVES <= 0) {
+      if (!monedaDestino || !monedaBase || montoBase <= 0) {
         return 0
       }
 
-      if (monedaDestino.codigo === 'VES') {
-        return montoVES
-      }
-
-      // Convertir usando la fórmula: tasa = tasa_ves / tasa_moneda_destino
-      // monto_convertido = monto_ves * tasa
-      const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-      const tasaDestino = parseFloat(monedaDestino.tasa_vs_base)
-
-      if (!tasaVES || !tasaDestino || tasaVES <= 0 || tasaDestino <= 0) {
+      try {
+        return convertirDesdeMonedaBase(montoBase, monedaDestino, monedaBase)
+      } catch (error) {
+        console.error('Error converting from base currency:', error)
         return 0
       }
-
-      const tasa = tasaVES / tasaDestino
-      const decimales = monedaDestino.decimales || 2
-      return Number((montoVES * tasa).toFixed(decimales))
     },
     []
   )
@@ -131,13 +129,13 @@ function NewCompra() {
   // Recalcular precios convertidos cuando cambia la moneda seleccionada
   // Solo actualiza precio_sugerido_convertido, NO modifica costo_unitario
   useEffect(() => {
-    if (monedaSeleccionada && monedaVES && details.length > 0) {
+    if (monedaSeleccionada && monedaBase && details.length > 0) {
       const newDetails = details.map(detail => {
         if (detail.precio_sugerido && detail.precio_sugerido > 0) {
-          const precioConvertido = convertirVESAMonedaSeleccionada(
+          const precioConvertido = convertirDesdeBaseAMonedaSeleccionada(
             detail.precio_sugerido,
             monedaSeleccionada,
-            monedaVES
+            monedaBase
           )
           return {
             ...detail,
@@ -150,7 +148,7 @@ function NewCompra() {
       setDetails(newDetails)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monedaSeleccionada, monedaVES, convertirVESAMonedaSeleccionada])
+  }, [monedaSeleccionada, monedaBase, convertirDesdeBaseAMonedaSeleccionada])
 
   useEffect(() => {
     form.setFieldsValue({
@@ -180,11 +178,11 @@ function NewCompra() {
 
     // Obtener stock actual del producto
     let currentStock = 0
-    let precioSugeridoVES = 0 // Precio sugerido siempre está en VES
+    let precioSugeridoBase = 0 // Precio sugerido siempre está en moneda base (USD)
 
     if (product) {
       currentStock = product.stock || 0
-      precioSugeridoVES = product.precio || 0 // Este precio ya está en VES
+      precioSugeridoBase = product.precio || 0 // Este precio ya está en moneda base (USD)
     } else {
       // Si no viene en el product, obtenerlo del backend
       try {
@@ -196,18 +194,18 @@ function NewCompra() {
         const selectedProduct = products.find(p => Number(p.id) === value)
         if (selectedProduct) {
           currentStock = selectedProduct.stock || 0
-          precioSugeridoVES = selectedProduct.precio || 0 // Este precio ya está en VES
+          precioSugeridoBase = selectedProduct.precio || 0 // Este precio ya está en moneda base (USD)
         }
       } catch (error) {
         console.error('Error loading product details:', error)
       }
     }
 
-    // Convertir precio sugerido (VES) a la moneda seleccionada
-    const precioSugeridoConvertido = convertirVESAMonedaSeleccionada(
-      precioSugeridoVES,
+    // Convertir precio sugerido (moneda base USD) a la moneda seleccionada
+    const precioSugeridoConvertido = convertirDesdeBaseAMonedaSeleccionada(
+      precioSugeridoBase,
       monedaSeleccionada,
-      monedaVES
+      monedaBase
     )
 
     const cantidad = newDetails[index].cantidad || 1
@@ -229,7 +227,7 @@ function NewCompra() {
       producto_descripcion: product?.descripcion || '',
       codigo: product?.codigo || '',
       stock: currentStock,
-      precio_sugerido: precioSugeridoVES, // Precio en VES
+      precio_sugerido: precioSugeridoBase, // Precio en moneda base (USD)
       precio_sugerido_convertido: precioSugeridoConvertido, // Precio convertido a moneda seleccionada
       costo_unitario: costoUnitario,
       subtotal: Number((costoUnitario * cantidad).toFixed(2)),
@@ -411,14 +409,16 @@ function NewCompra() {
       ),
     },
     {
-      title: 'Precio Sugerido (Local)',
+      title: 'Precio Sugerido Venta (Moneda Base)',
       dataIndex: 'precio_sugerido',
       width: 160,
       align: 'right' as const,
       render: (value: number | undefined) => {
         return (
           <span style={{ color: '#1890ff', fontWeight: 500 }}>
-            {value !== undefined ? formatCurrency('VES', value) : '-'}
+            {value !== undefined
+              ? formatCurrency(monedaBase?.codigo || 'USD', value)
+              : '-'}
           </span>
         )
       },
@@ -524,36 +524,18 @@ function NewCompra() {
       width: 200,
       align: 'right' as const,
       render: (value: number, record: CompraDetail) => {
-        // Calcular subtotal en moneda local (VES)
-        let subtotalVES = 0
-        if (monedaSeleccionada && monedaVES && value > 0) {
-          if (monedaSeleccionada.codigo === 'VES') {
-            subtotalVES = value
+        // Calcular subtotal en moneda base (USD)
+        let subtotalBase = 0
+        if (monedaSeleccionada && monedaBase && value > 0) {
+          if (monedaSeleccionada.id === monedaBase.id) {
+            subtotalBase = value
           } else {
-            // Convertir a moneda base primero, luego a VES
-            const monedaBase = obtenerMonedaBase(monedas)
-            if (monedaBase) {
-              // Convertir de moneda seleccionada a base
-              const montoEnBase = convertirAMonedaBase(
-                value,
-                monedaSeleccionada,
-                monedaBase
-              )
-              // Convertir de base a VES
-              if (monedaVES.id === monedaBase.id) {
-                subtotalVES = montoEnBase
-              } else {
-                // Si VES no es la base, convertir desde la base a VES
-                // tasa_vs_base de VES indica cuántas unidades de VES = 1 unidad de base
-                const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-                subtotalVES = montoEnBase * tasaVES
-              }
-            } else {
-              // Si no hay moneda base, usar conversión directa
-              const tasaOrigen = parseFloat(monedaSeleccionada.tasa_vs_base)
-              const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-              subtotalVES = (value * tasaVES) / tasaOrigen
-            }
+            // Convertir de moneda seleccionada a base (USD)
+            subtotalBase = convertirAMonedaBase(
+              value,
+              monedaSeleccionada,
+              monedaBase
+            )
           }
         }
 
@@ -565,7 +547,7 @@ function NewCompra() {
             <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
               {formatCurrency(codigoMoneda, value)}
             </span>
-            {monedaSeleccionada?.codigo !== 'VES' && monedaVES && (
+            {monedaSeleccionada?.id !== monedaBase?.id && monedaBase && (
               <span
                 style={{
                   fontSize: '12px',
@@ -573,7 +555,8 @@ function NewCompra() {
                   fontStyle: 'italic',
                 }}
               >
-                {formatCurrency('VES', subtotalVES)} (local)
+                {formatCurrency(monedaBase?.codigo || 'USD', subtotalBase)}{' '}
+                (base)
               </span>
             )}
           </Space>
@@ -647,10 +630,14 @@ function NewCompra() {
                   ]}
                 >
                   <MonedaSelect
-                    onChange={value => {
-                      const moneda = monedas.find(m => m.id === value)
+                    onChange={(value, moneda) => {
                       if (moneda) {
                         setMonedaSeleccionada(moneda)
+                      } else {
+                        const monedaEncontrada = monedas.find(m => m.id === value)
+                        if (monedaEncontrada) {
+                          setMonedaSeleccionada(monedaEncontrada)
+                        }
                       }
                     }}
                   />
@@ -729,8 +716,12 @@ function NewCompra() {
                     <div
                       style={{
                         padding: '12px',
-                        background: '#e6f7ff',
+                        background: isDark ? colorInfoBg : '#e6f7ff',
                         borderRadius: '4px',
+                        border: `1px solid ${
+                          isDark ? colorInfoBorder : '#91d5ff'
+                        }`,
+                        color: isDark ? colorText : undefined,
                       }}
                     >
                       <strong>

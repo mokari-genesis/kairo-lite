@@ -20,8 +20,6 @@ export default function TextAnim() {
 
   return (
     <span className=''>
-      {/* <motion.span>{displayText}</motion.span> */}
-
       <motion.h1
         style={{
           fontSize: '3rem',

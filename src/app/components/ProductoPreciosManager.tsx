@@ -194,8 +194,8 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
         const numPrecio =
           typeof precio === 'string' ? parseFloat(precio) : precio
         return numPrecio && !isNaN(numPrecio)
-          ? formatCurrency('VES', numPrecio)
-          : 'Bs.0.00'
+          ? formatCurrency('USD', numPrecio)
+          : '$0.00'
       },
     },
     {
@@ -294,10 +294,10 @@ export const ProductoPreciosManager: React.FC<ProductoPreciosManagerProps> = ({
               step={0.01}
               style={{ width: '100%' }}
               formatter={value =>
-                `Bs. ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                `$${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
               }
               parser={value =>
-                (parseFloat(value!.replace(/Bs\.?\s?|(,*)/g, '')) || 0) as any
+                (parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0) as any
               }
             />
           </Form.Item>

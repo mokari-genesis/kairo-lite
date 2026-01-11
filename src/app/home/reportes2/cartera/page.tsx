@@ -10,7 +10,8 @@ import { PageHeader } from '../../../components/PageHeader'
 import { withAuth } from '../../../auth/withAuth'
 import { useEffect, useState, useMemo } from 'react'
 import { useEmpresa } from '../../../empresaContext'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, obtenerMonedaBase } from '@/app/utils/currency'
+import { getMonedas, Moneda } from '@/app/api/monedas'
 import {
   getReporteCxcAging,
   getReporteCxpAging,
@@ -47,6 +48,8 @@ function Reportes2CarteraPage() {
   const [loading, setLoading] = useState(false)
   const [selectedReport, setSelectedReport] = useState<string>('cxc-aging')
   const [columns, setColumns] = useState<any[]>([])
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
   const reportTypes = [
     {
@@ -69,7 +72,7 @@ function Reportes2CarteraPage() {
     },
   ]
 
-  const cxcAgingColumns = [
+  const getCxcAgingColumns = () => [
     {
       key: 'cliente_nombre',
       title: 'Cliente',
@@ -83,41 +86,71 @@ function Reportes2CarteraPage() {
       type: 'text',
     },
     {
-      key: 'total_saldo',
-      title: 'Total Saldo',
-      dataIndex: 'total_saldo',
+      key: 'total_cuenta',
+      title: 'Total Cuenta',
+      dataIndex: 'total_cuenta_moneda_base',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number) => (
+        <span>{formatCurrency('USD', value || 0)}</span>
+      ),
+    },
+    {
+      key: 'total_cobrado',
+      title: 'Saldo Cobrado',
+      dataIndex: 'total_cobrado_moneda_base',
+      type: 'text',
+      render: (value: number) => (
+        <span style={{ color: '#52c41a' }}>
+          {formatCurrency('USD', value || 0)}
+        </span>
+      ),
+    },
+    {
+      key: 'total_saldo',
+      title: 'Saldo Pendiente',
+      dataIndex: 'total_saldo_moneda_base',
+      type: 'text',
+      render: (value: number) => (
+        <span style={{ color: (value || 0) > 0 ? '#ff4d4f' : '#52c41a' }}>
+          {formatCurrency('USD', value || 0)}
+        </span>
+      ),
     },
     {
       key: 'saldo_0_30',
       title: '0-30 días',
-      dataIndex: 'saldo_0_30',
+      dataIndex: 'saldo_0_30_moneda_base',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number) => (
+        <span>{formatCurrency('USD', value || 0)}</span>
+      ),
     },
     {
       key: 'saldo_31_60',
       title: '31-60 días',
-      dataIndex: 'saldo_31_60',
+      dataIndex: 'saldo_31_60_moneda_base',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number) => (
+        <span>{formatCurrency('USD', value || 0)}</span>
+      ),
     },
     {
       key: 'saldo_61_90',
       title: '61-90 días',
-      dataIndex: 'saldo_61_90',
+      dataIndex: 'saldo_61_90_moneda_base',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number) => (
+        <span>{formatCurrency('USD', value || 0)}</span>
+      ),
     },
     {
       key: 'saldo_mas_90',
       title: '>90 días',
-      dataIndex: 'saldo_mas_90',
+      dataIndex: 'saldo_mas_90_moneda_base',
       type: 'text',
       render: (value: number) => (
         <span style={{ color: '#ff4d4f' }}>
-          {formatCurrency(undefined, value)}
+          {formatCurrency('USD', value || 0)}
         </span>
       ),
     },
@@ -134,7 +167,7 @@ function Reportes2CarteraPage() {
     },
   ]
 
-  const cxpAgingColumns = [
+  const getCxpAgingColumns = () => [
     {
       key: 'proveedor_nombre',
       title: 'Proveedor',
@@ -142,47 +175,212 @@ function Reportes2CarteraPage() {
       type: 'text',
     },
     {
+      key: 'moneda_codigo',
+      title: 'Moneda',
+      dataIndex: 'moneda_codigo',
+      type: 'text',
+      render: (value: string) => <Tag>{value}</Tag>,
+    },
+    {
+      key: 'total_cuenta',
+      title: 'Total Cuenta',
+      dataIndex: 'total_cuenta',
+      type: 'text',
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span>{formatCurrency(record.moneda_codigo, value || 0)}</span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.total_cuenta_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.total_cuenta_moneda_base
+                )}{' '}
+                (Moneda local)
+              </span>
+            )}
+        </Space>
+      ),
+    },
+    {
+      key: 'total_pagado',
+      title: 'Saldo Pagado',
+      dataIndex: 'total_pagado',
+      type: 'text',
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span style={{ color: '#52c41a' }}>
+            {formatCurrency(record.moneda_codigo, value || 0)}
+          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.total_pagado_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.total_pagado_moneda_base
+                )}
+              </span>
+            )}
+        </Space>
+      ),
+    },
+    {
       key: 'total_saldo',
-      title: 'Total Saldo',
+      title: 'Saldo Pendiente',
       dataIndex: 'total_saldo',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span style={{ color: value > 0 ? '#ff4d4f' : '#52c41a' }}>
+            {formatCurrency(record.moneda_codigo, value || 0)}
+          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.total_saldo_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.total_saldo_moneda_base
+                )}{' '}
+                (Moneda local)
+              </span>
+            )}
+        </Space>
+      ),
     },
     {
       key: 'saldo_0_30',
       title: '0-30 días',
       dataIndex: 'saldo_0_30',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span>{formatCurrency(record.moneda_codigo, value)}</span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.saldo_0_30_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.saldo_0_30_moneda_base
+                )}
+              </span>
+            )}
+        </Space>
+      ),
     },
     {
       key: 'saldo_31_60',
       title: '31-60 días',
       dataIndex: 'saldo_31_60',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span>{formatCurrency(record.moneda_codigo, value)}</span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.saldo_31_60_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.saldo_31_60_moneda_base
+                )}
+              </span>
+            )}
+        </Space>
+      ),
     },
     {
       key: 'saldo_61_90',
       title: '61-90 días',
       dataIndex: 'saldo_61_90',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span>{formatCurrency(record.moneda_codigo, value)}</span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.saldo_61_90_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.saldo_61_90_moneda_base
+                )}
+              </span>
+            )}
+        </Space>
+      ),
     },
     {
       key: 'saldo_mas_90',
       title: '>90 días',
       dataIndex: 'saldo_mas_90',
       type: 'text',
-      render: (value: number) => (
-        <span style={{ color: '#ff4d4f' }}>
-          {formatCurrency(undefined, value)}
-        </span>
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span style={{ color: '#ff4d4f' }}>
+            {formatCurrency(record.moneda_codigo, value)}
+          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.saldo_mas_90_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.saldo_mas_90_moneda_base
+                )}
+              </span>
+            )}
+        </Space>
       ),
     },
   ]
 
-  const flujoCajaColumns = [
+  const getFlujoCajaColumns = () => [
     {
       key: 'periodo',
       title: 'Período',
@@ -201,11 +399,39 @@ function Reportes2CarteraPage() {
       ),
     },
     {
+      key: 'moneda_codigo',
+      title: 'Moneda',
+      dataIndex: 'moneda_codigo',
+      type: 'text',
+      render: (value: string) => <Tag>{value}</Tag>,
+    },
+    {
       key: 'monto_estimado',
       title: 'Monto Estimado',
       dataIndex: 'monto_estimado',
       type: 'text',
-      render: (value: number) => formatCurrency(undefined, value),
+      render: (value: number, record: any) => (
+        <Space direction='vertical' size='small'>
+          <span>{formatCurrency(record.moneda_codigo, value)}</span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            record.monto_estimado_moneda_base && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(
+                  monedaBase.codigo,
+                  record.monto_estimado_moneda_base
+                )}{' '}
+                (Moneda local)
+              </span>
+            )}
+        </Space>
+      ),
     },
   ]
 
@@ -218,15 +444,32 @@ function Reportes2CarteraPage() {
   const getColumnsForReport = (reportType: string) => {
     switch (reportType) {
       case 'cxc-aging':
-        return cxcAgingColumns
+        return getCxcAgingColumns()
       case 'cxp-aging':
-        return cxpAgingColumns
+        return getCxpAgingColumns()
       case 'flujo-caja':
-        return flujoCajaColumns
+        return getFlujoCajaColumns()
       default:
-        return cxcAgingColumns
+        return getCxcAgingColumns()
     }
   }
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas()
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
+        }
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
 
   const fetchData = async (reportType: string = selectedReport) => {
     try {
@@ -278,16 +521,23 @@ function Reportes2CarteraPage() {
     }
 
     if (selectedReport === 'cxc-aging' || selectedReport === 'cxp-aging') {
+      // Sumar montos en moneda base (USD) para los cards
       const saldoTotal = data.reduce(
-        (sum, record) => sum + Number(record.total_saldo || 0),
+        (sum, record) =>
+          sum +
+          Number(record.total_saldo_moneda_base || record.total_saldo || 0),
         0
       )
       const saldoVencido = data.reduce(
-        (sum, record) => sum + Number(record.saldo_mas_90 || 0),
+        (sum, record) =>
+          sum +
+          Number(record.saldo_mas_90_moneda_base || record.saldo_mas_90 || 0),
         0
       )
       const saldoMas90 = data.reduce(
-        (sum, record) => sum + Number(record.saldo_mas_90 || 0),
+        (sum, record) =>
+          sum +
+          Number(record.saldo_mas_90_moneda_base || record.saldo_mas_90 || 0),
         0
       )
       const porcentajeVencido =
@@ -407,6 +657,9 @@ function Reportes2CarteraPage() {
                   precision={2}
                   prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -432,6 +685,9 @@ function Reportes2CarteraPage() {
                     <ExclamationCircleOutlined style={{ color: 'white' }} />
                   }
                   valueStyle={{ color: 'white' }}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -483,6 +739,9 @@ function Reportes2CarteraPage() {
                     <ExclamationCircleOutlined style={{ color: 'white' }} />
                   }
                   valueStyle={{ color: 'white' }}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>

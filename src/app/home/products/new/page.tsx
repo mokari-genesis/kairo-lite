@@ -74,18 +74,24 @@ export default function NewProduct() {
 
       const response = await createProduct(productData, empresaId)
 
-      // Si hay un precio sugerido, crear automáticamente el tipo de precio "sugerido"
-      if (values.precio && values.precio > 0) {
-        try {
-          await createProductoPrecio({
-            producto_id: parseInt(response.data.id),
-            tipo: 'sugerido',
-            precio: parseFloat(values.precio),
-          })
-        } catch (priceError) {
-          console.error('Error creating suggested price:', priceError)
-          // No mostramos error al usuario ya que el producto ya se creó exitosamente
-        }
+      // Crear automáticamente el tipo de precio "sugerido" (obligatorio)
+      if (!values.precio || values.precio <= 0) {
+        message.error('El precio sugerido es obligatorio')
+        setLoading(false)
+        return
+      }
+
+      try {
+        await createProductoPrecio({
+          producto_id: parseInt(response.data.id),
+          tipo: 'sugerido',
+          precio: parseFloat(values.precio),
+        })
+      } catch (priceError) {
+        console.error('Error creating suggested price:', priceError)
+        message.error('Error al crear el precio sugerido')
+        setLoading(false)
+        return
       }
 
       // Guardar el producto creado para la gestión de precios
@@ -95,18 +101,11 @@ export default function NewProduct() {
       await queryClient.invalidateQueries({ queryKey: [QueryKey.productsInfo] })
 
       // Invalidar también las queries de precios para que se actualice la lista
-      if (values.precio && values.precio > 0) {
-        await queryClient.invalidateQueries({
-          queryKey: ['productos-precios', parseInt(response.data.id)],
-        })
-      }
+      await queryClient.invalidateQueries({
+        queryKey: ['productos-precios', parseInt(response.data.id)],
+      })
 
-      const successMessage =
-        values.precio && values.precio > 0
-          ? 'Producto creado exitosamente con precio sugerido. Ahora puedes gestionar otros precios.'
-          : 'Producto creado exitosamente. Ahora puedes gestionar los precios.'
-
-      message.success(successMessage)
+      message.success('Producto creado exitosamente con precio sugerido. Ahora puedes gestionar otros precios.')
     } catch (error) {
       message.error(`${error}`)
     } finally {
@@ -273,13 +272,15 @@ export default function NewProduct() {
               label='Precio sugerido'
               rules={[
                 {
-                  required: false,
+                  required: true,
                   message: 'Por favor ingrese un precio sugerido',
                 },
                 {
                   validator: (_, value) => {
                     if (value === undefined || value === null || value === '') {
-                      return Promise.resolve()
+                      return Promise.reject(
+                        new Error('El precio sugerido es obligatorio')
+                      )
                     }
                     const numValue = parseFloat(value)
                     if (isNaN(numValue) || numValue < 0) {

@@ -27,6 +27,7 @@ import {
   Tag,
   message,
   Modal,
+  theme,
 } from 'antd'
 import {
   DollarCircleOutlined,
@@ -49,14 +50,20 @@ import { getMonedas, Moneda } from '@/app/api/monedas'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import dayjs from 'dayjs'
+import { useTheme } from '@/app/themeContext'
 
 function ComprasPage() {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorBgContainer, colorText, colorTextSecondary },
+  } = theme.useToken()
   const { empresaId } = useEmpresa()
   const { usuarioId } = useUsuario()
   const [filters, setFilters] = useState<Record<string, any>>({})
   const router = useRouter()
   const [monedas, setMonedas] = useState<Moneda[]>([])
-  const [monedaVES, setMonedaVES] = useState<Moneda | null>(null)
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
   const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false)
   const [summaryModalVisible, setSummaryModalVisible] = useState(false)
   const [summaryData, setSummaryData] = useState<{
@@ -75,9 +82,9 @@ function ComprasPage() {
       try {
         const monedasData = await getMonedas()
         setMonedas(monedasData)
-        const ves = monedasData.find(m => m.codigo === 'VES')
-        if (ves) {
-          setMonedaVES(ves)
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
         }
       } catch (error) {
         console.error('Error loading monedas:', error)
@@ -97,57 +104,39 @@ function ComprasPage() {
       }
     }
 
-    // Función helper para calcular total en VES
-    const calcularTotalVES = (
+    // Función helper para calcular total en moneda base (USD)
+    const calcularTotalBase = (
       value: number,
       record: CompraResponse
     ): number => {
-      if (!monedas || !monedaVES || value <= 0 || !record.moneda_codigo) {
+      if (!monedas || !monedaBase || value <= 0 || !record.moneda_codigo) {
         return 0
       }
 
       const monedaCompra = monedas.find(m => m.codigo === record.moneda_codigo)
       if (!monedaCompra) return 0
 
-      if (monedaCompra.codigo === 'VES') {
+      // Si la moneda de la compra es la base, retornar directamente
+      if (monedaCompra.id === monedaBase.id) {
         return value
       }
 
-      const monedaBase = obtenerMonedaBase(monedas)
-      if (monedaBase) {
-        // Convertir de moneda compra a base
-        const montoEnBase = convertirAMonedaBase(
-          value,
-          monedaCompra,
-          monedaBase
-        )
-        // Convertir de base a VES
-        if (monedaVES.id === monedaBase.id) {
-          return montoEnBase
-        } else {
-          const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-          return montoEnBase * tasaVES
-        }
-      } else {
-        // Si no hay moneda base, usar conversión directa
-        const tasaOrigen = parseFloat(monedaCompra.tasa_vs_base)
-        const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-        return (value * tasaVES) / tasaOrigen
-      }
+      // Convertir de moneda compra a base (USD)
+      return convertirAMonedaBase(value, monedaCompra, monedaBase)
     }
 
     return compras.reduce(
       (acc, compra) => {
         acc.totalCompras += 1
 
-        // Convertir el total a VES antes de sumar
-        const totalVES = calcularTotalVES(Number(compra.total), compra)
-        acc.totalMonto += totalVES
+        // Convertir el total a moneda base (USD) antes de sumar
+        const totalBase = calcularTotalBase(Number(compra.total), compra)
+        acc.totalMonto += totalBase
 
         if (compra.tipo_pago === 'contado') {
-          acc.totalContado += totalVES
+          acc.totalContado += totalBase
         } else if (compra.tipo_pago === 'credito') {
-          acc.totalCredito += totalVES
+          acc.totalCredito += totalBase
         }
         if (compra.estado === 'anulada') {
           acc.totalAnuladas += 1
@@ -162,7 +151,7 @@ function ComprasPage() {
         totalAnuladas: 0,
       }
     )
-  }, [compras, monedas, monedaVES])
+  }, [compras, monedas, monedaBase])
 
   const handleFilterChange = (newFilters: Record<string, any>) => {
     // Convertir fechas a formato YYYY-MM-DD
@@ -281,43 +270,25 @@ function ComprasPage() {
   }
 
   const columnsWithActions = useMemo(() => {
-    // Función helper para calcular total en VES
-    const calcularTotalVES = (
+    // Función helper para calcular total en moneda base (USD)
+    const calcularTotalBase = (
       value: number,
       record: CompraResponse
     ): number => {
-      if (!monedas || !monedaVES || value <= 0 || !record.moneda_codigo) {
+      if (!monedas || !monedaBase || value <= 0 || !record.moneda_codigo) {
         return 0
       }
 
       const monedaCompra = monedas.find(m => m.codigo === record.moneda_codigo)
       if (!monedaCompra) return 0
 
-      if (monedaCompra.codigo === 'VES') {
+      // Si la moneda de la compra es la base, retornar directamente
+      if (monedaCompra.id === monedaBase.id) {
         return value
       }
 
-      const monedaBase = obtenerMonedaBase(monedas)
-      if (monedaBase) {
-        // Convertir de moneda compra a base
-        const montoEnBase = convertirAMonedaBase(
-          value,
-          monedaCompra,
-          monedaBase
-        )
-        // Convertir de base a VES
-        if (monedaVES.id === monedaBase.id) {
-          return montoEnBase
-        } else {
-          const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-          return montoEnBase * tasaVES
-        }
-      } else {
-        // Si no hay moneda base, usar conversión directa
-        const tasaOrigen = parseFloat(monedaCompra.tasa_vs_base)
-        const tasaVES = parseFloat(monedaVES.tasa_vs_base)
-        return (value * tasaVES) / tasaOrigen
-      }
+      // Convertir de moneda compra a base (USD)
+      return convertirAMonedaBase(value, monedaCompra, monedaBase)
     }
 
     // Reemplazar la columna de total con una personalizada
@@ -326,7 +297,7 @@ function ComprasPage() {
         return {
           ...col,
           render: (value: any, record: CompraResponse) => {
-            const totalVES = calcularTotalVES(value, record)
+            const totalBase = calcularTotalBase(value, record)
             return (
               <Space direction='vertical' size={2} style={{ width: '100%' }}>
                 <Space>
@@ -335,9 +306,9 @@ function ComprasPage() {
                     {formatCurrency(record.moneda_codigo || 'USD', value)}
                   </span>
                 </Space>
-                {monedaVES &&
-                  record.moneda_codigo !== 'VES' &&
-                  totalVES > 0 && (
+                {monedaBase &&
+                  record.moneda_codigo !== monedaBase.codigo &&
+                  totalBase > 0 && (
                     <span
                       style={{
                         fontSize: '12px',
@@ -346,7 +317,7 @@ function ComprasPage() {
                         marginLeft: '20px',
                       }}
                     >
-                      {formatCurrency('VES', totalVES)} (Moneda local)
+                      {formatCurrency(monedaBase.codigo || 'USD', totalBase)} (Moneda base)
                     </span>
                   )}
               </Space>
@@ -386,7 +357,7 @@ function ComprasPage() {
     }
 
     return [...columnsWithCustomTotal, actionsColumn] as ColumnConfig[]
-  }, [monedas, monedaVES, handleView, handleAnular])
+  }, [monedas, monedaBase, handleView, handleAnular])
 
   return (
     <div style={{ padding: '24px' }}>
@@ -440,7 +411,7 @@ function ComprasPage() {
                 prefix={<DollarCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#52c41a' }}
-                formatter={value => formatCurrency('VES', Number(value))}
+                formatter={value => formatCurrency(monedaBase?.codigo || 'USD', Number(value))}
               />
             </Col>
             <Col xs={24} sm={12} md={6}>
@@ -450,7 +421,7 @@ function ComprasPage() {
                 prefix={<CheckCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#52c41a' }}
-                formatter={value => formatCurrency('VES', Number(value))}
+                formatter={value => formatCurrency(monedaBase?.codigo || 'USD', Number(value))}
               />
             </Col>
             <Col xs={24} sm={12} md={6}>
@@ -460,7 +431,7 @@ function ComprasPage() {
                 prefix={<DollarCircleOutlined />}
                 precision={2}
                 valueStyle={{ color: '#1890ff' }}
-                formatter={value => formatCurrency('VES', Number(value))}
+                formatter={value => formatCurrency(monedaBase?.codigo || 'USD', Number(value))}
               />
             </Col>
           </Row>
@@ -582,13 +553,20 @@ function ComprasPage() {
                     overflowY: 'auto',
                     marginTop: '10px',
                     padding: '10px',
-                    backgroundColor: '#f5f5f5',
+                    backgroundColor: isDark ? colorBgContainer : '#f5f5f5',
                     borderRadius: '4px',
+                    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'}`,
                   }}
                 >
                   <ul style={{ margin: 0, paddingLeft: '20px' }}>
                     {summaryData.errors.map((error, index) => (
-                      <li key={index} style={{ marginBottom: '5px' }}>
+                      <li
+                        key={index}
+                        style={{
+                          marginBottom: '5px',
+                          color: isDark ? colorText : undefined,
+                        }}
+                      >
                         {error}
                       </li>
                     ))}

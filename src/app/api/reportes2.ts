@@ -52,6 +52,7 @@ export interface ReporteVentasPorMetodoPago {
   moneda_id: number
   moneda_codigo: string
   total_ventas: number
+  total_monto_original: number | null
   numero_ventas: number
 }
 
@@ -185,35 +186,106 @@ export const getReporteVentasPorMetodoPago = async (
   }
 }
 
+export interface ReporteVentasPorProducto {
+  producto_id: number
+  producto_codigo: string
+  producto_descripcion: string
+  categoria: string
+  cantidad_vendida: number
+  numero_ventas: number
+  total_vendido: number
+  precio_promedio: number
+  fecha_primera_venta: string
+  fecha_ultima_venta: string
+}
+
+export const getReporteVentasPorProducto = async (
+  filters?: Record<string, any>
+): Promise<ReporteVentasPorProducto[]> => {
+  try {
+    const queryParams = new URLSearchParams()
+    if (filters?.empresa_id) {
+      queryParams.append('empresa_id', String(filters.empresa_id))
+    }
+    if (filters?.fecha_inicio) {
+      queryParams.append('fecha_inicio', String(filters.fecha_inicio))
+    }
+    if (filters?.fecha_fin) {
+      queryParams.append('fecha_fin', String(filters.fecha_fin))
+    }
+    if (filters?.categoria) {
+      queryParams.append('categoria', String(filters.categoria))
+    }
+
+    const response = await fetchApi<
+      LambdaResponse<ReporteVentasPorProducto[]>
+    >({
+      api: API_URL,
+      service: `/reportes2/ventas-por-producto?${queryParams.toString()}`,
+      method: 'GET',
+    })
+
+    return response.data || []
+  } catch (error) {
+    console.error('Error fetching ventas por producto report:', error)
+    throw error
+  }
+}
+
 // ============ CARTERA ============
 
 export interface ReporteCxcAging {
   cliente_id: number
   cliente_nombre: string
   cliente_nit: string
+  moneda_id: number
+  moneda_codigo: string
   total_saldo: number
+  total_cobrado: number
+  total_cuenta: number
   saldo_0_30: number
   saldo_31_60: number
   saldo_61_90: number
   saldo_mas_90: number
+  total_saldo_moneda_base: number
+  total_cobrado_moneda_base: number
+  total_cuenta_moneda_base: number
+  saldo_0_30_moneda_base: number
+  saldo_31_60_moneda_base: number
+  saldo_61_90_moneda_base: number
+  saldo_mas_90_moneda_base: number
   dias_promedio_atraso: number
 }
 
 export interface ReporteCxpAging {
   proveedor_id: number
   proveedor_nombre: string
+  moneda_id: number
+  moneda_codigo: string
   total_saldo: number
+  total_pagado: number
+  total_cuenta: number
   saldo_0_30: number
   saldo_31_60: number
   saldo_61_90: number
   saldo_mas_90: number
+  total_saldo_moneda_base: number
+  total_pagado_moneda_base: number
+  total_cuenta_moneda_base: number
+  saldo_0_30_moneda_base: number
+  saldo_31_60_moneda_base: number
+  saldo_61_90_moneda_base: number
+  saldo_mas_90_moneda_base: number
   dias_promedio_atraso: number
 }
 
 export interface ReporteFlujoCaja {
   periodo: string
   tipo: 'cobro' | 'pago'
+  moneda_id: number
+  moneda_codigo: string
   monto_estimado: number
+  monto_estimado_moneda_base: number
   saldo_neto: number
 }
 
@@ -314,10 +386,32 @@ export interface ReporteInventarioRotacion {
   producto_codigo: string
   producto_descripcion: string
   categoria: string
+  stock_actual: number
+  precio_unitario: number
+  valor_inventario: number
   unidades_vendidas: number
-  stock_promedio: number
-  rotacion: number
-  dias_cobertura: number
+}
+
+export interface ReporteInventarioCompras {
+  producto_id: number
+  producto_codigo: string
+  producto_descripcion: string
+  categoria: string
+  compra_id: number
+  fecha_compra: string
+  moneda_id: number
+  moneda_codigo: string
+  moneda_simbolo: string
+  cantidad: number
+  costo_unitario: number
+  subtotal: number
+  costo_unitario_base: number
+  subtotal_base: number
+  proveedor_nombre: string
+  proveedor_nit: string
+  usuario_nombre: string
+  tipo_pago: string
+  estado_compra: string
 }
 
 export interface ReporteInventarioBajaRotacion {
@@ -370,6 +464,39 @@ export const getReporteInventarioRotacion = async (
     return response.data || []
   } catch (error) {
     console.error('Error fetching inventario rotacion report:', error)
+    throw error
+  }
+}
+
+export const getReporteInventarioCompras = async (
+  filters?: Record<string, any>
+): Promise<ReporteInventarioCompras[]> => {
+  try {
+    const queryParams = new URLSearchParams()
+    if (filters?.empresa_id) {
+      queryParams.append('empresa_id', String(filters.empresa_id))
+    }
+    if (filters?.fecha_inicio) {
+      queryParams.append('fecha_inicio', String(filters.fecha_inicio))
+    }
+    if (filters?.fecha_fin) {
+      queryParams.append('fecha_fin', String(filters.fecha_fin))
+    }
+    if (filters?.categoria) {
+      queryParams.append('categoria', String(filters.categoria))
+    }
+
+    const response = await fetchApi<LambdaResponse<ReporteInventarioCompras[]>>(
+      {
+        api: API_URL,
+        service: `/reportes2/inventario-compras?${queryParams.toString()}`,
+        method: 'GET',
+      }
+    )
+
+    return response.data || []
+  } catch (error) {
+    console.error('Error fetching inventario compras report:', error)
     throw error
   }
 }
@@ -447,9 +574,14 @@ export interface ReporteTopProveedores {
   proveedor_id: number
   proveedor_nombre: string
   total_compras: number
+  total_compras_base: number
   numero_compras: number
   promedio_compra: number
+  promedio_compra_base: number
   porcentaje_participacion: number
+  monedas_compra: string | null
+  total_compras_por_moneda: string | null
+  moneda_base: string | null
 }
 
 export interface ReporteClientesRiesgo {

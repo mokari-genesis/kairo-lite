@@ -1,6 +1,7 @@
 import { ColumnConfig } from '../components/DataTable'
 import { Badge, Space, Tag } from 'antd'
 import { ReactNode } from 'react'
+import Link from 'next/link'
 import {
   IdcardOutlined,
   ShoppingCartOutlined,
@@ -11,6 +12,7 @@ import {
   CalendarOutlined,
   CommentOutlined,
   InboxOutlined,
+  LinkOutlined,
 } from '@ant-design/icons'
 import { formatCurrency } from '../utils/currency'
 
@@ -43,12 +45,67 @@ export const StockColumns: ColumnConfig[] = [
     dataIndex: 'venta_id',
     type: 'text',
     disabled: true,
-    render: (value: any) => (
-      <Space>
-        <ShoppingCartOutlined style={{ color: '#52c41a' }} />
-        <span style={{ fontWeight: 'bold', color: '#1890ff' }}>{value}</span>
-      </Space>
-    ),
+    render: (value: any) => {
+      if (!value) {
+        return null
+      }
+      return (
+        <Link
+          href={`/home/saleOrders/edit/${value}`}
+          style={{
+            color: '#1890ff',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 500,
+          }}
+          onClick={e => {
+            e.stopPropagation()
+          }}
+        >
+          <ShoppingCartOutlined style={{ color: '#52c41a' }} />
+          <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+            #{value}
+          </span>
+          <LinkOutlined style={{ fontSize: '12px' }} />
+        </Link>
+      )
+    },
+  },
+  {
+    key: 'compra_id',
+    title: 'ID Compra',
+    dataIndex: 'compra_id',
+    type: 'text',
+    disabled: true,
+    render: (value: any) => {
+      if (!value) {
+        return null
+      }
+      return (
+        <Link
+          href={`/home/compras/${value}`}
+          style={{
+            color: '#faad14',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 500,
+          }}
+          onClick={e => {
+            e.stopPropagation()
+          }}
+        >
+          <ShoppingCartOutlined style={{ color: '#faad14' }} />
+          <span style={{ fontWeight: 'bold', color: '#faad14' }}>
+            #{value}
+          </span>
+          <LinkOutlined style={{ fontSize: '12px' }} />
+        </Link>
+      )
+    },
   },
   {
     key: 'empresa_id',
@@ -182,28 +239,46 @@ export const StockColumns: ColumnConfig[] = [
     title: 'Precio Compra',
     dataIndex: 'precio_compra',
     type: 'text',
-    render: (value: any) => (
-      <Space>
-        <InboxOutlined style={{ color: '#1890ff' }} />
-        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
-          {formatCurrency('VES', Number(value || 0))}
-        </span>
-      </Space>
-    ),
+    render: (value: any, record: any) => {
+      const monedaCodigo = record.moneda_codigo || 'USD'
+      const monedaSimbolo = record.moneda_simbolo || '$'
+      return (
+        <Space>
+          <InboxOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+            {formatCurrency(monedaCodigo, Number(value || 0))}
+          </span>
+          {record.moneda_codigo && record.moneda_codigo !== 'USD' && (
+            <Tag color='blue' style={{ fontSize: '10px', marginLeft: '4px' }}>
+              {monedaCodigo}
+            </Tag>
+          )}
+        </Space>
+      )
+    },
   },
   {
     key: 'total_compra',
     title: 'Total Compra',
     dataIndex: 'total_compra',
     type: 'text',
-    render: (value: any) => (
-      <Space>
-        <InboxOutlined style={{ color: '#1890ff' }} />
-        <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
-          {formatCurrency('VES', Number(value || 0))}
-        </span>
-      </Space>
-    ),
+    render: (value: any, record: any) => {
+      const monedaCodigo = record.moneda_codigo || 'USD'
+      const monedaSimbolo = record.moneda_simbolo || '$'
+      return (
+        <Space>
+          <InboxOutlined style={{ color: '#1890ff' }} />
+          <span style={{ fontWeight: 'bold', color: '#722ed1' }}>
+            {formatCurrency(monedaCodigo, Number(value || 0))}
+          </span>
+          {record.moneda_codigo && record.moneda_codigo !== 'USD' && (
+            <Tag color='blue' style={{ fontSize: '10px', marginLeft: '4px' }}>
+              {monedaCodigo}
+            </Tag>
+          )}
+        </Space>
+      )
+    },
   },
   {
     key: 'stock_actual',

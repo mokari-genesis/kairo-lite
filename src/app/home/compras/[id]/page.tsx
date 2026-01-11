@@ -14,6 +14,7 @@ import {
   Descriptions,
   Modal,
   Spin,
+  theme,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -38,6 +39,7 @@ export default function CompraDetailPage() {
   const [compra, setCompra] = useState<CompraResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [anulando, setAnulando] = useState(false)
+  const { token } = theme.useToken()
 
   useEffect(() => {
     const fetchCompra = async () => {
@@ -134,7 +136,7 @@ export default function CompraDetailPage() {
       render: (text: string, record: any) => (
         <div>
           <div style={{ fontWeight: 'bold' }}>{text}</div>
-          <div style={{ color: '#8c8c8c', fontSize: '12px' }}>
+          <div style={{ color: token.colorTextSecondary, fontSize: '12px' }}>
             {record.producto_codigo}
             {record.producto_serie && ` - Serie: ${record.producto_serie}`}
           </div>
@@ -179,7 +181,7 @@ export default function CompraDetailPage() {
       >
         <div>
           <h1 style={{ margin: 0 }}>Compra #{compra.id}</h1>
-          <p style={{ margin: '4px 0 0 0', color: '#8c8c8c' }}>
+          <p style={{ margin: '4px 0 0 0', color: token.colorTextSecondary }}>
             Detalle de la compra
           </p>
         </div>
@@ -219,7 +221,7 @@ export default function CompraDetailPage() {
                     <ShoppingOutlined />
                     {compra.proveedor_nombre}
                     {compra.proveedor_nit && (
-                      <span style={{ color: '#8c8c8c' }}>
+                      <span style={{ color: token.colorTextSecondary }}>
                         ({compra.proveedor_nit})
                       </span>
                     )}
@@ -279,7 +281,7 @@ export default function CompraDetailPage() {
                         )
                       }}
                       style={{
-                        color: '#1890ff',
+                        color: token.colorPrimary,
                         textDecoration: 'none',
                         cursor: 'pointer',
                         display: 'inline-flex',
@@ -361,9 +363,10 @@ export default function CompraDetailPage() {
                   <div
                     style={{
                       padding: '12px',
-                      background: '#e6f7ff',
+                      background: token.colorPrimaryBg,
                       borderRadius: '4px',
-                      border: '1px solid #91d5ff',
+                      border: `1px solid ${token.colorPrimaryBorder}`,
+                      color: token.colorText,
                     }}
                   >
                     <strong>ℹ️ Esta compra generó una cuenta por pagar</strong>
@@ -380,7 +383,7 @@ export default function CompraDetailPage() {
                           )
                         }}
                         style={{
-                          color: '#1890ff',
+                          color: token.colorPrimary,
                           textDecoration: 'none',
                           cursor: 'pointer',
                           display: 'inline-flex',
@@ -403,9 +406,10 @@ export default function CompraDetailPage() {
                   <div
                     style={{
                       padding: '12px',
-                      background: '#f6ffed',
+                      background: token.colorSuccessBg,
                       borderRadius: '4px',
-                      border: '1px solid #b7eb8f',
+                      border: `1px solid ${token.colorSuccessBorder}`,
+                      color: token.colorText,
                     }}
                   >
                     <strong>
@@ -446,7 +450,11 @@ export default function CompraDetailPage() {
             />
           ) : (
             <div
-              style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: token.colorTextSecondary,
+              }}
             >
               No hay productos registrados en esta compra
             </div>

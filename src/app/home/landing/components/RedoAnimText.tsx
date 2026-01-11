@@ -1,7 +1,14 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { useEffect } from 'react'
+import { useTheme } from '@/app/themeContext'
+import { theme } from 'antd'
 
 export default function RedoAnimText() {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorText },
+  } = theme.useToken()
   const textIndex = useMotionValue(0)
   const texts = [
     'Inventario claro, decisiones rápidas.',
@@ -71,5 +78,14 @@ export default function RedoAnimText() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return <motion.span className='inline'>{displayText}</motion.span>
+  return (
+    <motion.span
+      className='inline'
+      style={{
+        color: isDark ? colorText : undefined,
+      }}
+    >
+      {displayText}
+    </motion.span>
+  )
 }
