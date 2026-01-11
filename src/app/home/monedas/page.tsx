@@ -24,8 +24,10 @@ import { Card, message, notification, Space, Button, Row, Col } from 'antd'
 import { motion } from 'framer-motion'
 import { columns, filterConfigs } from '@/app/model/monedasTableModel'
 import * as XLSX from 'xlsx'
+import { useCurrentUser } from '@/app/hooks/useCurrentUser'
 
 function MonedasPage() {
+  const { isMaster } = useCurrentUser()
   const [api, contextHolder] = notification.useNotification()
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -100,10 +102,12 @@ function MonedasPage() {
       return
     }
 
-    // No permitir eliminar la moneda base (USD)
+    // No permitir a usuarios no master eliminar la moneda base
     if (record.es_base === 1 || record.es_base === true) {
-      message.warning('No se puede eliminar la moneda base del sistema (USD)')
-      return
+      if (!isMaster) {
+        message.warning('Solo los usuarios master pueden eliminar la moneda base del sistema')
+        return
+      }
     }
 
     // No permitir eliminar USD aunque no sea base (por seguridad)
