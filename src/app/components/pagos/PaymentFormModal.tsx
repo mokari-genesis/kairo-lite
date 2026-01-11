@@ -297,7 +297,9 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             formatter={value =>
               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
             }
-            parser={value => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+            parser={(value: string | undefined): number => {
+              return parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0
+            }}
           />
         </Form.Item>
 
