@@ -12,9 +12,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { useStock } from '@/app/hooks/useHooks'
 import { useRouter } from 'next/navigation'
 import { queryClient, QueryKey } from '@/app/utils/query'
-import { Card, message, Space, Button, Row, Col, Statistic } from 'antd'
+import { Card, message, Space, Button, Row, Col, Statistic, Tag } from 'antd'
 import { motion } from 'framer-motion'
-import { deleteStock, StockTypeUpdate, updateStock } from '@/app/api/stock'
+import {
+  deleteStock,
+  StockTypeUpdate,
+  updateStock,
+  StockType,
+} from '@/app/api/stock'
 import { StockColumns, StockFilterConfigs } from '../../model/stockTableModel'
 import {
   InboxOutlined,
@@ -22,16 +27,45 @@ import {
   ArrowDownOutlined,
   ShoppingCartOutlined,
   ToolOutlined,
+  DollarOutlined,
 } from '@ant-design/icons'
 import * as XLSX from 'xlsx'
+import { useTheme } from '../../themeContext'
+import { generateColorForId, getUniqueRowColor } from '../../utils/themeColors'
+import { getMonedas, Moneda } from '@/app/api/monedas'
+import {
+  formatCurrency,
+  convertirAMonedaBase,
+  obtenerMonedaBase,
+} from '@/app/utils/currency'
+import { ColumnConfig } from '@/app/components/DataTable'
 
 function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
   const router = useRouter()
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas()
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
+        }
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
 
   const handleNewClick = () => {
     router.push('/home/stock/new')
@@ -93,6 +127,7 @@ function Home() {
     // Preparar los datos para Excel
     const excelData = dataStock.map(stock => ({
       'ID de venta': stock.venta_id,
+      'ID Compra': stock.compra_id || '',
       'ID Sucursal': stock.empresa_id,
       Sucursal: stock.empresa,
       Producto: stock.producto,
@@ -100,6 +135,9 @@ function Home() {
       'Codigo Producto  ': stock.codigo_producto,
       'Creado por (Usuario)': stock.usuario,
       'Cantidad del movimiento': stock.cantidad,
+      'Precio Compra': stock.precio_compra || 0,
+      Moneda: stock.moneda_codigo || 'USD',
+      'Total Compra': stock.total_compra || 0,
       'Stock Actual': stock.stock_actual,
       'Stock antes del Movimiento': stock.stock_movimiento,
       'Tipo de Movimiento': stock.tipo_movimiento,
@@ -118,6 +156,80 @@ function Home() {
   }
 
   const { data: dataStock, isLoading: stockLoading } = useStock(filters)
+
+  // Columnas personalizadas con conversión a moneda base
+  const columnsWithCurrencyConversion = useMemo(() => {
+    // Función helper para calcular monto en moneda base (USD)
+    const calcularMontoBase = (value: number, record: StockType): number => {
+      if (!monedas || !monedaBase || value <= 0 || !record.moneda_codigo) {
+        return 0
+      }
+
+      const monedaMovimiento = monedas.find(
+        m => m.codigo === record.moneda_codigo
+      )
+      if (!monedaMovimiento) return 0
+
+      // Si la moneda del movimiento es la base, retornar directamente
+      if (monedaMovimiento.id === monedaBase.id) {
+        return value
+      }
+
+      // Convertir de moneda movimiento a base (USD)
+      return convertirAMonedaBase(value, monedaMovimiento, monedaBase)
+    }
+
+    // Reemplazar las columnas de precio_compra y total_compra con versiones personalizadas
+    const columnsWithCustomCurrency = StockColumns.map(col => {
+      if (col.key === 'precio_compra' || col.key === 'total_compra') {
+        return {
+          ...col,
+          render: (value: any, record: StockType) => {
+            const monedaCodigo = record.moneda_codigo || 'USD'
+            const montoBase = calcularMontoBase(value, record)
+
+            return (
+              <Space direction='vertical' size={2} style={{ width: '100%' }}>
+                <Space>
+                  <DollarOutlined style={{ color: '#faad14' }} />
+                  <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                    {formatCurrency(monedaCodigo, Number(value || 0))}
+                  </span>
+                  {record.moneda_codigo && record.moneda_codigo !== 'USD' && (
+                    <Tag
+                      color='blue'
+                      style={{ fontSize: '10px', marginLeft: '4px' }}
+                    >
+                      {monedaCodigo}
+                    </Tag>
+                  )}
+                </Space>
+                {monedaBase &&
+                  record.moneda_codigo &&
+                  record.moneda_codigo !== monedaBase.codigo &&
+                  montoBase > 0 && (
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: '#8c8c8c',
+                        fontStyle: 'italic',
+                        marginLeft: '20px',
+                      }}
+                    >
+                      {formatCurrency(monedaBase.codigo || 'USD', montoBase)}{' '}
+                      (Moneda base)
+                    </span>
+                  )}
+              </Space>
+            )
+          },
+        }
+      }
+      return col
+    })
+
+    return columnsWithCustomCurrency
+  }, [monedas, monedaBase])
 
   // Calcular estadísticas de movimientos
   const stockStats = useMemo(() => {
@@ -149,32 +261,8 @@ function Home() {
     }
   }, [dataStock])
 
-  // Función para generar colores únicos basados en el ID de venta
-  const generateColorForSalesId = (salesId: string | number): string => {
-    const colors = [
-      '#d6f7ff', // Azul más fuerte
-      '#d9f7be', // Verde más fuerte
-      '#ffd8bf', // Naranja más fuerte
-      '#efdbff', // Púrpura más fuerte
-      '#fff1b8', // Amarillo más fuerte
-      '#bae7ff', // Azul más visible
-      '#d9f7be', // Verde más visible
-      '#ffccc7', // Rojo más visible
-      '#efdbff', // Púrpura más visible
-      '#fff1b8', // Amarillo más visible
-    ]
-
-    // Convertir el ID a un número y usar módulo para obtener un índice
-    const idStr = String(salesId)
-    let hash = 0
-    for (let i = 0; i < idStr.length; i++) {
-      const char = idStr.charCodeAt(i)
-      hash = (hash << 5) - hash + char
-      hash = hash & hash // Convertir a 32bit integer
-    }
-
-    return colors[Math.abs(hash) % colors.length]
-  }
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
 
   // Función para obtener la clase CSS de la fila basada en el ID de venta
   const getRowClassName = (record: any, index: number): string => {
@@ -216,19 +304,30 @@ function Home() {
       document.head.appendChild(styleElement)
     }
 
-    // Generar CSS: blanco para filas únicas y colores para ventas agrupadas
-    const cssRules = [
-      // Estilo para filas únicas (blanco)
-      '.stock-row-unique { background-color: #ffffff !important; }',
-      // Estilos para ventas agrupadas (con colores)
-      ...groupedSalesIds.map(salesId => {
-        const backgroundColor = generateColorForSalesId(salesId)
-        return `.stock-row-${salesId} { background-color: ${backgroundColor} !important; }`
-      }),
-    ].join('\n')
+    // Generar CSS: solo aplicar colores adaptativos en modo dark
+    // En modo light, usar colores originales
+    const cssRules = isDark
+      ? [
+          // Estilo para filas únicas (solo en dark mode)
+          `.stock-row-unique { background-color: ${getUniqueRowColor(
+            true
+          )} !important; }`,
+          // Estilos para ventas agrupadas (solo en dark mode)
+          ...groupedSalesIds.map(salesId => {
+            const backgroundColor = generateColorForId(salesId, true)
+            return `.stock-row-${salesId} { background-color: ${backgroundColor} !important; }`
+          }),
+        ].join('\n')
+      : [
+          // En modo light, solo aplicar estilos para filas agrupadas (colores originales)
+          ...groupedSalesIds.map(salesId => {
+            const backgroundColor = generateColorForId(salesId, false)
+            return `.stock-row-${salesId} { background-color: ${backgroundColor} !important; }`
+          }),
+        ].join('\n')
 
     styleElement.textContent = cssRules
-  }, [dataStock])
+  }, [dataStock, isDark])
 
   return (
     <motion.div
@@ -386,7 +485,7 @@ function Home() {
           />
           <DataTable
             data={dataStock || []}
-            columns={StockColumns}
+            columns={columnsWithCurrencyConversion}
             onDelete={handleDelete}
             loading={stockLoading || isLoading}
             rowClassName={getRowClassName}

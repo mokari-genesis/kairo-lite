@@ -68,6 +68,8 @@ export default function NewPurchase() {
   const [ventaData, setVentaData] = useState<Venta | null>(null)
   const [monedas, setMonedas] = useState<any[]>([])
   const [monedaBase, setMonedaBase] = useState<any>(null)
+  const [pagoContado, setPagoContado] = useState(false)
+  const [metodosPago, setMetodosPago] = useState<any[]>([])
   const { empresaId } = useEmpresa()
   const { usuarioId } = useUsuario()
   console.log(' LA CHIMIBA PARCE ', empresaId)
@@ -92,9 +94,13 @@ export default function NewPurchase() {
       if (pagos.length > 0) {
         setPagos([])
       }
+      // Desactivar pago contado si estaba activo
+      if (pagoContado) {
+        setPagoContado(false)
+      }
     }
     previousEmpresaIdRef.current = empresaId
-  }, [empresaId, details.length, pagos.length])
+  }, [empresaId, details.length, pagos.length, pagoContado])
 
   // Cargar monedas al montar el componente
   useEffect(() => {
@@ -111,6 +117,40 @@ export default function NewPurchase() {
     cargarMonedas()
   }, [])
 
+  // Cargar métodos de pago al montar el componente
+  useEffect(() => {
+    const cargarMetodosPago = async () => {
+      try {
+        const metodosData = await getMetodosPago({ activo: 1 }, empresaId ?? 1)
+        setMetodosPago(metodosData)
+      } catch (error) {
+        console.error('Error cargando métodos de pago:', error)
+      }
+    }
+    cargarMetodosPago()
+  }, [empresaId])
+
+  // Actualizar pago contado cuando cambie el total de la venta
+  useEffect(() => {
+    if (pagoContado && pagos.length > 0 && monedaBase && metodosPago.length > 0) {
+      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      const pagoActual = pagos[0]
+      
+      // Solo actualizar si el total cambió (con tolerancia para decimales)
+      const diferencia = Math.abs(pagoActual.monto - totalVenta)
+      if (diferencia > 0.01) {
+        const pagoActualizado: VentaPago = {
+          ...pagoActual,
+          monto: totalVenta,
+          monto_en_moneda_venta: totalVenta.toFixed(2),
+          referencia_pago: 'Pago de contado',
+        }
+        setPagos([pagoActualizado])
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details.reduce((acc, curr) => acc + curr.subtotal, 0), pagoContado])
+
   // Crear objeto Venta para la sección de pagos
   useEffect(() => {
     const total = details.reduce((acc, curr) => acc + curr.subtotal, 0)
@@ -124,7 +164,7 @@ export default function NewPurchase() {
       id: 0, // ID temporal para ventas nuevas
       total,
       estado: 'pendiente',
-      moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
+      moneda_id: monedaBase?.id || 1, // Siempre usar moneda base (USD)
       pagos: pagos,
       totalPagado,
       saldoPendiente: total - totalPagado,
@@ -326,33 +366,31 @@ export default function NewPurchase() {
     }
   }
 
-  // Función para calcular monto_en_moneda_venta
+  // Función para calcular monto_en_moneda_venta (siempre en moneda base USD)
   const calcularMontoEnMonedaVenta = (
     monto: number,
-    monedaPagoId: number,
-    monedaVentaId: number = 1 // Por defecto VES (Bolívares Fuertes)
+    monedaPagoId: number
   ): string => {
-    if (monedaPagoId === monedaVentaId) {
+    if (!monedaBase) {
       return monto.toFixed(2)
     }
 
-    // Buscar las monedas del pago y de la venta
+    // Buscar la moneda del pago
     const monedaPago = monedas.find(m => m.id === monedaPagoId)
-    const monedaVenta = monedas.find(m => m.id === monedaVentaId)
 
-    if (!monedaPago || !monedaVenta || !monedaBase) {
+    if (!monedaPago) {
       return monto.toFixed(2)
     }
 
-    // Convertir de la moneda del pago a la moneda base, luego a la moneda de la venta
-    const montoEnBase = convertirAMonedaBase(monto, monedaPago, monedaBase)
-    const montoEnMonedaVenta = convertirDesdeMonedaBase(
-      montoEnBase,
-      monedaVenta,
-      monedaBase
-    )
+    // Si la moneda del pago es la base (USD), no hay conversión
+    if (monedaPago.id === monedaBase.id) {
+      return monto.toFixed(2)
+    }
 
-    return montoEnMonedaVenta.toFixed(2)
+    // Convertir de la moneda del pago a la moneda base (USD)
+    // monto_en_moneda_venta siempre debe estar en USD (moneda base)
+    const montoEnBase = convertirAMonedaBase(monto, monedaPago, monedaBase)
+    return montoEnBase.toFixed(2)
   }
 
   // Handlers para gestión de pagos
@@ -366,12 +404,10 @@ export default function NewPurchase() {
         getMonedaCodigo(payment.moneda_id || payment.monedaId || 0),
       ])
 
-      // Calcular monto_en_moneda_venta
-      const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
+      // Calcular monto_en_moneda_venta (siempre en moneda base USD)
       const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
         payment.monto,
-        payment.moneda_id || payment.monedaId || 0,
-        monedaVentaId
+        payment.moneda_id || payment.monedaId || 0
       )
 
       const newPayment: VentaPago = {
@@ -414,12 +450,12 @@ export default function NewPurchase() {
       }
 
       // Recalcular monto_en_moneda_venta si cambió el monto o la moneda
+      // monto_en_moneda_venta siempre debe estar en moneda base (USD)
       if (
         payment.monto !== undefined ||
         payment.moneda_id !== undefined ||
         payment.monedaId !== undefined
       ) {
-        const monedaVentaId = 1 // Por defecto VES (Bolívares Fuertes)
         const montoFinal =
           payment.monto !== undefined
             ? payment.monto
@@ -432,8 +468,7 @@ export default function NewPurchase() {
 
         const montoEnMonedaVenta = calcularMontoEnMonedaVenta(
           montoFinal,
-          monedaPagoId,
-          monedaVentaId
+          monedaPagoId
         )
         updatedPayment.monto_en_moneda_venta = montoEnMonedaVenta
       }
@@ -449,6 +484,65 @@ export default function NewPurchase() {
 
   const handleDeletePayment = (paymentId: number) => {
     setPagos(prev => prev.filter(p => p.id !== paymentId))
+  }
+
+  // Handler para activar/desactivar pago contado
+  const handlePagoContadoToggle = async () => {
+    if (pagoContado) {
+      // Desactivar: limpiar pagos automáticos
+      setPagoContado(false)
+      setPagos([])
+    } else {
+      // Activar: agregar pago automático
+      if (!monedaBase) {
+        message.error('No se encontró la moneda base en el sistema')
+        return
+      }
+
+      if (metodosPago.length === 0) {
+        message.error('No hay métodos de pago disponibles')
+        return
+      }
+
+      const totalVenta = details.reduce((acc, curr) => acc + curr.subtotal, 0)
+      if (totalVenta <= 0) {
+        message.warning('Debe agregar productos a la venta antes de activar pago contado')
+        return
+      }
+
+      // Buscar método de pago "contado" o usar el primero disponible
+      const metodoContado = metodosPago.find(
+        m => m.nombre.toLowerCase().includes('contado') || m.nombre.toLowerCase().includes('efectivo')
+      ) || metodosPago[0]
+
+      try {
+        const metodoPagoNombre = metodoContado.nombre
+        const monedaCodigo = monedaBase.codigo
+
+        const montoEnMonedaVenta = totalVenta.toFixed(2)
+
+        const pagoContado: VentaPago = {
+          id: Date.now(),
+          metodo_pago_id: metodoContado.id,
+          metodoPagoId: metodoContado.id,
+          metodoPagoNombre,
+          moneda_id: monedaBase.id,
+          monedaId: monedaBase.id,
+          monedaCodigo,
+          monto: totalVenta,
+          fecha: new Date().toISOString(),
+          monto_en_moneda_venta: montoEnMonedaVenta,
+          referencia_pago: 'Pago de contado',
+        }
+
+        setPagos([pagoContado])
+        setPagoContado(true)
+        message.success('Pago contado activado')
+      } catch (error) {
+        console.error('Error activando pago contado:', error)
+        message.error('Error al activar pago contado')
+      }
+    }
   }
 
   const onFinish = async (values: any) => {
@@ -550,14 +644,21 @@ export default function NewPurchase() {
         message.warning(mensaje)
       }
 
+      // Obtener la moneda base (USD) - las ventas siempre se guardan en moneda base
+      const monedaBaseId = monedaBase?.id || null
+      if (!monedaBaseId) {
+        message.error('No se encontró la moneda base (USD) en el sistema')
+        return
+      }
+
       const data = {
         ...values,
         empresa_id: empresaId ?? 1,
         usuario_id: usuarioId ?? null,
         total: totalVenta,
         estado: 'vendido',
-        moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
-        moneda: 'Bs',
+        moneda_id: monedaBaseId, // Siempre usar moneda base (USD)
+        moneda: monedaBase?.codigo || 'USD',
         comentario: values.comentario || '',
         detalle: details,
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
@@ -657,15 +758,17 @@ export default function NewPurchase() {
             disabled={record.precio_no_encontrado}
             status={record.precio_realmente_no_encontrado ? 'error' : undefined}
             formatter={value => {
-              const simbolo = 'Bs.'
+              const simbolo = monedaBase?.simbolo || '$'
               const numValue = Number(value || 0)
-              return `${simbolo} ${numValue.toFixed(2)}`.replace(
+              return `${simbolo}${numValue.toFixed(2)}`.replace(
                 /\B(?=(\d{3})+(?!\d))/g,
                 ','
               )
             }}
             parser={value => {
-              return parseFloat(value!.replace(/Bs\.\s?|(,*)/g, '')) || 0
+              const simbolo = monedaBase?.simbolo || '$'
+              const regex = new RegExp(`\\${simbolo}\\s?|(,*)`, 'g')
+              return parseFloat(value!.replace(regex, '')) || 0
             }}
             style={{ width: '100%' }}
           />
@@ -694,7 +797,7 @@ export default function NewPurchase() {
       align: 'right' as const,
       render: (value: number) => (
         <span style={{ fontWeight: 'bold' }}>
-          {formatCurrency('VES', value)}
+          {formatCurrency(monedaBase?.codigo || 'USD', value)}
         </span>
       ),
     },
@@ -834,15 +937,29 @@ export default function NewPurchase() {
                 Total:{' '}
                 <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
                   {formatCurrency(
-                    'VES',
+                    'USD',
                     details.reduce((acc, curr) => acc + curr.subtotal, 0)
                   )}
                 </span>
               </h3>
             </div>
 
-            {/* Sección de Pagos */}
-            {ventaMemoizada && (
+            {/* Botón Pago Contado */}
+            <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+              <Button
+                type={pagoContado ? 'primary' : 'default'}
+                onClick={handlePagoContadoToggle}
+                style={{
+                  backgroundColor: pagoContado ? '#52c41a' : undefined,
+                  borderColor: pagoContado ? '#52c41a' : undefined,
+                }}
+              >
+                {pagoContado ? '✓ Pago Contado' : 'Pago Contado'}
+              </Button>
+            </div>
+
+            {/* Sección de Pagos - Ocultar si está en modo pago contado */}
+            {ventaMemoizada && !pagoContado && (
               <PaymentsSection
                 venta={ventaMemoizada}
                 pagos={pagos}

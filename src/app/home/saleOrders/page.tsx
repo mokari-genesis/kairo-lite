@@ -46,7 +46,9 @@ import {
   CalendarOutlined,
   ExportOutlined,
 } from '@ant-design/icons'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, obtenerMonedaBase } from '@/app/utils/currency'
+import { getMonedas, Moneda } from '@/app/api/monedas'
+import { useEffect } from 'react'
 const pageSize = 10
 
 export default function SaleOrders() {
@@ -56,6 +58,23 @@ export default function SaleOrders() {
   const [filters, setFilters] = useState<Record<string, any>>({})
   const router = useRouter()
   const { data: salesData, isLoading: salesLoading } = useSalesFlat(filters)
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas()
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
+        }
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
 
   // Calcular estadísticas de ventas
   const salesStats = useMemo(() => {
@@ -134,7 +153,7 @@ export default function SaleOrders() {
       cliente_nit: product.cliente_nit,
       cliente_email: product.cliente_email,
       estado_venta: product.estado_venta,
-      total_venta: formatCurrency('VES', parseFloat(product.total_venta)),
+      total_venta: formatCurrency('USD', parseFloat(product.total_venta)),
     }))
 
     // Crear libro de Excel
@@ -405,6 +424,9 @@ export default function SaleOrders() {
                   precision={2}
                   prefix={<BankOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -430,6 +452,9 @@ export default function SaleOrders() {
                     <ExclamationCircleOutlined style={{ color: 'white' }} />
                   }
                   valueStyle={{ color: 'white' }}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>

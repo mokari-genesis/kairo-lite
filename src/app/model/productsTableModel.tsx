@@ -166,7 +166,7 @@ export const columns: ColumnConfig[] = [
       <Space>
         <BankOutlined style={{ color: '#52c41a' }} />
         <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
-          {formatCurrency('VES', precio)}
+          {formatCurrency('USD', precio)}
         </span>
       </Space>
     ),

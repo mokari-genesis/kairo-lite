@@ -3,8 +3,13 @@
   --foreground: #171717;
 }
 
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
@@ -35,8 +40,12 @@ a {
   text-decoration: none;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  html {
+  html:not(.light) {
     color-scheme: dark;
   }
 }

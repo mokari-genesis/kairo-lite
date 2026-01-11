@@ -49,14 +49,14 @@ export const PaymentList: React.FC<PaymentListProps> = memo(
             montoEnMonedaVenta: string | number | undefined,
             record: VentaPago
           ) => {
+            // monto_en_moneda_venta siempre está en moneda base (USD)
             // Mostrar monto_en_moneda_venta si está disponible (ya convertido por el backend)
             if (
               montoEnMonedaVenta !== undefined &&
               montoEnMonedaVenta !== null
             ) {
-              // Obtener la moneda de la venta (generalmente la moneda base)
-              // Por ahora usamos undefined para usar la moneda por defecto
-              return formatCurrency(undefined, Number(montoEnMonedaVenta))
+              // monto_en_moneda_venta siempre está en USD (moneda base)
+              return formatCurrency('USD', Number(montoEnMonedaVenta))
             }
             // Si no hay monto_en_moneda_venta, mostrar el monto original
             return formatCurrency(

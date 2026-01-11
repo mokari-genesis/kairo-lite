@@ -1,6 +1,15 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { Modal, Form, InputNumber, Input, Button, Space, message } from 'antd'
+import {
+  Modal,
+  Form,
+  InputNumber,
+  Input,
+  Button,
+  Space,
+  message,
+  theme,
+} from 'antd'
 import { MetodoPagoSelect } from '../MetodoPagoSelect'
 import { MonedaSelect } from '../MonedaSelect'
 import {
@@ -46,6 +55,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
     null
   )
   const [montoConvertido, setMontoConvertido] = useState<number | undefined>()
+  const { token } = theme.useToken()
 
   const isEdit = !!initialValues
   const saldoPendiente = Number((ventaTotal - totalPagado).toFixed(2))
@@ -237,46 +247,40 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             },
             {
               validator: (_, value) => {
-                if (value && value > montoMaximo) {
+                if (!value) return Promise.resolve()
+
+                // Si hay conversión de moneda, validar usando el monto convertido
+                // Si no hay conversión (misma moneda), usar el valor directamente
+                const montoAValidar =
+                  montoConvertido !== undefined &&
+                  monedaSeleccionada &&
+                  monedaBase &&
+                  monedaSeleccionada.id !== monedaBase.id
+                    ? montoConvertido
+                    : value
+
+                // Validar que el monto (convertido si aplica) no exceda el saldo pendiente
+                if (montoAValidar > montoMaximo + 0.01) {
                   return Promise.reject(
                     new Error(
-                      `El monto no puede exceder ${formatCurrency(
-                        undefined,
+                      `El monto ${
+                        montoConvertido !== undefined &&
+                        monedaSeleccionada &&
+                        monedaBase &&
+                        monedaSeleccionada.id !== monedaBase.id
+                          ? `convertido a ${
+                              monedaBase.codigo
+                            } (${formatCurrency(
+                              monedaBase.codigo,
+                              montoAValidar
+                            )})`
+                          : `(${formatCurrency(undefined, montoAValidar)})`
+                      } excede el saldo pendiente disponible (${formatCurrency(
+                        monedaBase?.codigo || undefined,
                         montoMaximo
-                      )}`
+                      )})`
                     )
                   )
-                }
-                return Promise.resolve()
-              },
-            },
-            {
-              validator: (_, value) => {
-                // Validar que el monto convertido no exceda el saldo pendiente
-                // El backend validará usando monto_en_moneda_venta, pero validamos aquí también
-                if (
-                  value &&
-                  montoConvertido &&
-                  monedaBase &&
-                  monedaSeleccionada
-                ) {
-                  // El monto convertido debe ser en moneda de venta (moneda base)
-                  // y no debe exceder el monto máximo permitido
-                  if (montoConvertido > montoMaximo + 0.01) {
-                    return Promise.reject(
-                      new Error(
-                        `El monto convertido a ${
-                          monedaBase.codigo
-                        } (${formatCurrency(
-                          monedaBase.codigo,
-                          montoConvertido
-                        )}) excede el saldo pendiente disponible (${formatCurrency(
-                          monedaBase.codigo,
-                          montoMaximo
-                        )})`
-                      )
-                    )
-                  }
                 }
                 return Promise.resolve()
               },
@@ -286,7 +290,6 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           <InputNumber
             style={{ width: '100%' }}
             min={0.01}
-            max={montoMaximo}
             step={0.01}
             precision={2}
             onChange={handleMontoChange}
@@ -294,7 +297,9 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             formatter={value =>
               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
             }
-            parser={value => parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+            parser={(value: string | undefined): number => {
+              return parseFloat(value!.replace(/\$\s?|(,*)/g, '')) || 0
+            }}
           />
         </Form.Item>
 
@@ -309,9 +314,10 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           <div
             style={{
               padding: '12px',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: token.colorFillTertiary,
               borderRadius: '6px',
               marginTop: '16px',
+              color: token.colorText,
             }}
           >
             <Space direction='vertical' size='small' style={{ width: '100%' }}>
@@ -338,12 +344,14 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   <div
                     style={{
                       padding: '8px',
-                      backgroundColor: '#e6f7ff',
+                      backgroundColor: token.colorPrimaryBg,
                       borderRadius: '4px',
-                      border: '1px solid #91d5ff',
+                      border: `1px solid ${token.colorPrimaryBorder}`,
                     }}
                   >
-                    <div style={{ fontSize: '12px', color: '#1890ff' }}>
+                    <div
+                      style={{ fontSize: '12px', color: token.colorPrimary }}
+                    >
                       <strong>Conversión:</strong>{' '}
                       {formatCurrency(monedaSeleccionada.codigo, monto)} ={' '}
                       {formatCurrency(monedaBase.codigo, montoConvertido)}
@@ -351,12 +359,14 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                     <div
                       style={{
                         fontSize: '11px',
-                        color: '#8c8c8c',
+                        color: token.colorTextSecondary,
                         marginTop: '2px',
                       }}
                     >
                       Tasa: 1 {monedaSeleccionada.codigo} ={' '}
-                      {formatearTasa(monedaSeleccionada.tasa_vs_base)}{' '}
+                      {formatearTasa(
+                        1 / Number(monedaSeleccionada.tasa_vs_base)
+                      )}{' '}
                       {monedaBase.codigo}
                     </div>
                   </div>
@@ -369,13 +379,13 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           <div
             style={{
               padding: '12px',
-              backgroundColor: '#fff2e8',
+              backgroundColor: token.colorWarningBg,
               borderRadius: '6px',
               marginTop: '16px',
-              border: '1px solid #ffd591',
+              border: `1px solid ${token.colorWarningBorder}`,
             }}
           >
-            <div style={{ color: '#d46b08' }}>
+            <div style={{ color: token.colorWarning }}>
               <strong>⚠️ Esta Orden ya está vendida</strong>
               <br />
               No se pueden realizar cambios en los pagos, si asi lo deseas debes

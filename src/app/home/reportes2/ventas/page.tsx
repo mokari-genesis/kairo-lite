@@ -10,12 +10,14 @@ import { PageHeader } from '../../../components/PageHeader'
 import { withAuth } from '../../../auth/withAuth'
 import { useEffect, useState, useMemo } from 'react'
 import { useEmpresa } from '../../../empresaContext'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, obtenerMonedaBase } from '@/app/utils/currency'
+import { getMonedas, Moneda } from '@/app/api/monedas'
 import {
   getReporteVentasResumen,
   getReporteVentasPorVendedor,
   getReporteVentasPorCliente,
   getReporteVentasPorMetodoPago,
+  getReporteVentasPorProducto,
 } from '@/app/api/reportes2'
 import {
   Card,
@@ -53,6 +55,8 @@ function Reportes2VentasPage() {
   const [loading, setLoading] = useState(false)
   const [selectedReport, setSelectedReport] = useState<string>('resumen')
   const [columns, setColumns] = useState<any[]>([])
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
 
   const reportTypes = [
     {
@@ -78,6 +82,12 @@ function Reportes2VentasPage() {
       title: 'Ventas por Método de Pago',
       description: 'Agrupado por método de pago',
       icon: <BankOutlined />,
+    },
+    {
+      key: 'por-producto',
+      title: 'Ventas por Producto',
+      description: 'Análisis de ventas por producto',
+      icon: <FileTextOutlined />,
     },
   ]
 
@@ -265,10 +275,85 @@ function Reportes2VentasPage() {
       render: (value: number) => formatCurrency(undefined, value),
     },
     {
+      key: 'total_monto_original',
+      title: 'Monto Original',
+      dataIndex: 'total_monto_original',
+      type: 'text',
+      render: (value: number | null, record: any) => {
+        if (value === null || value === undefined) {
+          return '-'
+        }
+        return formatCurrency(record.moneda_codigo, value)
+      },
+    },
+    {
       key: 'numero_ventas',
       title: 'Número Ventas',
       dataIndex: 'numero_ventas',
       type: 'text',
+    },
+  ]
+
+  const porProductoColumns = [
+    {
+      key: 'producto_codigo',
+      title: 'Código Producto',
+      dataIndex: 'producto_codigo',
+      type: 'text',
+    },
+    {
+      key: 'producto_descripcion',
+      title: 'Descripción',
+      dataIndex: 'producto_descripcion',
+      type: 'text',
+    },
+    {
+      key: 'categoria',
+      title: 'Categoría',
+      dataIndex: 'categoria',
+      type: 'text',
+    },
+    {
+      key: 'cantidad_vendida',
+      title: 'Cantidad Vendida',
+      dataIndex: 'cantidad_vendida',
+      type: 'text',
+      align: 'right' as const,
+    },
+    {
+      key: 'numero_ventas',
+      title: 'Número de Ventas',
+      dataIndex: 'numero_ventas',
+      type: 'text',
+      align: 'right' as const,
+    },
+    {
+      key: 'total_vendido',
+      title: 'Total Vendido',
+      dataIndex: 'total_vendido',
+      type: 'text',
+      render: (value: number) => formatCurrency(undefined, value),
+    },
+
+    {
+      key: 'fecha_primera_venta',
+      title: 'Primera Venta',
+      dataIndex: 'fecha_primera_venta',
+      type: 'text',
+      render: (value: string) => {
+        if (!value) return '-'
+        return new Date(value).toLocaleDateString('es-ES')
+      },
+    },
+    {
+      key: 'fecha_ultima_venta',
+      title: 'Última Venta',
+      dataIndex: 'fecha_ultima_venta',
+      type: 'text',
+      render: (value: string) => {
+        if (!value) return '-'
+        return new Date(value).toLocaleDateString('es-ES')
+      },
     },
   ]
 
@@ -288,6 +373,8 @@ function Reportes2VentasPage() {
         return porClienteColumns
       case 'por-metodo-pago':
         return porMetodoPagoColumns
+      case 'por-producto':
+        return porProductoColumns
       default:
         return getResumenColumns()
     }
@@ -317,6 +404,9 @@ function Reportes2VentasPage() {
         case 'por-metodo-pago':
           result = await getReporteVentasPorMetodoPago(filtersWithEmpresa)
           break
+        case 'por-producto':
+          result = await getReporteVentasPorProducto(filtersWithEmpresa)
+          break
         default:
           result = await getReporteVentasResumen(filtersWithEmpresa)
       }
@@ -329,6 +419,23 @@ function Reportes2VentasPage() {
       setLoading(false)
     }
   }
+
+  // Cargar monedas al montar el componente
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas()
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        if (base) {
+          setMonedaBase(base)
+        }
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
 
   useEffect(() => {
     setColumns(getColumnsForReport(selectedReport))
@@ -461,14 +568,33 @@ function Reportes2VentasPage() {
     setFilters(newFilters)
   }
 
-  const filterConfigs = [
-    {
-      type: 'dateRange' as const,
-      key: 'fecha',
-      placeholder: 'Rango de fechas',
-      width: '30%',
-    },
-  ]
+  const getFilterConfigs = () => {
+    const baseFilters = [
+      {
+        type: 'dateRange' as const,
+        key: 'fecha',
+        placeholder: 'Rango de fechas',
+        width: '30%',
+      },
+    ]
+
+    // Agregar filtro de categoría solo para el reporte por producto
+    if (selectedReport === 'por-producto') {
+      return [
+        ...baseFilters,
+        {
+          type: 'text' as const,
+          key: 'categoria',
+          placeholder: 'Categoría',
+          width: '25%',
+        },
+      ]
+    }
+
+    return baseFilters
+  }
+
+  const filterConfigs = getFilterConfigs()
 
   return (
     <motion.div
@@ -515,100 +641,113 @@ function Reportes2VentasPage() {
         <Divider />
 
         {/* KPIs */}
-        <Row
-          gutter={[16, 16]}
-          justify='center'
-          style={{ marginBottom: '24px' }}
-        >
-          <Col xs={24} sm={12} md={6}>
-            <Card
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-              }}
+        {selectedReport !== 'por-metodo-pago' &&
+          selectedReport !== 'por-producto' && (
+            <Row
+              gutter={[16, 16]}
+              justify='center'
+              style={{ marginBottom: '24px' }}
             >
-              <Statistic
-                title={
-                  <span style={{ color: 'white', opacity: 0.9 }}>
-                    Total Ventas
-                  </span>
-                }
-                value={reportStats.totalVentas}
-                precision={2}
-                prefix={<BankOutlined style={{ color: 'white' }} />}
-                valueStyle={{ color: 'white' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card
-              style={{
-                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-              }}
-            >
-              <Statistic
-                title={
-                  <span style={{ color: 'white', opacity: 0.9 }}>
-                    Número Ventas
-                  </span>
-                }
-                value={reportStats.numeroVentas}
-                prefix={<ShoppingCartOutlined style={{ color: 'white' }} />}
-                valueStyle={{ color: 'white' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card
-              style={{
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-              }}
-            >
-              <Statistic
-                title={
-                  <span style={{ color: 'white', opacity: 0.9 }}>
-                    Ticket Promedio
-                  </span>
-                }
-                value={reportStats.ticketPromedio}
-                precision={2}
-                prefix={<BarChartOutlined style={{ color: 'white' }} />}
-                valueStyle={{ color: 'white' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card
-              style={{
-                background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-              }}
-            >
-              <Statistic
-                title={
-                  <span style={{ color: 'white', opacity: 0.9 }}>
-                    % Cobranza
-                  </span>
-                }
-                value={reportStats.porcentajeCobranza}
-                precision={2}
-                suffix='%'
-                prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
-                valueStyle={{ color: 'white' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Total Ventas
+                      </span>
+                    }
+                    value={reportStats.totalVentas}
+                    precision={2}
+                    prefix={<BankOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                    formatter={value =>
+                      formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                    }
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Número Ventas
+                      </span>
+                    }
+                    value={reportStats.numeroVentas}
+                    prefix={<ShoppingCartOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        Ticket Promedio
+                      </span>
+                    }
+                    value={reportStats.ticketPromedio}
+                    precision={2}
+                    prefix={<BarChartOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                    formatter={value =>
+                      formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                    }
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: 'white', opacity: 0.9 }}>
+                        % Cobranza
+                      </span>
+                    }
+                    value={reportStats.porcentajeCobranza}
+                    precision={2}
+                    suffix='%'
+                    prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+                    valueStyle={{ color: 'white' }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          )}
 
         <div style={{ marginBottom: '24px' }}>
           <FilterSection

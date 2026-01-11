@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useTheme } from '@/app/themeContext'
 
 const cursorVariants = {
   blinking: {
@@ -14,11 +15,17 @@ const cursorVariants = {
 }
 
 export default function CursorBlinker() {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+
   return (
     <motion.div
       variants={cursorVariants}
       animate='blinking'
-      className='inline-block h-5 w-[1px] translate-y-1 bg-slate-900'
+      className='inline-block h-5 w-[1px] translate-y-1'
+      style={{
+        backgroundColor: isDark ? '#e2e8f0' : '#1e293b',
+      }}
     />
   )
 }

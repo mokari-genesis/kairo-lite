@@ -8,8 +8,11 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  LinkOutlined,
 } from '@ant-design/icons'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, convertirAMonedaBase } from '@/app/utils/currency'
+import { Moneda } from '@/app/api/monedas'
+import Link from 'next/link'
 
 export interface FilterConfig {
   type: 'text' | 'dateRange' | 'select'
@@ -27,7 +30,13 @@ const estadoColor: Record<string, { color: string; text: string }> = {
   anulada: { color: 'default', text: 'Anulada' },
 }
 
-export const CuentasPorPagarColumns: ColumnConfig[] = [
+// Función para generar columnas con colores adaptativos al tema
+export const getCuentasPorPagarColumns = (
+  isDark: boolean = false,
+  colorTextSecondary?: string,
+  monedaBase?: Moneda | null,
+  monedas?: Moneda[]
+): ColumnConfig[] => [
   {
     key: 'id',
     title: 'ID',
@@ -52,7 +61,12 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
           <span style={{ fontWeight: 500 }}>{value}</span>
         </Space>
         {record.proveedor_nit && (
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+            }}
+          >
             NIT: {record.proveedor_nit}
           </span>
         )}
@@ -72,6 +86,44 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
     ),
   },
   {
+    key: 'compra_id',
+    title: 'ID Compra',
+    dataIndex: 'compra_id',
+    type: 'text',
+    render: (value: any) => {
+      if (!value) {
+        return (
+          <span
+            style={{
+              color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+            }}
+          >
+            N/A
+          </span>
+        )
+      }
+      return (
+        <Link
+          href={`/home/compras/${value}`}
+          style={{
+            color: '#1890ff',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 500,
+          }}
+          onClick={e => {
+            e.stopPropagation()
+          }}
+        >
+          #{value}
+          <LinkOutlined style={{ fontSize: '12px' }} />
+        </Link>
+      )
+    },
+  },
+  {
     key: 'producto_id',
     title: 'ID Producto',
     dataIndex: 'producto_id',
@@ -83,7 +135,7 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
           <span>{value}</span>
         </Space>
       ) : (
-        <span style={{ color: '#bfbfbf' }}>N/A</span>
+        <span style={{ color: isDark ? '#8c8c8c' : '#bfbfbf' }}>N/A</span>
       ),
   },
   {
@@ -95,7 +147,9 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
       value ? (
         <span>{value}</span>
       ) : (
-        <span style={{ color: '#bfbfbf' }}>Sin producto</span>
+        <span style={{ color: isDark ? '#8c8c8c' : '#bfbfbf' }}>
+          Sin producto
+        </span>
       ),
   },
   {
@@ -104,16 +158,57 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
     dataIndex: 'total',
     type: 'number',
     textAlign: 'right',
-    render: (value, record) => (
-      <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
-        <span style={{ fontWeight: 600 }}>
-          {formatCurrency(record.moneda_codigo, Number(value))}
-        </span>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-          {record.moneda_codigo}
-        </span>
-      </Space>
-    ),
+    render: (value, record) => {
+      // Calcular monto en moneda base si es diferente
+      let totalBase = 0
+      if (monedaBase && monedas && record.moneda_codigo) {
+        const monedaRecord = monedas.find(
+          m => m.codigo === record.moneda_codigo
+        )
+        if (monedaRecord && monedaRecord.codigo !== monedaBase.codigo) {
+          try {
+            totalBase = convertirAMonedaBase(
+              Number(value),
+              monedaRecord,
+              monedaBase
+            )
+          } catch (error) {
+            console.error('Error converting to base currency:', error)
+          }
+        }
+      }
+
+      return (
+        <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
+          <span style={{ fontWeight: 600 }}>
+            {formatCurrency(record.moneda_codigo, Number(value))}
+          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            totalBase > 0 && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(monedaBase.codigo, totalBase)} (Moneda base)
+              </span>
+            )}
+          {(!monedaBase || record.moneda_codigo === monedaBase.codigo) && (
+            <span
+              style={{
+                fontSize: 12,
+                color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+              }}
+            >
+              {record.moneda_codigo}
+            </span>
+          )}
+        </Space>
+      )
+    },
   },
   {
     key: 'saldo',
@@ -124,6 +219,22 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
     render: (value, record) => {
       const saldo = Number(value)
       const isPagada = saldo <= 0
+
+      // Calcular saldo en moneda base si es diferente
+      let saldoBase = 0
+      if (monedaBase && monedas && record.moneda_codigo && saldo > 0) {
+        const monedaRecord = monedas.find(
+          m => m.codigo === record.moneda_codigo
+        )
+        if (monedaRecord && monedaRecord.codigo !== monedaBase.codigo) {
+          try {
+            saldoBase = convertirAMonedaBase(saldo, monedaRecord, monedaBase)
+          } catch (error) {
+            console.error('Error converting to base currency:', error)
+          }
+        }
+      }
+
       return (
         <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
           <span
@@ -131,9 +242,29 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
           >
             {formatCurrency(record.moneda_codigo, saldo)}
           </span>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-            {isPagada ? 'Pagada' : 'Pendiente'}
-          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            saldoBase > 0 && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(monedaBase.codigo, saldoBase)} (Moneda base)
+              </span>
+            )}
+          {(!monedaBase || record.moneda_codigo === monedaBase.codigo) && (
+            <span
+              style={{
+                fontSize: 12,
+                color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+              }}
+            >
+              {isPagada ? 'Pagada' : 'Pendiente'}
+            </span>
+          )}
         </Space>
       )
     },
@@ -144,13 +275,49 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
     dataIndex: 'total_pagado',
     type: 'number',
     textAlign: 'right',
-    render: (value, record) => (
-      <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
-        <span style={{ fontWeight: 500, color: '#52c41a' }}>
-          {formatCurrency(record.moneda_codigo, Number(value))}
-        </span>
-      </Space>
-    ),
+    render: (value, record) => {
+      const totalPagado = Number(value)
+
+      // Calcular monto pagado en moneda base si es diferente
+      let totalPagadoBase = 0
+      if (monedaBase && monedas && record.moneda_codigo && totalPagado > 0) {
+        const monedaRecord = monedas.find(
+          m => m.codigo === record.moneda_codigo
+        )
+        if (monedaRecord && monedaRecord.codigo !== monedaBase.codigo) {
+          try {
+            totalPagadoBase = convertirAMonedaBase(
+              totalPagado,
+              monedaRecord,
+              monedaBase
+            )
+          } catch (error) {
+            console.error('Error converting to base currency:', error)
+          }
+        }
+      }
+
+      return (
+        <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
+          <span style={{ fontWeight: 500, color: '#52c41a' }}>
+            {formatCurrency(record.moneda_codigo, totalPagado)}
+          </span>
+          {monedaBase &&
+            record.moneda_codigo !== monedaBase.codigo &&
+            totalPagadoBase > 0 && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+                  fontStyle: 'italic',
+                }}
+              >
+                {formatCurrency(monedaBase.codigo, totalPagadoBase)} (Moneda base)
+              </span>
+            )}
+        </Space>
+      )
+    },
   },
   {
     key: 'fecha_emision',
@@ -199,6 +366,9 @@ export const CuentasPorPagarColumns: ColumnConfig[] = [
     },
   },
 ]
+
+// Mantener exportación original para compatibilidad (sin moneda base)
+export const CuentasPorPagarColumns = getCuentasPorPagarColumns()
 
 export const CuentasPorPagarFilterConfigs: FilterConfig[] = [
   {

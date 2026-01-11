@@ -11,7 +11,7 @@ import { SupplierSelect } from '../../components/SupplierSelect'
 import { AbonosManagerCxp } from '../../components/AbonosManagerCxp'
 import { MonedaSelect } from '../../components/MonedaSelect'
 import {
-  CuentasPorPagarColumns,
+  getCuentasPorPagarColumns,
   CuentasPorPagarFilterConfigs,
 } from '../../model/cuentasPorPagarTableModel'
 import type { ColumnConfig } from '../../components/DataTable'
@@ -41,6 +41,7 @@ import {
   Input,
   DatePicker,
   Select,
+  theme,
 } from 'antd'
 import dayjs from 'dayjs'
 import {
@@ -50,13 +51,41 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import { motion } from 'framer-motion'
-import { formatCurrency } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  obtenerMonedaBase,
+  convertirAMonedaBase,
+} from '@/app/utils/currency'
 import * as XLSX from 'xlsx'
+import { useTheme } from '@/app/themeContext'
+import { getMonedas, Moneda } from '@/app/api/monedas'
 
 const DATE_FORMAT = 'DD/MM/YYYY'
 
 function CuentasPorPagarPage() {
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+
+  // Cargar moneda base y todas las monedas
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
   const { empresaId } = useEmpresa()
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorTextSecondary, colorBgContainer, colorError },
+  } = theme.useToken()
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState<Record<string, any>>({})
   const [idInputValue, setIdInputValue] = useState<string>('')
@@ -126,17 +155,56 @@ function CuentasPorPagarPage() {
         totalPagado: 0,
       }
     }
+
+    // Función helper para calcular monto en moneda base
+    const calcularMontoBase = (value: number, monedaCodigo: string): number => {
+      if (!monedas || !monedaBase || value <= 0 || !monedaCodigo) {
+        return 0
+      }
+
+      const monedaRecord = monedas.find(m => m.codigo === monedaCodigo)
+      if (!monedaRecord) return 0
+
+      // Si la moneda es la base, retornar directamente
+      if (monedaRecord.codigo === monedaBase.codigo) {
+        return value
+      }
+
+      // Convertir a moneda base (USD)
+      try {
+        return convertirAMonedaBase(value, monedaRecord, monedaBase)
+      } catch (error) {
+        console.error('Error converting to base currency:', error)
+        return 0
+      }
+    }
+
     return cuentas.reduce(
       (acc, cxp) => {
         acc.totalCuentas += 1
-        acc.totalSaldo += Number(cxp.total)
-        acc.saldoPendiente += Number(cxp.saldo)
-        acc.totalPagado += Number(cxp.total_pagado)
+
+        // Convertir montos a moneda base antes de sumar
+        const totalBase = calcularMontoBase(
+          Number(cxp.total),
+          cxp.moneda_codigo
+        )
+        const saldoBase = calcularMontoBase(
+          Number(cxp.saldo),
+          cxp.moneda_codigo
+        )
+        const pagadoBase = calcularMontoBase(
+          Number(cxp.total_pagado),
+          cxp.moneda_codigo
+        )
+
+        acc.totalSaldo += totalBase
+        acc.saldoPendiente += saldoBase
+        acc.totalPagado += pagadoBase
         return acc
       },
       { totalCuentas: 0, totalSaldo: 0, saldoPendiente: 0, totalPagado: 0 }
     )
-  }, [cuentas])
+  }, [cuentas, monedas, monedaBase])
 
   const groupedByProveedor = useMemo(() => {
     if (!resumenProveedores) return []
@@ -268,7 +336,12 @@ function CuentasPorPagarPage() {
 
   const columns: ColumnConfig[] = useMemo(
     () => [
-      ...CuentasPorPagarColumns,
+      ...getCuentasPorPagarColumns(
+        isDark,
+        colorTextSecondary,
+        monedaBase,
+        monedas
+      ),
       {
         key: 'actions',
         title: 'Acciones',
@@ -285,7 +358,7 @@ function CuentasPorPagarPage() {
         ),
       } as ColumnConfig,
     ],
-    []
+    [isDark, colorTextSecondary]
   )
 
   return (
@@ -376,7 +449,9 @@ function CuentasPorPagarPage() {
                   value={stats.saldoPendiente}
                   prefix={<WarningOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
-                  formatter={value => formatCurrency('VES', Number(value))}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -397,7 +472,9 @@ function CuentasPorPagarPage() {
                   value={stats.totalPagado}
                   prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
-                  formatter={value => formatCurrency('VES', Number(value))}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -420,7 +497,9 @@ function CuentasPorPagarPage() {
                   value={stats.totalSaldo}
                   prefix={<DollarCircleOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
-                  formatter={value => formatCurrency('VES', Number(value))}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -511,7 +590,7 @@ function CuentasPorPagarPage() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '8px',
-                      background: '#f5f5f5',
+                      background: isDark ? colorBgContainer : '#f5f5f5',
                       borderRadius: '6px',
                     }}
                   >
@@ -522,17 +601,65 @@ function CuentasPorPagarPage() {
                       </span>
                       {group.proveedor_nit && <Tag>{group.proveedor_nit}</Tag>}
                     </Space>
-                    <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
-                      <span style={{ marginRight: 4 }}>Saldo:</span>
-                      {formatCurrency(
-                        group.moneda_codigo,
-                        group.saldo_pendiente
-                      )}
-                    </span>
+                    <Space direction='vertical' size={2} align='end'>
+                      <span
+                        style={{
+                          fontWeight: 'bold',
+                          color: isDark ? colorError : '#ff4d4f',
+                        }}
+                      >
+                        <span style={{ marginRight: 4 }}>Saldo:</span>
+                        {formatCurrency(
+                          group.moneda_codigo,
+                          group.saldo_pendiente
+                        )}
+                      </span>
+                      {monedaBase &&
+                        group.moneda_codigo !== monedaBase.codigo &&
+                        (() => {
+                          // Calcular saldo en moneda base
+                          const monedaRecord = monedas.find(
+                            m => m.codigo === group.moneda_codigo
+                          )
+                          if (!monedaRecord) return null
+                          try {
+                            const saldoBase = convertirAMonedaBase(
+                              group.saldo_pendiente,
+                              monedaRecord,
+                              monedaBase
+                            )
+                            return (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  color: isDark
+                                    ? colorTextSecondary || '#bfbfbf'
+                                    : '#8c8c8c',
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                {formatCurrency(monedaBase.codigo, saldoBase)}{' '}
+                                (Moneda base)
+                              </span>
+                            )
+                          } catch (error) {
+                            console.error(
+                              'Error converting to base currency:',
+                              error
+                            )
+                            return null
+                          }
+                        })()}
+                    </Space>
                   </div>
                 ))}
                 {groupedByProveedor.length > 5 && (
-                  <div style={{ textAlign: 'center', color: '#8c8c8c' }}>
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      color: isDark ? colorTextSecondary : '#8c8c8c',
+                    }}
+                  >
                     ... y {groupedByProveedor.length - 5} proveedor(es) más
                   </div>
                 )}
@@ -569,7 +696,11 @@ function CuentasPorPagarPage() {
                     </Space>
                     <div>
                       Comentario:{' '}
-                      <span style={{ color: '#595959' }}>
+                      <span
+                        style={{
+                          color: isDark ? colorTextSecondary : '#595959',
+                        }}
+                      >
                         {record.comentario || 'Sin comentario'}
                       </span>
                     </div>
@@ -595,13 +726,13 @@ function CuentasPorPagarPage() {
 
       <style jsx global>{`
         .row-vencida {
-          background-color: #fff1f0 !important;
+          background-color: ${isDark ? '#2a1215' : '#fff1f0'} !important;
         }
         .row-cancelada {
-          background-color: #f6ffed !important;
+          background-color: ${isDark ? '#162312' : '#f6ffed'} !important;
         }
         .row-anulada {
-          background-color: #f5f5f5 !important;
+          background-color: ${isDark ? '#1f1f1f' : '#f5f5f5'} !important;
           opacity: 0.6;
         }
       `}</style>

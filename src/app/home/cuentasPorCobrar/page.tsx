@@ -8,17 +8,28 @@ import { DataTable } from '../../components/DataTable'
 import { FilterSection } from '../../components/FilterSection'
 import { PageHeader } from '../../components/PageHeader'
 import { withAuth } from '../../auth/withAuth'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useCuentasPorCobrar } from '@/app/hooks/useHooks'
 import { queryClient, QueryKey } from '@/app/utils/query'
 import { AbonosManager } from '@/app/components/AbonosManager'
 import { CuentaPorCobrarTypeResponse } from '@/app/api/cuentas-por-cobrar'
-import { Card, message, Space, Row, Col, Statistic, Tag, Button } from 'antd'
+import {
+  Card,
+  message,
+  Space,
+  Row,
+  Col,
+  Statistic,
+  Tag,
+  Button,
+  theme,
+} from 'antd'
 import { motion } from 'framer-motion'
 import {
-  CuentasPorCobrarColumns,
+  getCuentasPorCobrarColumns,
   CuentasPorCobrarFilterConfigs,
 } from '@/app/model/cuentasPorCobrarTableModel'
+import { useTheme } from '@/app/themeContext'
 import {
   DollarOutlined,
   UserOutlined,
@@ -27,9 +38,36 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons'
 import * as XLSX from 'xlsx'
-import { formatCurrency } from '@/app/utils/currency'
+import {
+  formatCurrency,
+  obtenerMonedaBase,
+  convertirAMonedaBase,
+} from '@/app/utils/currency'
+import { getMonedas, Moneda } from '@/app/api/monedas'
 
 function CuentasPorCobrarPage() {
+  const [monedaBase, setMonedaBase] = useState<Moneda | null>(null)
+  const [monedas, setMonedas] = useState<Moneda[]>([])
+
+  // Cargar moneda base y todas las monedas
+  useEffect(() => {
+    const loadMonedas = async () => {
+      try {
+        const monedasData = await getMonedas({ activo: 1 })
+        setMonedas(monedasData)
+        const base = obtenerMonedaBase(monedasData)
+        setMonedaBase(base)
+      } catch (error) {
+        console.error('Error loading monedas:', error)
+      }
+    }
+    loadMonedas()
+  }, [])
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: { colorTextSecondary, colorBgContainer, colorError },
+  } = theme.useToken()
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -133,6 +171,8 @@ function CuentasPorCobrarPage() {
     }
 
     const totalCuentas = dataCuentas.length
+
+    // Los valores ya vienen en moneda base desde el backend, solo sumar
     const totalSaldo = dataCuentas.reduce(
       (sum, cxc) => sum + Number(cxc.total),
       0
@@ -141,6 +181,7 @@ function CuentasPorCobrarPage() {
       (sum, cxc) => sum + Number(cxc.saldo),
       0
     )
+
     const cuentasPendientes = dataCuentas.filter(
       cxc => cxc.estado_pago_clasificacion === 'pendiente'
     ).length
@@ -174,6 +215,7 @@ function CuentasPorCobrarPage() {
         }
       }
       acc[clienteId].cuentas.push(cxc)
+      // Los valores ya vienen en moneda base desde el backend, solo sumar
       acc[clienteId].totalSaldo += Number(cxc.saldo)
       acc[clienteId].totalCuentas += 1
       return acc
@@ -239,7 +281,7 @@ function CuentasPorCobrarPage() {
               alignItems: 'center',
             }}
           >
-            <PageHeader title='Cuentas por Cobrar' />
+            <PageHeader title='Cuentas por Cobrar' showNewButton={false} />
             <div
               style={{
                 margin: 10,
@@ -300,7 +342,9 @@ function CuentasPorCobrarPage() {
                   value={cuentasStats.saldoPendiente}
                   prefix={<DollarOutlined style={{ color: 'white' }} />}
                   valueStyle={{ color: 'white' }}
-                  formatter={value => formatCurrency('VES', Number(value))}
+                  formatter={value =>
+                    formatCurrency(monedaBase?.codigo || 'USD', Number(value))
+                  }
                 />
               </Card>
             </Col>
@@ -375,7 +419,7 @@ function CuentasPorCobrarPage() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '8px',
-                      background: '#f5f5f5',
+                      background: isDark ? colorBgContainer : '#f5f5f5',
                       borderRadius: '6px',
                     }}
                   >
@@ -387,14 +431,27 @@ function CuentasPorCobrarPage() {
                       {cliente.cliente_nit && <Tag>{cliente.cliente_nit}</Tag>}
                       <Tag color='blue'>{cliente.totalCuentas} cuenta(s)</Tag>
                     </Space>
-                    <span style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
+                    <span
+                      style={{
+                        fontWeight: 'bold',
+                        color: isDark ? colorError : '#ff4d4f',
+                      }}
+                    >
                       <span style={{ marginRight: 4 }}>Saldo:</span>
-                      {formatCurrency('VES', cliente.totalSaldo)}
+                      {formatCurrency(
+                        monedaBase?.codigo || 'USD',
+                        cliente.totalSaldo
+                      )}
                     </span>
                   </div>
                 ))}
                 {cuentasPorCliente.length > 5 && (
-                  <div style={{ textAlign: 'center', color: '#8c8c8c' }}>
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      color: isDark ? colorTextSecondary : '#8c8c8c',
+                    }}
+                  >
                     ... y {cuentasPorCliente.length - 5} cliente(s) más
                   </div>
                 )}
@@ -404,7 +461,12 @@ function CuentasPorCobrarPage() {
 
           <DataTable
             data={dataCuentas || []}
-            columns={CuentasPorCobrarColumns}
+            columns={getCuentasPorCobrarColumns(
+              isDark,
+              colorTextSecondary,
+              monedaBase,
+              monedas
+            )}
             onOpenAbonos={handleOpenAbonos}
             loading={cuentasLoading || isLoading}
             pagination={{
@@ -427,10 +489,10 @@ function CuentasPorCobrarPage() {
 
       <style jsx global>{`
         .row-vencida {
-          background-color: #fff1f0 !important;
+          background-color: ${isDark ? '#2a1215' : '#fff1f0'} !important;
         }
         .row-pagada {
-          background-color: #f6ffed !important;
+          background-color: ${isDark ? '#162312' : '#f6ffed'} !important;
         }
       `}</style>
 

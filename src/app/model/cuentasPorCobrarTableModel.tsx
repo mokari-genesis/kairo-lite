@@ -10,9 +10,12 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   DollarCircleOutlined,
+  LinkOutlined,
 } from '@ant-design/icons'
-import { formatCurrency } from '@/app/utils/currency'
+import { formatCurrency, convertirAMonedaBase } from '@/app/utils/currency'
+import { Moneda } from '@/app/api/monedas'
 import { JSX } from 'react'
+import Link from 'next/link'
 // FilterConfig compatible with FilterSection
 export interface FilterConfig {
   type: 'text' | 'dateRange' | 'select'
@@ -63,7 +66,13 @@ const getAntiguedadColor = (dias: number): string => {
   return 'red'
 }
 
-export const CuentasPorCobrarColumns: ColumnConfig[] = [
+// Función para generar columnas con colores adaptativos al tema
+export const getCuentasPorCobrarColumns = (
+  isDark: boolean = false,
+  colorTextSecondary?: string,
+  monedaBase?: Moneda | null,
+  monedas?: Moneda[]
+): ColumnConfig[] => [
   {
     key: 'id',
     title: 'ID',
@@ -89,7 +98,12 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
           <span style={{ fontWeight: 500 }}>{value}</span>
         </Space>
         {record.cliente_nit && (
-          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+          <span
+            style={{
+              fontSize: '12px',
+              color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+            }}
+          >
             NIT: {record.cliente_nit}
           </span>
         )}
@@ -114,16 +128,16 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
     dataIndex: 'total',
     type: 'number',
     textAlign: 'right',
-    render: (value: any, record: any) => (
-      <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
-          {formatCurrency(record.moneda_codigo, Number(value))}
-        </span>
-        <span style={{ fontSize: '11px', color: '#8c8c8c' }}>
-          {record.moneda_codigo}
-        </span>
-      </Space>
-    ),
+    render: (value: any, record: any) => {
+      // Los valores ya vienen en moneda base desde el backend
+      return (
+        <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
+          <span style={{ fontWeight: 600 }}>
+            {formatCurrency(monedaBase?.codigo || 'USD', Number(value))}
+          </span>
+        </Space>
+      )
+    },
   },
   {
     key: 'saldo',
@@ -134,19 +148,25 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
     render: (value: any, record: any) => {
       const saldo = Number(value)
       const isPagada = saldo <= 0
+
+      // Los valores ya vienen en moneda base desde el backend
       return (
         <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
           <span
             style={{
-              fontWeight: 'bold',
-              fontSize: '14px',
-              color: isPagada ? '#52c41a' : '#ff4d4f',
+              fontWeight: 600,
+              color: isPagada ? '#52c41a' : '#fa541c',
             }}
           >
-            {formatCurrency(record.moneda_codigo, saldo)}
+            {formatCurrency(monedaBase?.codigo || 'USD', saldo)}
           </span>
           {!isPagada && (
-            <span style={{ fontSize: '11px', color: '#8c8c8c' }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+              }}
+            >
               Pendiente
             </span>
           )}
@@ -160,13 +180,18 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
     dataIndex: 'total_pagado',
     type: 'number',
     textAlign: 'right',
-    render: (value: any, record: any) => (
-      <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
-        <span style={{ fontWeight: 500, fontSize: '14px', color: '#52c41a' }}>
-          {formatCurrency(record.moneda_codigo, Number(value))}
-        </span>
-      </Space>
-    ),
+    render: (value: any, record: any) => {
+      const totalPagado = Number(value)
+
+      // Los valores ya vienen en moneda base desde el backend
+      return (
+        <Space direction='vertical' size='small' style={{ textAlign: 'right' }}>
+          <span style={{ fontWeight: 500, color: '#52c41a' }}>
+            {formatCurrency(monedaBase?.codigo || 'USD', totalPagado)}
+          </span>
+        </Space>
+      )
+    },
   },
   {
     key: 'dias_antiguedad',
@@ -275,11 +300,42 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
 
   {
     key: 'venta_id',
-    title: 'Venta ID',
+    title: 'ID Venta',
     dataIndex: 'venta_id',
     type: 'text',
-    hidden: true,
-    render: (value: any) => (value ? `#${value}` : 'N/A'),
+    hidden: false,
+    render: (value: any) => {
+      if (!value) {
+        return (
+          <span
+            style={{
+              color: isDark ? colorTextSecondary || '#bfbfbf' : '#8c8c8c',
+            }}
+          >
+            N/A
+          </span>
+        )
+      }
+      return (
+        <Link
+          href={`/home/saleOrders/edit/${value}`}
+          style={{
+            color: '#1890ff',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 500,
+          }}
+          onClick={e => {
+            e.stopPropagation()
+          }}
+        >
+          #{value}
+          <LinkOutlined style={{ fontSize: '12px' }} />
+        </Link>
+      )
+    },
   },
   {
     key: 'abonos',
@@ -307,6 +363,9 @@ export const CuentasPorCobrarColumns: ColumnConfig[] = [
     },
   },
 ]
+
+// Mantener exportación original para compatibilidad (sin moneda base)
+export const CuentasPorCobrarColumns = getCuentasPorCobrarColumns()
 
 export const CuentasPorCobrarFilterConfigs: FilterConfig[] = [
   {

@@ -123,12 +123,74 @@ function Reportes2RelacionesPage() {
       type: 'text',
     },
     {
-      key: 'total_compras',
-      title: 'Total Compras',
-      dataIndex: 'total_compras',
+      key: 'monedas_compra',
+      title: 'Moneda Compra',
+      dataIndex: 'monedas_compra',
       type: 'text',
-      render: (value: number) =>
-        value != null ? formatCurrency(undefined, value) : 'N/A',
+      render: (value: string | null) => {
+        if (!value) return 'N/A'
+        return (
+          <Space>
+            {value.split(', ').map((moneda, index) => (
+              <Tag key={index} color='blue'>
+                {moneda}
+              </Tag>
+            ))}
+          </Space>
+        )
+      },
+    },
+    {
+      key: 'total_compras_por_moneda',
+      title: 'Total Compras (Moneda Original)',
+      dataIndex: 'total_compras_por_moneda',
+      type: 'text',
+      render: (value: string | null) => {
+        if (!value) return 'N/A'
+        return (
+          <div>
+            {value.split(' | ').map((item, index) => {
+              const [moneda, monto] = item.split(': ')
+              const numMonto = parseFloat(monto?.replace(/,/g, '') || '0')
+              return (
+                <div
+                  key={index}
+                  style={{ marginBottom: index > 0 ? '4px' : 0 }}
+                >
+                  <Tag color='green' style={{ marginRight: '4px' }}>
+                    {moneda}
+                  </Tag>
+                  <Text strong>{formatCurrency(moneda, numMonto)}</Text>
+                </div>
+              )
+            })}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'moneda_base',
+      title: 'Moneda Base',
+      dataIndex: 'moneda_base',
+      type: 'text',
+      render: (value: string | null) => {
+        if (!value) return 'USD'
+        return <Tag color='gold'>{value}</Tag>
+      },
+    },
+    {
+      key: 'total_compras_base',
+      title: 'Total Compras (Base)',
+      dataIndex: 'total_compras_base',
+      type: 'text',
+      render: (value: number, record: any) => {
+        if (value == null) return 'N/A'
+        return (
+          <div style={{ fontWeight: 'bold' }}>
+            {formatCurrency('USD', value)}
+          </div>
+        )
+      },
     },
     {
       key: 'numero_compras',
@@ -138,12 +200,12 @@ function Reportes2RelacionesPage() {
       render: (value: number) => (value != null ? value : 'N/A'),
     },
     {
-      key: 'promedio_compra',
+      key: 'promedio_compra_base',
       title: 'Promedio Compra',
-      dataIndex: 'promedio_compra',
+      dataIndex: 'promedio_compra_base',
       type: 'text',
       render: (value: number) =>
-        value != null ? formatCurrency(undefined, value) : 'N/A',
+        value != null ? formatCurrency('USD', value) : 'N/A',
     },
     {
       key: 'porcentaje_participacion',
@@ -272,15 +334,16 @@ function Reportes2RelacionesPage() {
               : 0,
         }))
       } else if (reportType === 'top-proveedores') {
+        // Usar total_compras_base para calcular porcentaje de participación
         const totalGlobal = result.reduce(
-          (acc, row) => acc + (Number(row.total_compras) || 0),
+          (acc, row) => acc + (Number(row.total_compras_base) || 0),
           0
         )
         result = result.map(row => ({
           ...row,
           porcentaje_participacion:
             totalGlobal > 0
-              ? ((Number(row.total_compras) || 0) / totalGlobal) * 100
+              ? ((Number(row.total_compras_base) || 0) / totalGlobal) * 100
               : 0,
         }))
       }

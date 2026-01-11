@@ -65,7 +65,7 @@ export const BulkUploadModalCompras: React.FC<BulkUploadModalComprasProps> = ({
         {
           'NIT Proveedor': suppliers.length > 0 ? suppliers[0].nit : '',
           Fecha: '2024-01-15',
-          'Código Moneda': monedas.length > 0 ? monedas[0].codigo : 'VES',
+          'Código Moneda': monedas.length > 0 ? monedas[0].codigo : 'USD',
           'Tipo Pago': 'contado',
           'Fecha Vencimiento': '',
           Comentario: 'Compra de ejemplo',
@@ -76,7 +76,7 @@ export const BulkUploadModalCompras: React.FC<BulkUploadModalComprasProps> = ({
         {
           'NIT Proveedor': suppliers.length > 0 ? suppliers[0].nit : '',
           Fecha: '2024-01-15',
-          'Código Moneda': monedas.length > 0 ? monedas[0].codigo : 'VES',
+          'Código Moneda': monedas.length > 0 ? monedas[0].codigo : 'USD',
           'Tipo Pago': 'credito',
           'Fecha Vencimiento': '2024-02-15',
           Comentario: 'Segunda compra de ejemplo',

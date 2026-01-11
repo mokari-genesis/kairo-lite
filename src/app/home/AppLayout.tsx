@@ -19,12 +19,15 @@ import {
   SwapOutlined,
   UserOutlined,
   ShoppingOutlined,
+  MoonOutlined,
+  SunOutlined,
 } from '@ant-design/icons'
 import { Auth } from 'aws-amplify'
 import { queryClient } from '../utils/query'
 import { EMPRESA_STORAGE_KEY, useEmpresa } from '../empresaContext'
 import { USUARIO_STORAGE_KEY, useUsuario } from '../usuarioContext'
 import { useCurrentUser } from '../usuarioContext'
+import { useTheme, THEME_STORAGE_KEY } from '../themeContext'
 
 const { Content, Footer, Sider } = Layout
 type MenuItem = Required<MenuProps>['items'][number]
@@ -39,16 +42,16 @@ const pathToMenuKey: Record<string, string> = {
   '/home/suppliers/new': '3',
 
   // Sección Compras
-  '/home/compras': '3.5',
-  '/home/compras/new': '3.5',
-  '/home/compras/[id]': '3.5',
+  '/home/compras': '3.5-1',
+  '/home/compras/new': '3.5-1',
+  '/home/compras/[id]': '3.5-1',
+  '/home/cuentasPorPagar': '3.5-2',
 
   // Sección Ventas
   '/home/saleOrders': '4-1',
   '/home/saleOrders/new': '4-1',
   '/home/saleOrders/edit': '4-1',
   '/home/cuentasPorCobrar': '4-2',
-  '/home/cuentasPorPagar': '4-3',
 
   '/home/stock': '5',
   '/home/stock/new': '5',
@@ -61,8 +64,6 @@ const pathToMenuKey: Record<string, string> = {
 
   '/home/metodosPago': '7',
   '/home/metodosPago/new': '7',
-
-  '/home/metodosPagoUnificado': '6-3',
 
   '/home/usuarios': '12',
   '/home/usuarios/new': '12',
@@ -80,6 +81,7 @@ export default function AppLayout({ children }: any) {
   const { empresaId, setEmpresa, setEmpresaId } = useEmpresa()
   const { clearUserCache } = useUsuario()
   const { usuario, rol } = useCurrentUser()
+  const { theme, toggleTheme, setTheme } = useTheme()
 
   // Si estamos en la página de login o selección de empresa, no renderizar el layout
   if (pathname === '/login' || pathname === '/home/select-empresa') {
@@ -103,7 +105,7 @@ export default function AppLayout({ children }: any) {
     // Maneja rutas dinámicas: si el path comienza con /home/compras/ y no es /home/compras o /home/compras/new,
     // entonces es una ruta dinámica de detalle
     if (path.startsWith('/home/compras/') && path !== '/home/compras' && path !== '/home/compras/new') {
-      return '3.5'
+      return '3.5-1'
     }
     
     // Maneja otras rutas dinámicas similares si es necesario
@@ -153,10 +155,26 @@ export default function AppLayout({ children }: any) {
       key: '3.5',
       label: 'Compras',
       icon: React.createElement(ShoppingOutlined),
-      onClick: () => {
-        setSelectedKey('3.5')
-        router.push('/home/compras')
-      },
+      children: [
+        {
+          key: '3.5-1',
+          label: 'Orden de compras',
+          icon: React.createElement(FileTextOutlined),
+          onClick: () => {
+            setSelectedKey('3.5-1')
+            router.push('/home/compras')
+          },
+        },
+        {
+          key: '3.5-2',
+          label: 'Cuentas por Pagar',
+          icon: React.createElement(FileTextOutlined),
+          onClick: () => {
+            setSelectedKey('3.5-2')
+            router.push('/home/cuentasPorPagar')
+          },
+        },
+      ],
     },
     {
       key: '4',
@@ -165,7 +183,7 @@ export default function AppLayout({ children }: any) {
       children: [
         {
           key: '4-1',
-          label: 'Orden de ventas',
+          label: 'Orden de venta',
           icon: React.createElement(FileTextOutlined),
           onClick: () => {
             setSelectedKey('4-1')
@@ -179,15 +197,6 @@ export default function AppLayout({ children }: any) {
           onClick: () => {
             setSelectedKey('4-2')
             router.push('/home/cuentasPorCobrar')
-          },
-        },
-        {
-          key: '4-3',
-          label: 'Cuentas por Pagar',
-          icon: React.createElement(FileTextOutlined),
-          onClick: () => {
-            setSelectedKey('4-3')
-            router.push('/home/cuentasPorPagar')
           },
         },
       ],
@@ -311,6 +320,12 @@ export default function AppLayout({ children }: any) {
         try {
           window.sessionStorage.removeItem(EMPRESA_STORAGE_KEY)
           window.sessionStorage.removeItem(USUARIO_STORAGE_KEY)
+          window.sessionStorage.removeItem(THEME_STORAGE_KEY)
+          
+          // Resetear tema a light y remover clase dark del HTML
+          setTheme('light')
+          const root = window.document.documentElement
+          root.classList.remove('dark')
         } catch (e) {
           console.error('Error clearing session storage on logout', e)
         }
@@ -434,6 +449,17 @@ export default function AppLayout({ children }: any) {
         closeIcon={<CloseOutlined />}
         style={{ insetInlineEnd: 20, insetBlockEnd: 15 }}
       >
+        <FloatButton
+          onClick={toggleTheme}
+          icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+          tooltip={
+            <div>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</div>
+          }
+          style={{
+            backgroundColor: theme === 'dark' ? '#faad14' : '#001529',
+            color: 'white',
+          }}
+        />
         <FloatButton
           onClick={handleLogout}
           icon={<LogoutOutlined />}

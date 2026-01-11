@@ -13,6 +13,7 @@ import {
   Tag,
   Statistic,
   Card,
+  theme,
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import { MetodoPagoSelect } from './MetodoPagoSelect'
@@ -34,6 +35,7 @@ import {
   convertirEntreMonedas,
 } from '@/app/utils/currency'
 import dayjs from 'dayjs'
+import { useTheme } from '@/app/themeContext'
 
 interface AbonosManagerProps {
   open: boolean
@@ -48,6 +50,17 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
   cuentaId,
   onAbonosChange,
 }) => {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: {
+      colorTextSecondary,
+      colorInfoBg,
+      colorInfoBorder,
+      colorSuccessBg,
+      colorSuccessBorder,
+    },
+  } = theme.useToken()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [cuenta, setCuenta] = useState<CuentaPorCobrarTypeResponse | null>(null)
@@ -59,7 +72,13 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     null
   )
   const [montoConvertido, setMontoConvertido] = useState<number | undefined>()
+  const [montoEnMonedaCuenta, setMontoEnMonedaCuenta] = useState<
+    number | undefined
+  >()
   const [tasaConversion, setTasaConversion] = useState<number | undefined>()
+  const [tasaConversionUSD, setTasaConversionUSD] = useState<
+    number | undefined
+  >()
   const [showForm, setShowForm] = useState(false)
 
   // Cargar cuenta y monedas al abrir el modal
@@ -101,33 +120,79 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
 
   // Calcular conversión cuando cambia el monto o la moneda
   useEffect(() => {
-    if (monto && monedaSeleccionada && cuenta) {
+    if (monto && monedaSeleccionada && cuenta && monedaBase) {
       // Obtener la moneda de la cuenta
       const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
-      if (monedaCuenta && monedaSeleccionada.id !== monedaCuenta.id) {
+
+      // Convertir el monto a USD (moneda base) para comparar con el saldo
+      if (monedaSeleccionada.id !== monedaBase.id) {
         try {
-          // Calcular conversión usando la función de conversión directa
-          const { montoConvertido: convertido, tasa } = convertirEntreMonedas(
+          // Convertir a moneda base (USD) - esta es la conversión principal
+          const montoEnUSD = convertirAMonedaBase(
             Number(monto),
             monedaSeleccionada,
-            monedaCuenta
+            monedaBase
           )
-          setMontoConvertido(convertido)
-          setTasaConversion(tasa)
+          setMontoConvertido(montoEnUSD)
+
+          // Calcular tasa de conversión a USD
+          const tasaUSD =
+            Number(monedaBase.tasa_vs_base) /
+            Number(monedaSeleccionada.tasa_vs_base)
+          setTasaConversionUSD(tasaUSD)
+
+          // Calcular conversión a moneda de cuenta (si es diferente de USD) - solo para mostrar
+          if (monedaCuenta && monedaCuenta.id !== monedaBase.id) {
+            const { montoConvertido: montoEnCuenta, tasa } =
+              convertirEntreMonedas(
+                Number(monto),
+                monedaSeleccionada,
+                monedaCuenta
+              )
+            setMontoEnMonedaCuenta(montoEnCuenta)
+            setTasaConversion(tasa)
+          } else {
+            setMontoEnMonedaCuenta(montoEnUSD)
+            setTasaConversion(1.0)
+          }
         } catch (error) {
           console.error('Error calculando conversión:', error)
           setMontoConvertido(undefined)
+          setMontoEnMonedaCuenta(undefined)
           setTasaConversion(undefined)
+          setTasaConversionUSD(undefined)
         }
       } else {
+        // Misma moneda que la base (USD)
         setMontoConvertido(monto)
-        setTasaConversion(1.0)
+        setTasaConversionUSD(1.0)
+        if (monedaCuenta && monedaCuenta.id !== monedaBase.id) {
+          // Calcular conversión a moneda de cuenta
+          try {
+            const { montoConvertido: montoEnCuenta, tasa } =
+              convertirEntreMonedas(
+                Number(monto),
+                monedaSeleccionada,
+                monedaCuenta
+              )
+            setMontoEnMonedaCuenta(montoEnCuenta)
+            setTasaConversion(tasa)
+          } catch {
+            setMontoEnMonedaCuenta(monto)
+            setTasaConversion(1.0)
+          }
+        } else {
+          setMontoEnMonedaCuenta(monto)
+          setTasaConversion(1.0)
+        }
       }
     } else {
       setMontoConvertido(undefined)
+      setMontoEnMonedaCuenta(undefined)
       setTasaConversion(undefined)
+      setTasaConversionUSD(undefined)
     }
-  }, [monto, monedaSeleccionada, cuenta, monedas])
+  }, [monto, monedaSeleccionada, cuenta, monedas, monedaBase])
 
   const saldoPendiente = cuenta ? Number(cuenta.saldo) : 0
 
@@ -136,7 +201,9 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     form.resetFields()
     setMonto(undefined)
     setMontoConvertido(undefined)
+    setMontoEnMonedaCuenta(undefined)
     setTasaConversion(undefined)
+    setTasaConversionUSD(undefined)
     setMonedaSeleccionada(null)
   }
 
@@ -145,7 +212,9 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     form.resetFields()
     setMonto(undefined)
     setMontoConvertido(undefined)
+    setMontoEnMonedaCuenta(undefined)
     setTasaConversion(undefined)
+    setTasaConversionUSD(undefined)
     setMonedaSeleccionada(null)
   }
 
@@ -154,39 +223,44 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
       const values = await form.validateFields()
       setLoading(true)
 
-      // Calcular monto_en_moneda_cxc y tasa_cambio si hay conversión
-      let montoEnMonedaCxc: number | undefined
+      // Calcular tasa_cambio: conversión de moneda del pago a moneda de la cuenta (USD)
       let tasaCambio: number | undefined
 
-      if (montoConvertido && monedaSeleccionada && monedaBase && cuenta) {
-        montoEnMonedaCxc = Number(montoConvertido.toFixed(2))
+      if (monedaSeleccionada && monedaBase && cuenta) {
+        const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
 
-        // Calcular tasa_cambio si las monedas son diferentes
-        if (
-          monedaSeleccionada.id !== monedaBase.id &&
-          monedaSeleccionada.tasa_vs_base
-        ) {
-          tasaCambio = Number(monedaSeleccionada.tasa_vs_base)
+        if (monedaSeleccionada.id === monedaBase.id) {
+          // Misma moneda que la base (USD), tasa = 1
+          tasaCambio = 1.0
+        } else if (monedaCuenta) {
+          // Calcular tasa de conversión: moneda_pago -> moneda_cuenta (USD)
+          // La cuenta siempre está en USD (moneda base)
+          // tasa = tasa_vs_base(USD) / tasa_vs_base(moneda_pago)
+          const tasaFrom = Number(monedaSeleccionada.tasa_vs_base)
+          const tasaTo = Number(monedaBase.tasa_vs_base)
+
+          if (tasaFrom && tasaTo && tasaFrom > 0 && tasaTo > 0) {
+            tasaCambio = tasaTo / tasaFrom
+          }
         }
-      } else if (
-        monto &&
-        monedaSeleccionada &&
-        monedaBase &&
-        cuenta &&
-        monedaSeleccionada.id === monedaBase.id
-      ) {
-        // Misma moneda, monto_en_moneda_cxc es igual al monto
-        montoEnMonedaCxc = Number(monto.toFixed(2))
       }
 
       const payload: CreateAbonoCxcRequest = {
         moneda_id: values.moneda_id,
         monto: Number(values.monto.toFixed(2)),
         metodo_pago_id: values.metodo_pago_id || null,
-        tasa_cambio: tasaCambio || null,
+        tasa_cambio: tasaCambio !== undefined ? tasaCambio : null,
         referencia: values.referencia || null,
         fecha: values.fecha || dayjs().format('YYYY-MM-DD'),
       }
+
+      // Debug: verificar que la tasa se está enviando correctamente
+      console.log('Payload enviado:', {
+        monto: payload.monto,
+        moneda_id: payload.moneda_id,
+        tasa_cambio: payload.tasa_cambio,
+        montoConvertido: montoConvertido,
+      })
 
       await addAbonoCuentaPorCobrar(cuentaId, payload)
       message.success('Abono agregado exitosamente')
@@ -231,6 +305,27 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     setMonedaSeleccionada(moneda)
   }
 
+  if (!cuenta && loadingCuenta) {
+    return (
+      <Modal
+        title='Gestión de Abonos'
+        open={open}
+        onCancel={onCancel}
+        footer={null}
+        width={900}
+      >
+        <div style={{ textAlign: 'center', padding: '40px' }}>Cargando...</div>
+      </Modal>
+    )
+  }
+
+  if (!cuenta) {
+    return null
+  }
+
+  const abonos = cuenta.abonos || []
+  const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
+
   const abonosColumns = [
     {
       title: 'Fecha',
@@ -262,8 +357,10 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
       dataIndex: 'monto_en_moneda_cxc',
       key: 'monto_en_moneda_cxc',
       align: 'right' as const,
-      render: (monto: number, record: AbonoType) =>
-        formatCurrency(cuenta?.moneda_codigo || record.moneda_codigo, monto),
+      render: (monto: number, record: AbonoType) => {
+        // monto_en_moneda_cxc está en moneda base (USD) desde el backend
+        return formatCurrency(monedaBase?.codigo || 'USD', monto)
+      },
     },
     {
       title: 'Método de Pago',
@@ -301,27 +398,6 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
     },
   ]
 
-  if (!cuenta && loadingCuenta) {
-    return (
-      <Modal
-        title='Gestión de Abonos'
-        open={open}
-        onCancel={onCancel}
-        footer={null}
-        width={900}
-      >
-        <div style={{ textAlign: 'center', padding: '40px' }}>Cargando...</div>
-      </Modal>
-    )
-  }
-
-  if (!cuenta) {
-    return null
-  }
-
-  const abonos = cuenta.abonos || []
-  const monedaCuenta = monedas.find(m => m.id === cuenta.moneda_id)
-
   return (
     <Modal
       title='Gestión de Abonos / Pagos'
@@ -338,21 +414,21 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
               title='Total'
               value={cuenta.total}
               formatter={value =>
-                formatCurrency(cuenta.moneda_codigo, value as number)
+                formatCurrency(monedaBase?.codigo || 'USD', value as number)
               }
             />
             <Statistic
               title='Total Pagado'
               value={cuenta.total_pagado}
               formatter={value =>
-                formatCurrency(cuenta.moneda_codigo, value as number)
+                formatCurrency(monedaBase?.codigo || 'USD', value as number)
               }
             />
             <Statistic
               title='Saldo Pendiente'
               value={saldoPendiente}
               formatter={value =>
-                formatCurrency(cuenta.moneda_codigo, value as number)
+                formatCurrency(monedaBase?.codigo || 'USD', value as number)
               }
               valueStyle={{
                 color: saldoPendiente > 0 ? '#cf1322' : '#52c41a',
@@ -430,21 +506,18 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                     validator: (_, value) => {
                       if (!value) return Promise.resolve()
 
-                      // Si la moneda es diferente, validar usando el monto convertido
-                      // Si no hay conversión (misma moneda), usar el valor directamente
+                      // El monto convertido está en USD (moneda base) y el saldo también
                       const montoAValidar =
-                        montoConvertido !== undefined && monedaSeleccionada
-                          ? montoConvertido
-                          : value
+                        montoConvertido !== undefined ? montoConvertido : value
 
                       if (montoAValidar > saldoPendiente) {
                         return Promise.reject(
                           new Error(
                             `El monto convertido (${formatCurrency(
-                              cuenta.moneda_codigo,
+                              monedaBase?.codigo || 'USD',
                               montoAValidar
                             )}) excede el saldo pendiente (${formatCurrency(
-                              cuenta.moneda_codigo,
+                              monedaBase?.codigo || 'USD',
                               saldoPendiente
                             )})`
                           )
@@ -480,16 +553,18 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
 
               {montoConvertido !== undefined &&
                 monedaSeleccionada &&
-                monedaCuenta &&
-                monedaSeleccionada.id !== monedaCuenta.id &&
+                monedaBase &&
+                monedaSeleccionada.id !== monedaBase.id &&
                 monto &&
-                tasaConversion !== undefined && (
+                tasaConversionUSD !== undefined && (
                   <div
                     style={{
                       padding: '16px',
-                      backgroundColor: '#e6f7ff',
+                      backgroundColor: isDark ? colorInfoBg : '#e6f7ff',
                       borderRadius: '6px',
-                      border: '1px solid #91d5ff',
+                      border: `1px solid ${
+                        isDark ? colorInfoBorder : '#91d5ff'
+                      }`,
                       marginBottom: '16px',
                     }}
                   >
@@ -507,28 +582,35 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                       >
                         💱 Conversión de Moneda
                       </div>
-                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: isDark ? colorInfoBorder : '#0050b3',
+                        }}
+                      >
                         <strong>Monto ingresado:</strong>{' '}
                         {formatCurrency(monedaSeleccionada.codigo, monto)}
                       </div>
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#595959',
-                          backgroundColor: '#f0f0f0',
+                          color: isDark ? colorTextSecondary : '#595959',
+                          backgroundColor: isDark ? colorInfoBg : '#f0f0f0',
                           padding: '8px',
                           borderRadius: '4px',
                           marginTop: '4px',
                         }}
                       >
                         <div style={{ marginBottom: '4px' }}>
-                          <strong>Cálculo de la tasa:</strong>
+                          <strong>
+                            Cálculo de la tasa a USD (moneda base):
+                          </strong>
                         </div>
                         <div
                           style={{ fontSize: '11px', fontFamily: 'monospace' }}
                         >
-                          Tasa = tasa_vs_base({monedaSeleccionada.codigo}) /
-                          tasa_vs_base({monedaCuenta.codigo})
+                          Tasa = tasa_vs_base(USD) / tasa_vs_base(
+                          {monedaSeleccionada.codigo})
                         </div>
                         <div
                           style={{
@@ -537,40 +619,53 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
                             marginTop: '2px',
                           }}
                         >
-                          Tasa ={' '}
-                          {Number(monedaSeleccionada.tasa_vs_base).toFixed(6)} /{' '}
-                          {Number(monedaCuenta.tasa_vs_base).toFixed(6)} ={' '}
-                          {tasaConversion.toFixed(6)}
+                          Tasa = {Number(monedaBase.tasa_vs_base).toFixed(6)} /{' '}
+                          {Number(monedaSeleccionada.tasa_vs_base).toFixed(6)} ={' '}
+                          {tasaConversionUSD.toFixed(6)}
                         </div>
                       </div>
-                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: isDark ? colorInfoBorder : '#0050b3',
+                        }}
+                      >
                         <strong>Tasa de conversión:</strong> 1{' '}
                         {monedaSeleccionada.codigo} ={' '}
-                        {tasaConversion.toFixed(6)} {monedaCuenta.codigo}
+                        {tasaConversionUSD.toFixed(6)}{' '}
+                        {monedaBase?.codigo || 'USD'}
                       </div>
                       <div
                         style={{
                           fontSize: '14px',
-                          color: '#0050b3',
+                          color: isDark ? colorInfoBorder : '#0050b3',
                           fontWeight: 'bold',
                           paddingTop: '4px',
-                          borderTop: '1px solid #91d5ff',
+                          borderTop: `1px solid ${
+                            isDark ? colorInfoBorder : '#91d5ff'
+                          }`,
                         }}
                       >
                         <strong>Equivale a:</strong>{' '}
-                        {formatCurrency(monedaCuenta.codigo, montoConvertido)}{' '}
-                        en {monedaCuenta.codigo}
+                        {formatCurrency(
+                          monedaBase?.codigo || 'USD',
+                          montoConvertido
+                        )}{' '}
+                        en {monedaBase?.codigo || 'USD'}
                       </div>
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#8c8c8c',
+                          color: isDark ? colorTextSecondary : '#8c8c8c',
                           fontStyle: 'italic',
                           marginTop: '4px',
                         }}
                       >
                         Saldo pendiente:{' '}
-                        {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
+                        {formatCurrency(
+                          monedaBase?.codigo || 'USD',
+                          saldoPendiente
+                        )}
                         {montoConvertido <= saldoPendiente ? (
                           <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                             ✓ Monto válido
@@ -587,22 +682,32 @@ export const AbonosManager: React.FC<AbonosManagerProps> = ({
 
               {montoConvertido !== undefined &&
                 monedaSeleccionada &&
-                monedaCuenta &&
-                monedaSeleccionada.id === monedaCuenta.id &&
+                monedaBase &&
+                monedaSeleccionada.id === monedaBase.id &&
                 monto && (
                   <div
                     style={{
                       padding: '12px',
-                      backgroundColor: '#f6ffed',
+                      backgroundColor: isDark ? colorSuccessBg : '#f6ffed',
                       borderRadius: '6px',
-                      border: '1px solid #b7eb8f',
+                      border: `1px solid ${
+                        isDark ? colorSuccessBorder : '#b7eb8f'
+                      }`,
                       marginBottom: '16px',
                     }}
                   >
-                    <div style={{ fontSize: '12px', color: '#52c41a' }}>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: isDark ? colorSuccessBorder : '#52c41a',
+                      }}
+                    >
                       <strong>Misma moneda:</strong> No se requiere conversión.
                       Saldo pendiente:{' '}
-                      {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
+                      {formatCurrency(
+                        monedaBase?.codigo || 'USD',
+                        saldoPendiente
+                      )}
                     </div>
                   </div>
                 )}

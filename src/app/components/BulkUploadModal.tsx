@@ -63,7 +63,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           Categoría: 'juguete',
           'NIT Proveedor': suppliers.length > 0 ? suppliers[0].nit : '',
           Estado: 'activo',
-          'Precio Sugerido': '0.00',
+          'Precio Sugerido': '10.00',
         },
         {
           Código: 'PROD002',
@@ -72,7 +72,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           Categoría: 'ropa',
           'NIT Proveedor': suppliers.length > 1 ? suppliers[1].nit : '',
           Estado: 'activo',
-          'Precio Sugerido': '0.00',
+          'Precio Sugerido': '10.00',
         },
       ]
 
@@ -288,19 +288,23 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
             continue
           }
 
-          // Validar precio
-          let precio = 0
-          if (row['Precio Sugerido']) {
-            const precioValue = parseFloat(row['Precio Sugerido'])
-            if (!isNaN(precioValue) && precioValue >= 0) {
-              precio = precioValue
-            } else {
-              errors.push(
-                `Fila ${rowNumber}: Precio Sugerido debe ser un número mayor o igual a 0`
-              )
-              continue
-            }
+          // Validar precio sugerido (obligatorio)
+          if (!row['Precio Sugerido']) {
+            errors.push(
+              `Fila ${rowNumber}: Precio Sugerido es obligatorio`
+            )
+            continue
           }
+
+          const precioValue = parseFloat(row['Precio Sugerido'])
+          if (isNaN(precioValue) || precioValue < 0) {
+            errors.push(
+              `Fila ${rowNumber}: Precio Sugerido debe ser un número mayor o igual a 0`
+            )
+            continue
+          }
+
+          const precio = precioValue
 
           // Validar que proveedorId esté definido (debería estar después de la validación anterior)
           if (!proveedorId) {
@@ -333,21 +337,21 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
 
           const response = await createProduct(productData, empresaId)
 
-          // Si hay un precio sugerido, crear automáticamente el tipo de precio "sugerido"
-          if (precio > 0) {
-            try {
-              await createProductoPrecio({
-                producto_id: parseInt(response.data.id),
-                tipo: 'sugerido',
-                precio: precio,
-              })
-            } catch (priceError) {
-              console.error('Error creating suggested price:', priceError)
-              // Continuamos aunque falle el precio
-            }
+          // Crear automáticamente el tipo de precio "sugerido" (obligatorio)
+          try {
+            await createProductoPrecio({
+              producto_id: parseInt(response.data.id),
+              tipo: 'sugerido',
+              precio: precio,
+            })
+            successCount.count++
+          } catch (priceError) {
+            console.error('Error creating suggested price:', priceError)
+            errors.push(
+              `Fila ${rowNumber}: Producto creado pero error al crear precio sugerido: ${priceError}`
+            )
+            // No contamos como éxito si falla la creación del precio obligatorio
           }
-
-          successCount.count++
         } catch (error: any) {
           errors.push(
             `Fila ${rowNumber}: ${error.message || 'Error al crear producto'}`
@@ -476,8 +480,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           </Paragraph>
           <Text type='secondary' style={{ fontSize: '12px' }}>
             Campos requeridos: Código, Serie, Descripción, Categoría, Estado,
-            NIT Proveedor. El Precio Sugerido es opcional. Consulte la hoja
-            "Proveedores" para ver los NITs disponibles.
+            NIT Proveedor, Precio Sugerido. Consulte la hoja "Proveedores" para ver los NITs disponibles.
           </Text>
           <Dragger {...uploadProps} disabled={uploading}>
             <p className='ant-upload-drag-icon'>

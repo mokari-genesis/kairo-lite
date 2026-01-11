@@ -14,6 +14,7 @@ import {
   Statistic,
   Card,
   DatePicker,
+  theme,
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import { MetodoPagoSelect } from './MetodoPagoSelect'
@@ -35,6 +36,7 @@ import {
   convertirEntreMonedas,
 } from '@/app/utils/currency'
 import dayjs from 'dayjs'
+import { useTheme } from '@/app/themeContext'
 
 interface AbonosManagerCxpProps {
   open: boolean
@@ -49,6 +51,17 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
   cuentaId,
   onAbonosChange,
 }) => {
+  const { theme: currentTheme } = useTheme()
+  const isDark = currentTheme === 'dark'
+  const {
+    token: {
+      colorTextSecondary,
+      colorInfoBg,
+      colorInfoBorder,
+      colorSuccessBg,
+      colorSuccessBorder,
+    },
+  } = theme.useToken()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [cuenta, setCuenta] = useState<CuentaPorPagarTypeResponse | null>(null)
@@ -471,9 +484,11 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                   <div
                     style={{
                       padding: '16px',
-                      backgroundColor: '#e6f7ff',
+                      backgroundColor: isDark ? colorInfoBg : '#e6f7ff',
                       borderRadius: '6px',
-                      border: '1px solid #91d5ff',
+                      border: `1px solid ${
+                        isDark ? colorInfoBorder : '#91d5ff'
+                      }`,
                       marginBottom: '16px',
                     }}
                   >
@@ -485,21 +500,26 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                       <div
                         style={{
                           fontSize: '14px',
-                          color: '#1890ff',
+                          color: isDark ? colorInfoBorder : '#1890ff',
                           fontWeight: 'bold',
                         }}
                       >
                         💱 Conversión de Moneda
                       </div>
-                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: isDark ? colorInfoBorder : '#0050b3',
+                        }}
+                      >
                         <strong>Monto ingresado:</strong>{' '}
                         {formatCurrency(monedaSeleccionada.codigo, monto)}
                       </div>
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#595959',
-                          backgroundColor: '#f0f0f0',
+                          color: isDark ? colorTextSecondary : '#595959',
+                          backgroundColor: isDark ? colorInfoBg : '#f0f0f0',
                           padding: '8px',
                           borderRadius: '4px',
                           marginTop: '4px',
@@ -527,7 +547,12 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                           {tasaConversion.toFixed(6)}
                         </div>
                       </div>
-                      <div style={{ fontSize: '13px', color: '#0050b3' }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: isDark ? colorInfoBorder : '#0050b3',
+                        }}
+                      >
                         <strong>Tasa de conversión:</strong> 1{' '}
                         {monedaSeleccionada.codigo} ={' '}
                         {tasaConversion.toFixed(6)} {monedaCuenta.codigo}
@@ -535,10 +560,12 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                       <div
                         style={{
                           fontSize: '14px',
-                          color: '#0050b3',
+                          color: isDark ? colorInfoBorder : '#0050b3',
                           fontWeight: 'bold',
                           paddingTop: '4px',
-                          borderTop: '1px solid #91d5ff',
+                          borderTop: `1px solid ${
+                            isDark ? colorInfoBorder : '#91d5ff'
+                          }`,
                         }}
                       >
                         <strong>Equivale a:</strong>{' '}
@@ -548,7 +575,7 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#8c8c8c',
+                          color: isDark ? colorTextSecondary : '#8c8c8c',
                           fontStyle: 'italic',
                           marginTop: '4px',
                         }}
@@ -577,13 +604,20 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
                   <div
                     style={{
                       padding: '12px',
-                      backgroundColor: '#f6ffed',
+                      backgroundColor: isDark ? colorSuccessBg : '#f6ffed',
                       borderRadius: '6px',
-                      border: '1px solid #b7eb8f',
+                      border: `1px solid ${
+                        isDark ? colorSuccessBorder : '#b7eb8f'
+                      }`,
                       marginBottom: '16px',
                     }}
                   >
-                    <div style={{ fontSize: '12px', color: '#52c41a' }}>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: isDark ? colorSuccessBorder : '#52c41a',
+                      }}
+                    >
                       <strong>Misma moneda:</strong> No se requiere conversión.
                       Saldo pendiente:{' '}
                       {formatCurrency(cuenta.moneda_codigo, saldoPendiente)}
@@ -622,7 +656,7 @@ export const AbonosManagerCxp: React.FC<AbonosManagerCxpProps> = ({
               style={{
                 textAlign: 'center',
                 padding: '20px',
-                color: '#8c8c8c',
+                color: isDark ? colorTextSecondary : '#8c8c8c',
               }}
             >
               No hay abonos registrados

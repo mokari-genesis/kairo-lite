@@ -30,7 +30,11 @@ import { PaymentsSection } from '@/app/components/pagos/PaymentsSection'
 import { Venta, VentaPago, listPayments } from '@/app/api/pagos'
 import { getMetodosPago } from '@/app/api/metodos-pago'
 import { getMonedas } from '@/app/api/monedas'
-import { sumPagosConConversion, obtenerMonedaBase } from '@/app/utils/currency'
+import {
+  sumPagosConConversion,
+  obtenerMonedaBase,
+  formatCurrency,
+} from '@/app/utils/currency'
 import { useEmpresa } from '@/app/empresaContext'
 import { useUsuario } from '@/app/usuarioContext'
 
@@ -103,11 +107,12 @@ export default function EditPurchase({
           setSaleData(sale)
 
           // Crear objeto Venta para la sección de pagos
+          // Las ventas siempre se guardan en moneda base (USD)
           const venta: Venta = {
             id: sale.id,
             total: parseFloat(sale.total_venta),
             estado: sale.estado_venta as 'vendido' | 'cancelado',
-            moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
+            moneda_id: monedaBase?.id || 1, // Siempre usar moneda base (USD)
             pagos: [], // Se cargará dinámicamente
             totalPagado: 0,
             saldoPendiente: parseFloat(sale.total_venta),
@@ -115,15 +120,70 @@ export default function EditPurchase({
           setVentaData(venta)
 
           // Cargar los datos del cliente
-          const clients = await getClients({ nit: sale.cliente_nit })
-          if (clients && clients.length > 0) {
-            const currentClient = clients[0]
-            setClient(currentClient)
+          try {
+            let clients: ClientsTypeResponse[] = []
+            
+            // Intentar buscar el cliente por NIT
+            if (sale.cliente_nit) {
+              clients = await getClients({ nit: sale.cliente_nit }, empresaId ?? 1)
+            }
+            
+            if (clients && clients.length > 0) {
+              const currentClient = clients[0]
+              setClient(currentClient)
+              form.setFieldsValue({
+                cliente_id: {
+                  value: currentClient.id,
+                  label: `${currentClient.nombre} - ${currentClient.nit}`,
+                  details: currentClient,
+                },
+                comentario: (sale as any).comentario,
+              })
+            } else {
+              console.warn('No se encontró información completa del cliente para la venta, usando datos del sale')
+              // Si no se encuentra el cliente completo, usar la información disponible en sale
+              // Esto puede pasar si el cliente fue eliminado o si hay inconsistencias en los datos
+              const partialClient: ClientsTypeResponse = {
+                id: sale.cliente_id,
+                empresa_id: sale.empresa_id,
+                nombre: sale.cliente_nombre || '',
+                nit: sale.cliente_nit || '',
+                email: sale.cliente_email || '',
+                telefono: '', // No disponible en sale
+                direccion: '', // No disponible en sale
+                tipo: '', // No disponible en sale
+                fecha_registro: '', // No disponible en sale
+              }
+              setClient(partialClient)
+              form.setFieldsValue({
+                cliente_id: {
+                  value: sale.cliente_id,
+                  label: `${sale.cliente_nombre || ''} - ${sale.cliente_nit || ''}`,
+                  details: partialClient,
+                },
+                comentario: (sale as any).comentario,
+              })
+            }
+          } catch (error) {
+            console.error('Error al cargar información del cliente:', error)
+            // En caso de error, usar la información básica disponible en sale
+            const partialClient: ClientsTypeResponse = {
+              id: sale.cliente_id,
+              empresa_id: sale.empresa_id,
+              nombre: sale.cliente_nombre || '',
+              nit: sale.cliente_nit || '',
+              email: sale.cliente_email || '',
+              telefono: '',
+              direccion: '',
+              tipo: '',
+              fecha_registro: '',
+            }
+            setClient(partialClient)
             form.setFieldsValue({
               cliente_id: {
-                value: currentClient.id,
-                label: `${currentClient.nombre} - ${currentClient.nit}`,
-                details: currentClient,
+                value: sale.cliente_id,
+                label: `${sale.cliente_nombre || ''} - ${sale.cliente_nit || ''}`,
+                details: partialClient,
               },
               comentario: (sale as any).comentario,
             })
@@ -627,10 +687,15 @@ export default function EditPurchase({
         total: updatedTotal,
         estado: 'vendido', //saleData?.estado_venta || 'vendida',
         detalle: details,
-        moneda_id: 1, // Por defecto VES (Bolívares Fuertes)
-        moneda: 'Bs',
+        moneda_id: monedaBase?.id || null, // Siempre usar moneda base (USD)
+        moneda: monedaBase?.codigo || 'USD',
         comentario: values.comentario || '',
         pagos: pagosValidos.length > 0 ? pagosValidos : undefined, // Solo incluir pagos válidos
+      }
+      
+      if (!monedaBase?.id) {
+        message.error('No se encontró la moneda base (USD) en el sistema')
+        return
       }
 
       const confirm = await modal.confirm({
@@ -766,7 +831,8 @@ export default function EditPurchase({
       {
         title: 'Subtotal',
         dataIndex: 'subtotal',
-        render: (value: number) => `Bs. ${value.toFixed(2)}`,
+        render: (value: number) =>
+          formatCurrency(monedaBase?.codigo || 'USD', value),
       },
       {
         title: 'Acciones',
@@ -950,7 +1016,10 @@ export default function EditPurchase({
             </div>
 
             <div style={{ textAlign: 'right' }}>
-              <h3>Total: Bs. {totalCalculado.toFixed(2)}</h3>
+              <h3>
+                Total:{' '}
+                {formatCurrency(monedaBase?.codigo || 'USD', totalCalculado)}
+              </h3>
             </div>
 
             {/* Sección de Pagos */}
